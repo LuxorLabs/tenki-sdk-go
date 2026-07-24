@@ -2680,8 +2680,8 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\x0eRegistrySortBy\x12 \n" +
 	"\x1cREGISTRY_SORT_BY_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15REGISTRY_SORT_BY_NAME\x10\x01\x12\x1f\n" +
-	"\x1bREGISTRY_SORT_BY_UPDATED_AT\x10\x02B\xdd\x01\n" +
-	"\x14com.tenki.sandbox.v1B\rRegistryProtoP\x01ZTgithub.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"\x1bREGISTRY_SORT_BY_UPDATED_AT\x10\x02B\xdc\x01\n" +
+	"\x14com.tenki.sandbox.v1B\rRegistryProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_registry_proto_rawDescOnce sync.Once

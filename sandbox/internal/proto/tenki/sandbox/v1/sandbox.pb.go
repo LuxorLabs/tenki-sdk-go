@@ -14178,8 +14178,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x04Stat\x12;.tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest\x1a<.tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse\x12\x84\x01\n" +
 	"\x05Mkdir\x12<.tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest\x1a=.tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse\x12\x87\x01\n" +
 	"\x06Remove\x12=.tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest\x1a>.tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse\x12\x81\x01\n" +
-	"\x04List\x12;.tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest\x1a<.tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponseB\xdc\x01\n" +
-	"\x14com.tenki.sandbox.v1B\fSandboxProtoP\x01ZTgithub.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"\x04List\x12;.tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest\x1a<.tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponseB\xdb\x01\n" +
+	"\x14com.tenki.sandbox.v1B\fSandboxProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_sandbox_proto_rawDescOnce sync.Once

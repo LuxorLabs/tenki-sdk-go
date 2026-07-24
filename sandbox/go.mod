@@ -1,4 +1,4 @@
-module github.com/TenkiCloud/tenki-sdk-go/sandbox
+module github.com/LuxorLabs/tenki-sdk-go/sandbox
 
 go 1.25.3
 

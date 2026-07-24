@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	sandbox "github.com/TenkiCloud/tenki-sdk-go/sandbox"
+	sandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
 )
 
 // Mirrors packages/e2e/src/sandbox/dial_*.test.ts. Run with:

@@ -499,8 +499,8 @@ const file_tenki_sandbox_v1_ssh_gateway_client_proto_rawDesc = "" +
 	"\x12ws_bridge_endpoint\x18\a \x01(\tR\x10wsBridgeEndpoint2\x87\x02\n" +
 	"\x17SSHGatewayClientService\x12r\n" +
 	"\x13IssueSandboxSSHCert\x12,.tenki.sandbox.v1.IssueSandboxSSHCertRequest\x1a-.tenki.sandbox.v1.IssueSandboxSSHCertResponse\x12x\n" +
-	"\x15ListActiveSSHGateways\x12..tenki.sandbox.v1.ListActiveSSHGatewaysRequest\x1a/.tenki.sandbox.v1.ListActiveSSHGatewaysResponseB\xe5\x01\n" +
-	"\x14com.tenki.sandbox.v1B\x15SshGatewayClientProtoP\x01ZTgithub.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"\x15ListActiveSSHGateways\x12..tenki.sandbox.v1.ListActiveSSHGatewaysRequest\x1a/.tenki.sandbox.v1.ListActiveSSHGatewaysResponseB\xe4\x01\n" +
+	"\x14com.tenki.sandbox.v1B\x15SshGatewayClientProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_ssh_gateway_client_proto_rawDescOnce sync.Once

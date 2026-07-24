@@ -4696,8 +4696,8 @@ const file_tenki_sandbox_v1_template_proto_rawDesc = "" +
 	")TEMPLATE_BUILD_PROGRESS_STATE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%TEMPLATE_BUILD_PROGRESS_STATE_STARTED\x10\x01\x12+\n" +
 	"'TEMPLATE_BUILD_PROGRESS_STATE_COMPLETED\x10\x02\x12(\n" +
-	"$TEMPLATE_BUILD_PROGRESS_STATE_FAILED\x10\x03B\xdd\x01\n" +
-	"\x14com.tenki.sandbox.v1B\rTemplateProtoP\x01ZTgithub.com/TenkiCloud/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"$TEMPLATE_BUILD_PROGRESS_STATE_FAILED\x10\x03B\xdc\x01\n" +
+	"\x14com.tenki.sandbox.v1B\rTemplateProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_template_proto_rawDescOnce sync.Once

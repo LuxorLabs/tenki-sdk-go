@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	tenkisandbox "github.com/TenkiCloud/tenki-sdk-go/sandbox"
+	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
 )
 
 func TestSessionTokenUsesXSessionToken(t *testing.T) {

@@ -5,7 +5,7 @@ Go client for `tenki.sandbox.v1.SandboxService`.
 ## Install
 
 ```bash
-go get github.com/TenkiCloud/tenki-sdk-go/sandbox
+go get github.com/LuxorLabs/tenki-sdk-go/sandbox
 ```
 
 ## Quickstart
@@ -28,7 +28,7 @@ import (
 	"log"
 	"time"
 
-	tenkisandbox "github.com/TenkiCloud/tenki-sdk-go/sandbox"
+	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
 )
 
 func main() {
