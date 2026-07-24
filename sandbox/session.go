@@ -60,6 +60,9 @@ type Session struct {
 	dataPlaneReadyMu        sync.Mutex
 	dataPlaneVerifiedClient sandboxv1connect.SandboxSessionDataPlaneServiceClient
 
+	// dataPlaneWarmOnce opens the connection once the endpoint is known so the first real op skips the handshake.
+	dataPlaneWarmOnce sync.Once
+
 	ID                        string
 	Name                      string
 	State                     SessionState
@@ -311,7 +314,31 @@ func (s *Session) applyDataPlaneResponse(
 	s.configureDataPlane(endpoint, credential)
 	if routeStatus == sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_VERIFIED {
 		s.markCurrentDataPlaneVerified()
+		return
 	}
+	s.startDataPlaneWarm()
+}
+
+// dataPlaneWarmTimeout bounds the detached connection warm; it never gates a caller.
+const dataPlaneWarmTimeout = 10 * time.Second
+
+// startDataPlaneWarm opens the connection once an endpoint is known so the first real op skips the handshake. The probe may be rejected for want of a credential; the pooled connection is the point, so it must not mark the client verified.
+func (s *Session) startDataPlaneWarm() {
+	s.dataPlaneMu.RLock()
+	client := s.dataPlaneClient
+	s.dataPlaneMu.RUnlock()
+	if client == nil {
+		return
+	}
+	s.dataPlaneWarmOnce.Do(func() {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), dataPlaneWarmTimeout)
+			defer cancel()
+			_, _ = client.Stat(ctx, connect.NewRequest(&sandboxv1.SandboxSessionDataPlaneServiceStatRequest{
+				Request: &sandboxv1.StatRequest{SessionId: s.ID, Path: "/home/tenki"},
+			}))
+		}()
+	})
 }
 
 func (s *Session) markCurrentDataPlaneVerified() {
