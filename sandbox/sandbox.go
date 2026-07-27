@@ -151,6 +151,9 @@ func (c *Client) Close() error {
 }
 
 // Create creates a sandbox session and returns an SDK Session wrapper.
+//
+// If readiness fails after admission, the returned *WaitReadyFailedError carries
+// the live session so callers can close it or continue waiting.
 func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, error) {
 	cfg := defaultCreateConfig(c)
 	for _, opt := range opts {
@@ -265,7 +268,10 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	}
 	// Older servers (or waits past the server hold) settle via the streaming wait.
 	if err := sess.WaitReady(ctx, waitTimeout); err != nil {
-		return nil, err
+		if sess.State.IsTerminal() {
+			return nil, err
+		}
+		return nil, &WaitReadyFailedError{Session: sess, Err: err}
 	}
 	return sess, nil
 }

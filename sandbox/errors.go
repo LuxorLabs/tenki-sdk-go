@@ -45,8 +45,33 @@ var (
 	ErrTemplateBuildFailed     = errors.New("sandbox: template build failed")
 	ErrTemplateBuildInProgress = errors.New("sandbox: template build already in progress")
 	ErrTemplateRuntimeFailed   = errors.New("sandbox: template runtime failed")
+	ErrWaitReadyFailed         = errors.New("sandbox: session created but not ready within wait budget")
 	ErrPaginationStalled       = errors.New("sandbox: pagination token did not advance")
 )
+
+// WaitReadyFailedError carries a session admitted before its readiness wait failed.
+type WaitReadyFailedError struct {
+	Session *Session
+	Err     error
+}
+
+func (e *WaitReadyFailedError) Error() string {
+	if e == nil || e.Err == nil {
+		return ErrWaitReadyFailed.Error()
+	}
+	return ErrWaitReadyFailed.Error() + ": " + e.Err.Error()
+}
+
+func (e *WaitReadyFailedError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func (e *WaitReadyFailedError) Is(target error) bool {
+	return target == ErrWaitReadyFailed
+}
 
 type TemplateRuntimeFailedError struct {
 	Session *Session

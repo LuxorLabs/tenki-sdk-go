@@ -22,9 +22,11 @@ type waitSessionHandler struct {
 	createWaitForRuntime atomic.Bool
 	createAllowInbound   *bool
 	createAllowOutbound  *bool
+	terminateCalls       atomic.Int32
 	waitErr              error
 	terminalError        string
 	runtimeFailure       bool
+	stayCreating         bool
 }
 
 func (h *waitSessionHandler) CreateSession(_ context.Context, req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
@@ -280,6 +282,9 @@ func (h *waitSessionHandler) WaitSession(_ context.Context, req *connect.Request
 	}}); err != nil {
 		return err
 	}
+	if h.stayCreating {
+		return nil
+	}
 	if h.waitErr != nil {
 		return h.waitErr
 	}
@@ -305,6 +310,74 @@ func (h *waitSessionHandler) WaitSession(_ context.Context, req *connect.Request
 		},
 		RouteStatus: sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_VERIFIED,
 	})
+}
+
+func (h *waitSessionHandler) TerminateSession(_ context.Context, req *connect.Request[sandboxv1.TerminateSessionRequest]) (*connect.Response[sandboxv1.TerminateSessionResponse], error) {
+	h.terminateCalls.Add(1)
+	return connect.NewResponse(&sandboxv1.TerminateSessionResponse{Session: &sandboxv1.SandboxSession{
+		Id:        req.Msg.SessionId,
+		State:     sandboxv1.SessionState_SESSION_STATE_TERMINATED,
+		OwnerType: "SERVICE",
+		OwnerId:   "self",
+	}}), nil
+}
+
+func TestCreateWaitFailureReturnsSessionHandle(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitSessionHandler{stayCreating: true}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	_, err := client.Create(
+		context.Background(),
+		WithWorkspaceID("ws-1"),
+		WithName("wait-timeout"),
+		WithWaitTimeout(time.Second),
+	)
+	if !errors.Is(err, ErrWaitReadyFailed) {
+		t.Fatalf("Create error = %v, want ErrWaitReadyFailed", err)
+	}
+	var waitErr *WaitReadyFailedError
+	if !errors.As(err, &waitErr) {
+		t.Fatalf("Create error type = %T, want *WaitReadyFailedError", err)
+	}
+	if waitErr.Session == nil || waitErr.Session.ID != "019e84bc-6df8-765f-8507-2734f87156c7" {
+		t.Fatalf("wait failure session = %#v, want admitted session handle", waitErr.Session)
+	}
+	if waitErr.Session.State.IsTerminal() {
+		t.Fatalf("session state = %s, want non-terminal", waitErr.Session.State)
+	}
+	if closeErr := waitErr.Session.Close(context.Background()); closeErr != nil {
+		t.Fatalf("Close via returned handle: %v", closeErr)
+	}
+	if got := handler.terminateCalls.Load(); got != 1 {
+		t.Fatalf("TerminateSession calls = %d, want 1", got)
+	}
+}
+
+func TestCreateWaitTerminalStateNotWrapped(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitSessionHandler{terminalError: "sandbox provisioned but readiness check failed"}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	_, err := client.Create(
+		context.Background(),
+		WithWorkspaceID("ws-1"),
+		WithName("wait-terminal"),
+		WithWaitTimeout(time.Second),
+	)
+	if err == nil {
+		t.Fatal("Create returned nil error, want terminal-state error")
+	}
+	if errors.Is(err, ErrWaitReadyFailed) {
+		t.Fatalf("terminal-state error wrapped as WaitReadyFailedError: %v", err)
+	}
+	if !strings.Contains(err.Error(), "sandbox provisioned but readiness check failed") {
+		t.Fatalf("error = %q, want terminal_error", err)
+	}
 }
 
 func TestCreateAndWaitUsesWaitSessionStream(t *testing.T) {
