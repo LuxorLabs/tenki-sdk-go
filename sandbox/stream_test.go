@@ -47,6 +47,7 @@ type dataPlaneRunTestHandler struct {
 	mu                sync.Mutex
 	starts            []*sandboxv1.RunStart
 	statPaths         []string
+	statProbeHeaders  []string
 	runErrorsByCwd    map[string]error
 	requireStdinClose bool
 	requireSignal     bool
@@ -61,6 +62,7 @@ func (h *dataPlaneRunTestHandler) Stat(
 ) (*connect.Response[sandboxv1.SandboxSessionDataPlaneServiceStatResponse], error) {
 	h.mu.Lock()
 	h.statPaths = append(h.statPaths, req.Msg.GetRequest().GetPath())
+	h.statProbeHeaders = append(h.statProbeHeaders, req.Header().Get(dataPlaneProbeHeader))
 	h.mu.Unlock()
 	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceStatResponse{
 		Response: &sandboxv1.StatResponse{Exists: true, IsDir: true},

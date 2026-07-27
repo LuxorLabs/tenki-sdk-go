@@ -322,6 +322,9 @@ func (s *Session) applyDataPlaneResponse(
 // dataPlaneWarmTimeout bounds the detached connection warm; it never gates a caller.
 const dataPlaneWarmTimeout = 10 * time.Second
 
+const dataPlaneProbeHeader = "X-Tenki-Dataplane-Probe"
+const dataPlaneProbeWarmup = "warmup"
+
 // startDataPlaneWarm opens the connection once an endpoint is known so the first real op skips the handshake. The probe may be rejected for want of a credential; the pooled connection is the point, so it must not mark the client verified.
 func (s *Session) startDataPlaneWarm() {
 	s.dataPlaneMu.RLock()
@@ -334,9 +337,11 @@ func (s *Session) startDataPlaneWarm() {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), dataPlaneWarmTimeout)
 			defer cancel()
-			_, _ = client.Stat(ctx, connect.NewRequest(&sandboxv1.SandboxSessionDataPlaneServiceStatRequest{
+			req := connect.NewRequest(&sandboxv1.SandboxSessionDataPlaneServiceStatRequest{
 				Request: &sandboxv1.StatRequest{SessionId: s.ID, Path: "/home/tenki"},
-			}))
+			})
+			req.Header().Set(dataPlaneProbeHeader, dataPlaneProbeWarmup)
+			_, _ = client.Stat(ctx, req)
 		}()
 	})
 }

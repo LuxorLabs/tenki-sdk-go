@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -75,6 +76,36 @@ func TestSDKExecUsesDataPlaneRun(t *testing.T) {
 	if got := runHandler.starts[0].GetCmd(); len(got) != 2 || got[0] != "echo" || got[1] != "sc004" {
 		t.Fatalf("unexpected data-plane command: %#v", got)
 	}
+}
+
+func TestSDKDataPlaneWarmUsesProbeHeader(t *testing.T) {
+	t.Parallel()
+
+	runHandler, dataPlaneEndpoint := newDataPlaneRunTestServer(t)
+	engineURL, engineHTTPClient := newRoutingEngineTestServer(t, &routingEngineHandler{
+		sessionID:         "session-1",
+		dataPlaneEndpoint: dataPlaneEndpoint,
+	})
+	client, err := New(WithAuthToken("tk_test_api_key"), WithBaseURL(engineURL), WithHTTPClient(engineHTTPClient))
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	if _, err := client.Create(context.Background(), WithWorkspaceID("ws-1")); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		runHandler.mu.Lock()
+		found := slices.Contains(runHandler.statProbeHeaders, dataPlaneProbeWarmup)
+		runHandler.mu.Unlock()
+		if found {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("data-plane warmup did not carry the probe header")
 }
 
 func newRoutingEngineTestServer(t *testing.T, handler sandboxv1connect.SandboxServiceHandler) (string, *http.Client) {
