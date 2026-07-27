@@ -221,9 +221,10 @@ type templateConfig struct {
 }
 
 type listConfig struct {
-	workspaceID string
-	tags        []string
-	sticky      *bool
+	workspaceID       string
+	tags              []string
+	sticky            *bool
+	includeTerminated bool
 }
 
 type previewURLConfig struct {
@@ -888,6 +889,15 @@ func WithSetSticky(sticky bool) UpdateSessionOption {
 func WithStickyFilter(sticky bool) ListOption {
 	return listOptionFunc(func(cfg *listConfig) {
 		cfg.sticky = &sticky
+	})
+}
+
+// WithIncludeTerminated includes terminated sessions in List results. By
+// default the server omits terminated sessions; set this to surface them (for
+// example when filtering by a terminated state).
+func WithIncludeTerminated(include bool) ListOption {
+	return listOptionFunc(func(cfg *listConfig) {
+		cfg.includeTerminated = include
 	})
 }
 

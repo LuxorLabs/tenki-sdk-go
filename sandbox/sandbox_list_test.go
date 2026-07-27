@@ -92,3 +92,39 @@ func TestListSupportsExplicitWorkspaceScopeForServiceCredentials(t *testing.T) {
 		t.Fatalf("List: %v", err)
 	}
 }
+
+func TestListIncludeTerminated(t *testing.T) {
+	t.Parallel()
+
+	var got bool
+	h := &sandboxListHandler{}
+	h.listWorkspaceSandboxesFn = func(req *connect.Request[sandboxv1.ListWorkspaceSandboxesRequest]) (*connect.Response[sandboxv1.ListWorkspaceSandboxesResponse], error) {
+		got = req.Msg.GetIncludeTerminated()
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{}), nil
+	}
+
+	client := newSandboxListTestClient(t, h)
+	if _, err := client.List(context.Background(), WithIncludeTerminated(true)); err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if !got {
+		t.Fatal("WithIncludeTerminated not forwarded on List")
+	}
+}
+
+func TestListOmitsTerminatedByDefault(t *testing.T) {
+	t.Parallel()
+
+	h := &sandboxListHandler{}
+	h.listWorkspaceSandboxesFn = func(req *connect.Request[sandboxv1.ListWorkspaceSandboxesRequest]) (*connect.Response[sandboxv1.ListWorkspaceSandboxesResponse], error) {
+		if req.Msg.GetIncludeTerminated() {
+			t.Fatal("include_terminated should default to false")
+		}
+		return connect.NewResponse(&sandboxv1.ListWorkspaceSandboxesResponse{}), nil
+	}
+
+	client := newSandboxListTestClient(t, h)
+	if _, err := client.List(context.Background()); err != nil {
+		t.Fatalf("List: %v", err)
+	}
+}

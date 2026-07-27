@@ -318,11 +318,12 @@ func (c *Client) List(ctx context.Context, opts ...ListOption) ([]*Session, erro
 	var pageToken string
 	for {
 		resp, err := c.sandbox.ListWorkspaceSandboxes(ctx, connect.NewRequest(&sandboxv1.ListWorkspaceSandboxesRequest{
-			WorkspaceId: cfg.workspaceID,
-			PageSize:    automaticPageSize,
-			PageToken:   pageToken,
-			Tags:        append([]string(nil), cfg.tags...),
-			Sticky:      cfg.sticky,
+			WorkspaceId:       cfg.workspaceID,
+			PageSize:          automaticPageSize,
+			PageToken:         pageToken,
+			Tags:              append([]string(nil), cfg.tags...),
+			Sticky:            cfg.sticky,
+			IncludeTerminated: cfg.includeTerminated,
 		}))
 		if err != nil {
 			return nil, mapError(err)
