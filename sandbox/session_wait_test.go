@@ -166,6 +166,9 @@ func TestCreateReturnsTypedTemplateRuntimeFailure(t *testing.T) {
 	if runtimeErr.Reason != "runtime readiness deadline exceeded" {
 		t.Fatalf("reason = %q", runtimeErr.Reason)
 	}
+	if !handler.createWaitReady.Load() {
+		t.Fatal("CreateSession wait_ready = false, want true")
+	}
 }
 
 func TestCreateCanWaitForTemplateRuntime(t *testing.T) {
@@ -185,6 +188,9 @@ func TestCreateCanWaitForTemplateRuntime(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	if handler.createWaitReady.Load() {
+		t.Fatal("CreateSession wait_ready = true, want false")
 	}
 	if !handler.createWaitForRuntime.Load() {
 		t.Fatal("CreateSession wait_for_runtime = false, want true")
@@ -225,7 +231,7 @@ func TestDefaultHTTPTimeoutCoversLongestDefaultWait(t *testing.T) {
 	}
 }
 
-func TestCreateDefaultsToWaitReady(t *testing.T) {
+func TestCreateDefaultsToClientWaitReady(t *testing.T) {
 	t.Parallel()
 
 	handler := &waitSessionHandler{}
@@ -236,8 +242,8 @@ func TestCreateDefaultsToWaitReady(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if !handler.createWaitReady.Load() {
-		t.Fatal("CreateSession wait_ready = false, want true")
+	if handler.createWaitReady.Load() {
+		t.Fatal("CreateSession wait_ready = true, want false")
 	}
 	if session.State != SessionStateRunning {
 		t.Fatalf("state = %s, want %s", session.State, SessionStateRunning)

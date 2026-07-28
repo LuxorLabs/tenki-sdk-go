@@ -216,7 +216,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if cfg.pauseRetention != nil && *cfg.pauseRetention > 0 {
 		req.PauseRetention = durationpb.New(*cfg.pauseRetention)
 	}
-	if cfg.waitReady {
+	if cfg.waitReady && cfg.waitForRuntime {
 		req.WaitReady = true
 	}
 	req.WaitForRuntime = cfg.waitForRuntime
@@ -266,7 +266,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if sess.State.IsTerminal() {
 		return nil, sess.terminalStateError()
 	}
-	// Older servers (or waits past the server hold) settle via the streaming wait.
+	// Normal readiness waits on the stream so it can expose and prewarm the data plane during provisioning.
 	if err := sess.WaitReady(ctx, waitTimeout); err != nil {
 		if sess.State.IsTerminal() {
 			return nil, err
