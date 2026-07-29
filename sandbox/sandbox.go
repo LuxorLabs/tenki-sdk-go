@@ -92,6 +92,7 @@ func New(opts ...Option) (*Client, error) {
 		cfg.gatewayAddress = deriveGatewayAddress(cfg.baseURL)
 	}
 
+	prewarmControlPlane := cfg.httpClient == nil
 	if cfg.httpClient == nil {
 		transport := &http2.Transport{
 			ReadIdleTimeout: 30 * time.Second,
@@ -123,7 +124,7 @@ func New(opts ...Option) (*Client, error) {
 	sandboxClient := sandboxv1connect.NewSandboxServiceClient(cfg.httpClient, cfg.baseURL, connectOpts...)
 	sshGatewayClient := sandboxv1connect.NewSSHGatewayClientServiceClient(cfg.httpClient, cfg.baseURL, connectOpts...)
 
-	return &Client{
+	client := &Client{
 		authToken:              cfg.authToken,
 		baseURL:                cfg.baseURL,
 		gatewayAddress:         cfg.gatewayAddress,
@@ -134,7 +135,25 @@ func New(opts ...Option) (*Client, error) {
 		dataPlaneReadyTimeout:  cfg.dataPlaneReadyTimeout,
 		sandbox:                sandboxClient,
 		sshGateway:             sshGatewayClient,
-	}, nil
+	}
+	if prewarmControlPlane {
+		go prewarmControlPlaneConnection(cfg.httpClient, cfg.baseURL)
+	}
+	return client, nil
+}
+
+func prewarmControlPlaneConnection(httpClient *http.Client, baseURL string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, baseURL, nil)
+	if err != nil {
+		return
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return
+	}
+	_ = resp.Body.Close()
 }
 
 // Close closes idle HTTP connections held by the underlying transport.

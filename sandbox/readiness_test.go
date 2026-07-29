@@ -99,6 +99,32 @@ func newReadinessHarness(t *testing.T, engine *readinessEngineHandler, dataPlane
 	return client, server.URL
 }
 
+func TestNewPrewarmsDefaultControlPlaneConnection(t *testing.T) {
+	requestReceived := make(chan struct{}, 1)
+	server := httptest.NewServer(h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			select {
+			case requestReceived <- struct{}{}:
+			default:
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}), &http2.Server{}))
+	defer server.Close()
+
+	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	select {
+	case <-requestReceived:
+	case <-time.After(time.Second):
+		t.Fatal("control-plane prewarm request was not received")
+	}
+}
+
 func TestRouteStatusNotReadyRetriesUntilVerified(t *testing.T) {
 	t.Parallel()
 	engine := &readinessEngineHandler{notReadyBefore: 2}
