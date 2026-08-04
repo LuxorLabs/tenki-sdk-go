@@ -48,7 +48,6 @@ type clientConfig struct {
 	baseURL               string
 	gatewayAddress        string
 	authToken             string
-	cookieName            string
 	httpClient            *http.Client
 	httpTimeout           time.Duration
 	dataPlaneReadyTimeout time.Duration
@@ -88,7 +87,7 @@ func WithGatewayAddress(addr string) Option {
 	})
 }
 
-// WithAuthToken sets the API authentication token.
+// WithAuthToken sets the API key or service token used for authentication.
 func WithAuthToken(token string) Option {
 	return optionFunc(func(cfg *clientConfig) {
 		cfg.authToken = token
@@ -116,13 +115,6 @@ func WithDataPlaneReadyTimeout(timeout time.Duration) Option {
 		if timeout > 0 {
 			cfg.dataPlaneReadyTimeout = timeout
 		}
-	})
-}
-
-// WithCookieName overrides the default session cookie name ("tenki_session").
-func WithCookieName(name string) Option {
-	return optionFunc(func(cfg *clientConfig) {
-		cfg.cookieName = name
 	})
 }
 

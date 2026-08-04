@@ -22,10 +22,8 @@ import (
 
 const (
 	headerAuthorization    = "Authorization"
-	headerSessionToken     = "X-Session-Token"
 	headerClientFamily     = "X-Tenki-Client-Family"
 	headerClientGeneration = "X-Tenki-Client-Generation"
-	defaultCookieName      = "tenki_session"
 	defaultCreateOwnerType = "SERVICE"
 	defaultCreateOwnerID   = "self"
 )
@@ -43,7 +41,6 @@ type Client struct {
 	// announce the new Edge-fronted bridge without operator-side config
 	// edits. Cached gateway address survives across SSH calls.
 	gatewayAddressExplicit bool
-	cookieName             string
 	httpClient             *http.Client
 	connectOpts            []connect.ClientOption
 	dataPlaneReadyTimeout  time.Duration
@@ -51,8 +48,12 @@ type Client struct {
 	sshGateway             sandboxv1connect.SSHGatewayClientServiceClient
 }
 
-// ErrMissingAuthToken is returned when no auth token is provided via WithAuthToken or env vars.
-var ErrMissingAuthToken = errors.New("sandbox: missing auth token - set TENKI_AUTH_TOKEN or TENKI_API_KEY or use WithAuthToken")
+var (
+	// ErrMissingAuthToken is returned when no auth token is provided via WithAuthToken or env vars.
+	ErrMissingAuthToken = errors.New("sandbox: missing auth token - set TENKI_AUTH_TOKEN or TENKI_API_KEY or use WithAuthToken")
+	// ErrInvalidAuthToken is returned when a nonempty auth token does not start with "tk_".
+	ErrInvalidAuthToken = errors.New("sandbox: invalid auth token - API keys and service tokens must start with tk_")
+)
 
 // New creates a new sandbox SDK client.
 //
@@ -84,9 +85,14 @@ func New(opts ...Option) (*Client, error) {
 		opt.apply(&cfg)
 	}
 
-	if strings.TrimSpace(cfg.authToken) == "" {
+	authToken := strings.TrimSpace(cfg.authToken)
+	if authToken == "" {
 		return nil, ErrMissingAuthToken
 	}
+	if !strings.HasPrefix(authToken, "tk_") {
+		return nil, ErrInvalidAuthToken
+	}
+	cfg.authToken = authToken
 	gatewayAddressExplicit := strings.TrimSpace(cfg.gatewayAddress) != ""
 	if !gatewayAddressExplicit {
 		cfg.gatewayAddress = deriveGatewayAddress(cfg.baseURL)
@@ -107,14 +113,7 @@ func New(opts ...Option) (*Client, error) {
 		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: transport}
 	}
 
-	cookieName := cfg.cookieName
-	if cookieName == "" {
-		cookieName = defaultCookieName
-	}
-	interceptor := &authInterceptor{
-		authToken:  cfg.authToken,
-		cookieName: cookieName,
-	}
+	interceptor := &authInterceptor{authToken: cfg.authToken}
 
 	connectOpts := append(
 		[]connect.ClientOption{connect.WithInterceptors(interceptor), connect.WithGRPC()},
@@ -129,7 +128,6 @@ func New(opts ...Option) (*Client, error) {
 		baseURL:                cfg.baseURL,
 		gatewayAddress:         cfg.gatewayAddress,
 		gatewayAddressExplicit: gatewayAddressExplicit,
-		cookieName:             cookieName,
 		httpClient:             cfg.httpClient,
 		connectOpts:            append([]connect.ClientOption(nil), cfg.connectOpts...),
 		dataPlaneReadyTimeout:  cfg.dataPlaneReadyTimeout,
@@ -468,8 +466,7 @@ func (c *Client) WaitVolumeReady(ctx context.Context, volumeID string, timeout t
 }
 
 type authInterceptor struct {
-	authToken  string
-	cookieName string
+	authToken string
 }
 
 func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -496,34 +493,22 @@ func (i *authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 func (i *authInterceptor) setHeaders(headerSetter interface {
 	Set(string, string)
 }) {
-	setClientAuthHeaders(headerSetter, i.authToken, i.cookieName)
+	setClientAuthHeaders(headerSetter, i.authToken)
 }
 
 func setClientAuthHeaders(headerSetter interface {
 	Set(string, string)
-}, authToken, cookieName string) {
+}, authToken string) {
 	headerSetter.Set(headerClientFamily, "go_sdk")
 	headerSetter.Set(headerClientGeneration, "workspace_v1")
-	token := strings.TrimSpace(authToken)
-	if token == "" {
-		return
-	}
-	if strings.HasPrefix(token, "tk_") {
-		headerSetter.Set(headerAuthorization, "Bearer "+token)
-		return
-	}
-	if strings.HasPrefix(token, "ory_st_") {
-		headerSetter.Set(headerSessionToken, token)
-		return
-	}
-	headerSetter.Set("Cookie", cookieName+"="+token)
+	headerSetter.Set(headerAuthorization, "Bearer "+authToken)
 }
 
 func (c *Client) setAuthHeaders(headers http.Header) {
 	if c == nil {
 		return
 	}
-	setClientAuthHeaders(headers, c.authToken, c.cookieName)
+	setClientAuthHeaders(headers, c.authToken)
 }
 
 func (c *Client) gatewaySSHURL(sessionID string) string {

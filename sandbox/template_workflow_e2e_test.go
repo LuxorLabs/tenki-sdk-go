@@ -179,7 +179,7 @@ func TestTemplateWorkflowFilesystemMemoryAndForcedFallback(t *testing.T) {
 	workspaceID := requiredEnv(t, "TENKI_SANDBOX_WORKSPACE_ID")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
-	client, err := sandbox.New(sandbox.WithCookieName(envOr("TENKI_COOKIE_NAME", "tenki_session")))
+	client, err := sandbox.New()
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}

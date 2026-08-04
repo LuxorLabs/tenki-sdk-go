@@ -74,15 +74,22 @@ client, err := tenkisandbox.New(
 
 ## Configuration
 
-Auth token resolution: `WithAuthToken()` > `TENKI_API_KEY` env var > error.
+Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.
 Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.tenki.cloud`.
 
-| Env Var         | Description         |
-| --------------- | ------------------- |
-| `TENKI_API_KEY` | Auth token fallback |
-| `TENKI_API_URL` | Base URL fallback   |
+### Migrating to v0.6.0
 
-Use an API key (`tk_*`), sent as `Authorization: Bearer <token>`.
+Version 0.6.0 removes `WithCookieName` and support for Ory session tokens and
+browser cookie values. Use a `tk_` API key or service token with
+`WithAuthToken`; the SDK sends it as an `Authorization: Bearer` credential.
+
+| Env Var            | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| `TENKI_AUTH_TOKEN` | Auth token fallback (API key or service token), first |
+| `TENKI_API_KEY`    | Auth token fallback (API key or service token)        |
+| `TENKI_API_URL`    | Base URL fallback                                     |
+
+Use an API key or service token (`tk_*`), sent as `Authorization: Bearer <token>`.
 Workspace API keys determine Sandbox scope automatically; ordinary calls do not require a Workspace ID.
 
 ## API
@@ -189,7 +196,7 @@ Publish and share sandbox images (templates/snapshots/images).
 
 ### Client options
 
-- `WithAuthToken(string)` - API authentication token
+- `WithAuthToken(string)` - API key or service token
 - `WithBaseURL(string)` default: `https://api.tenki.cloud`
 - `WithHTTPClient(*http.Client)`
 - `WithHTTPTimeout(time.Duration)` default: `30s`

@@ -95,7 +95,7 @@ func newDiscoveryTestClient(t *testing.T, srv *fakeSSHGatewayServer) *Client {
 	t.Cleanup(ts.Close)
 
 	c, err := New(
-		WithAuthToken("test-token"),
+		WithAuthToken("tk_test-token"),
 		WithBaseURL(ts.URL),
 		WithHTTPClient(ts.Client()),
 	)

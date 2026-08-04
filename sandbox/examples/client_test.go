@@ -7,56 +7,6 @@ import (
 	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
 )
 
-func TestSessionTokenUsesXSessionToken(t *testing.T) {
-	t.Parallel()
-
-	server := newExampleSandboxServer(&exampleSandboxHandler{
-		t:                 t,
-		expectedHeaderKey: "X-Session-Token",
-		expectedHeaderVal: "ory_st_test-session-token",
-	})
-	defer server.Close()
-
-	client, err := tenkisandbox.New(
-		tenkisandbox.WithAuthToken("ory_st_test-session-token"),
-		tenkisandbox.WithBaseURL(server.URL),
-		tenkisandbox.WithHTTPClient(server.Client()),
-	)
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
-	defer func() { _ = client.Close() }()
-
-	if _, err := client.Create(context.Background()); err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-}
-
-func TestBrowserSessionUsesCookieHeader(t *testing.T) {
-	t.Parallel()
-
-	server := newExampleSandboxServer(&exampleSandboxHandler{
-		t:                 t,
-		expectedHeaderKey: "Cookie",
-		expectedHeaderVal: "tenki_session=browser-cookie-token",
-	})
-	defer server.Close()
-
-	client, err := tenkisandbox.New(
-		tenkisandbox.WithAuthToken("browser-cookie-token"),
-		tenkisandbox.WithBaseURL(server.URL),
-		tenkisandbox.WithHTTPClient(server.Client()),
-	)
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
-	defer func() { _ = client.Close() }()
-
-	if _, err := client.Create(context.Background()); err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-}
-
 func TestQuickstartSmoke(t *testing.T) {
 	t.Parallel()
 

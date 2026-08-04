@@ -26,10 +26,7 @@ func newSession(t *testing.T) (*sandbox.Session, func()) {
 		t.Skip("set SANDBOX_E2E=1 to run sandbox SDK e2e tests")
 	}
 
-	opts := []sandbox.Option{
-		sandbox.WithCookieName(envOr("TENKI_COOKIE_NAME", "ory_kratos_session")),
-	}
-	client, err := sandbox.New(opts...)
+	client, err := sandbox.New()
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
@@ -66,8 +63,8 @@ func newSession(t *testing.T) (*sandbox.Session, func()) {
 }
 
 func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
 	return fallback
 }
