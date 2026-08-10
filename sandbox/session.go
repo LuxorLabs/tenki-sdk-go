@@ -21,6 +21,13 @@ type SessionState string
 
 type RuntimeState string
 
+// WildcardStatus reports the readiness of the workspace wildcard domain
+// backing a wildcard-scheme preview URL (the workspace's per-region wildcard
+// certificate). It mirrors the service contract's WildcardStatus enum. A
+// wildcard-scheme preview URL exists immediately but only starts serving once
+// its workspace domain is READY.
+type WildcardStatus string
+
 const (
 	SessionStateUnspecified  SessionState = "UNSPECIFIED"
 	SessionStateCreating     SessionState = "CREATING"
@@ -37,6 +44,12 @@ const (
 	RuntimeStateReady       RuntimeState = "READY"
 	RuntimeStateFailed      RuntimeState = "FAILED"
 	RuntimeStateStopped     RuntimeState = "STOPPED"
+
+	WildcardStatusUnspecified WildcardStatus = "UNSPECIFIED"
+	WildcardStatusPending     WildcardStatus = "PENDING"
+	WildcardStatusReady       WildcardStatus = "READY"
+	WildcardStatusFailed      WildcardStatus = "FAILED"
+	WildcardStatusDisabled    WildcardStatus = "DISABLED"
 )
 
 // Session is SDK view of sandbox session.
@@ -103,6 +116,14 @@ type ExposedPort struct {
 	ExpiresAt    *time.Time
 	PreviewURLID string
 	Slug         string
+	// Wildcard reports whether subdomain support is enabled for this exposure.
+	Wildcard bool
+	// WildcardStatus reports readiness of the wildcard subdomain provisioning.
+	// It is meaningful only when Wildcard is true.
+	WildcardStatus WildcardStatus
+	// WildcardStatusReason carries an actionable reason when WildcardStatus is
+	// WildcardStatusFailed; empty otherwise.
+	WildcardStatusReason string
 }
 
 const (
@@ -225,6 +246,21 @@ func sessionStateFromProto(state sandboxv1.SessionState) SessionState {
 		return SessionStateTerminated
 	default:
 		return SessionStateUnspecified
+	}
+}
+
+func wildcardStatusFromProto(status sandboxv1.WildcardStatus) WildcardStatus {
+	switch status {
+	case sandboxv1.WildcardStatus_WILDCARD_STATUS_PENDING:
+		return WildcardStatusPending
+	case sandboxv1.WildcardStatus_WILDCARD_STATUS_READY:
+		return WildcardStatusReady
+	case sandboxv1.WildcardStatus_WILDCARD_STATUS_FAILED:
+		return WildcardStatusFailed
+	case sandboxv1.WildcardStatus_WILDCARD_STATUS_DISABLED:
+		return WildcardStatusDisabled
+	default:
+		return WildcardStatusUnspecified
 	}
 }
 
@@ -1039,11 +1075,14 @@ func (s *Session) ExposePort(ctx context.Context, port int32, opts ...ExposePort
 	}
 
 	return &ExposedPort{
-		Port:         resp.Msg.Port,
-		PreviewURL:   resp.Msg.PreviewUrl,
-		ExpiresAt:    protoTimestampPtr(resp.Msg.ExpiresAt),
-		PreviewURLID: resp.Msg.GetPreviewUrlId(),
-		Slug:         resp.Msg.GetSlug(),
+		Port:                 resp.Msg.Port,
+		PreviewURL:           resp.Msg.PreviewUrl,
+		ExpiresAt:            protoTimestampPtr(resp.Msg.ExpiresAt),
+		PreviewURLID:         resp.Msg.GetPreviewUrlId(),
+		Slug:                 resp.Msg.GetSlug(),
+		Wildcard:             resp.Msg.GetWildcard(),
+		WildcardStatus:       wildcardStatusFromProto(resp.Msg.GetWildcardStatus()),
+		WildcardStatusReason: resp.Msg.GetWildcardStatusReason(),
 	}, nil
 }
 
@@ -1074,11 +1113,14 @@ func (s *Session) ListExposedPorts(ctx context.Context) ([]ExposedPort, error) {
 			continue
 		}
 		ports = append(ports, ExposedPort{
-			Port:         p.Port,
-			PreviewURL:   p.PreviewUrl,
-			ExpiresAt:    protoTimestampPtr(p.ExpiresAt),
-			PreviewURLID: p.GetPreviewUrlId(),
-			Slug:         p.GetSlug(),
+			Port:                 p.Port,
+			PreviewURL:           p.PreviewUrl,
+			ExpiresAt:            protoTimestampPtr(p.ExpiresAt),
+			PreviewURLID:         p.GetPreviewUrlId(),
+			Slug:                 p.GetSlug(),
+			Wildcard:             p.GetWildcard(),
+			WildcardStatus:       wildcardStatusFromProto(p.GetWildcardStatus()),
+			WildcardStatusReason: p.GetWildcardStatusReason(),
 		})
 	}
 	return ports, nil

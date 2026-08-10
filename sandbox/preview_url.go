@@ -21,6 +21,14 @@ type PreviewURL struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	LastAccessedAt *time.Time
+	// Wildcard reports whether subdomain support is enabled for this preview URL.
+	Wildcard bool
+	// WildcardStatus reports readiness of the wildcard subdomain provisioning.
+	// It is meaningful only when Wildcard is true.
+	WildcardStatus WildcardStatus
+	// WildcardStatusReason carries an actionable reason when WildcardStatus is
+	// WildcardStatusFailed; empty otherwise.
+	WildcardStatusReason string
 }
 
 func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
@@ -47,6 +55,9 @@ func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
 		result.Port = &port
 	}
 	result.LastAccessedAt = protoTimestampPtr(protoPreviewURL.LastAccessedAt)
+	result.Wildcard = protoPreviewURL.GetWildcard()
+	result.WildcardStatus = wildcardStatusFromProto(protoPreviewURL.GetWildcardStatus())
+	result.WildcardStatusReason = protoPreviewURL.GetWildcardStatusReason()
 	return result
 }
 
