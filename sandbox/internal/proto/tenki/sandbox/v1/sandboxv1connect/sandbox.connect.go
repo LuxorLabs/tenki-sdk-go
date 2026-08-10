@@ -191,18 +191,6 @@ const (
 	// SandboxServiceGetWorkspaceSandboxUsageProcedure is the fully-qualified name of the
 	// SandboxService's GetWorkspaceSandboxUsage RPC.
 	SandboxServiceGetWorkspaceSandboxUsageProcedure = "/tenki.sandbox.v1.SandboxService/GetWorkspaceSandboxUsage"
-	// SandboxServiceGetWorkspaceSandboxSettingsProcedure is the fully-qualified name of the
-	// SandboxService's GetWorkspaceSandboxSettings RPC.
-	SandboxServiceGetWorkspaceSandboxSettingsProcedure = "/tenki.sandbox.v1.SandboxService/GetWorkspaceSandboxSettings"
-	// SandboxServiceUpdateWorkspaceSandboxSettingsProcedure is the fully-qualified name of the
-	// SandboxService's UpdateWorkspaceSandboxSettings RPC.
-	SandboxServiceUpdateWorkspaceSandboxSettingsProcedure = "/tenki.sandbox.v1.SandboxService/UpdateWorkspaceSandboxSettings"
-	// SandboxServiceGetWorkspaceSnapshotRetentionSettingsProcedure is the fully-qualified name of the
-	// SandboxService's GetWorkspaceSnapshotRetentionSettings RPC.
-	SandboxServiceGetWorkspaceSnapshotRetentionSettingsProcedure = "/tenki.sandbox.v1.SandboxService/GetWorkspaceSnapshotRetentionSettings"
-	// SandboxServiceUpdateWorkspaceSnapshotRetentionSettingsProcedure is the fully-qualified name of
-	// the SandboxService's UpdateWorkspaceSnapshotRetentionSettings RPC.
-	SandboxServiceUpdateWorkspaceSnapshotRetentionSettingsProcedure = "/tenki.sandbox.v1.SandboxService/UpdateWorkspaceSnapshotRetentionSettings"
 	// SandboxServiceUpdateSnapshotProcedure is the fully-qualified name of the SandboxService's
 	// UpdateSnapshot RPC.
 	SandboxServiceUpdateSnapshotProcedure = "/tenki.sandbox.v1.SandboxService/UpdateSnapshot"
@@ -368,12 +356,6 @@ type SandboxServiceClient interface {
 	// Deprecated: do not use.
 	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)
 	GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error)
-	GetWorkspaceSandboxSettings(context.Context, *connect.Request[v1.GetWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.GetWorkspaceSandboxSettingsResponse], error)
-	UpdateWorkspaceSandboxSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSandboxSettingsResponse], error)
-	// Deprecated: do not use.
-	GetWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.GetWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.GetWorkspaceSnapshotRetentionSettingsResponse], error)
-	// Deprecated: do not use.
-	UpdateWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSnapshotRetentionSettingsResponse], error)
 	UpdateSnapshot(context.Context, *connect.Request[v1.UpdateSnapshotRequest]) (*connect.Response[v1.UpdateSnapshotResponse], error)
 	DeleteSnapshot(context.Context, *connect.Request[v1.DeleteSnapshotRequest]) (*connect.Response[v1.DeleteSnapshotResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateTemplateRequest]) (*connect.Response[v1.CreateTemplateResponse], error)
@@ -713,30 +695,6 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSandboxUsage")),
 			connect.WithClientOptions(opts...),
 		),
-		getWorkspaceSandboxSettings: connect.NewClient[v1.GetWorkspaceSandboxSettingsRequest, v1.GetWorkspaceSandboxSettingsResponse](
-			httpClient,
-			baseURL+SandboxServiceGetWorkspaceSandboxSettingsProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSandboxSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateWorkspaceSandboxSettings: connect.NewClient[v1.UpdateWorkspaceSandboxSettingsRequest, v1.UpdateWorkspaceSandboxSettingsResponse](
-			httpClient,
-			baseURL+SandboxServiceUpdateWorkspaceSandboxSettingsProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("UpdateWorkspaceSandboxSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		getWorkspaceSnapshotRetentionSettings: connect.NewClient[v1.GetWorkspaceSnapshotRetentionSettingsRequest, v1.GetWorkspaceSnapshotRetentionSettingsResponse](
-			httpClient,
-			baseURL+SandboxServiceGetWorkspaceSnapshotRetentionSettingsProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSnapshotRetentionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		updateWorkspaceSnapshotRetentionSettings: connect.NewClient[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest, v1.UpdateWorkspaceSnapshotRetentionSettingsResponse](
-			httpClient,
-			baseURL+SandboxServiceUpdateWorkspaceSnapshotRetentionSettingsProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("UpdateWorkspaceSnapshotRetentionSettings")),
-			connect.WithClientOptions(opts...),
-		),
 		updateSnapshot: connect.NewClient[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse](
 			httpClient,
 			baseURL+SandboxServiceUpdateSnapshotProcedure,
@@ -886,84 +844,80 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // sandboxServiceClient implements SandboxServiceClient.
 type sandboxServiceClient struct {
-	createSession                            *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createSessionCredential                  *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
-	getSession                               *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	waitSession                              *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
-	listSessions                             *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	listWorkspaceSandboxes                   *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
-	listProjectSandboxes                     *connect.Client[v1.ListProjectSandboxesRequest, v1.ListProjectSandboxesResponse]
-	updateSession                            *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
-	createVolume                             *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
-	getVolume                                *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
-	listVolumes                              *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
-	listProjectVolumes                       *connect.Client[v1.ListProjectVolumesRequest, v1.ListProjectVolumesResponse]
-	updateVolume                             *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
-	deleteVolume                             *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
-	resizeVolume                             *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
-	attachVolume                             *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
-	detachVolume                             *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
-	executeCommand                           *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
-	streamCommandOutput                      *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
-	gitOperation                             *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
-	pauseSession                             *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
-	resumeSession                            *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
-	terminateSession                         *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
-	terminateSessions                        *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
-	extendSession                            *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
-	getArtifactUploadUrl                     *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
-	getArtifactDownloadUrl                   *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
-	exposePort                               *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
-	openPreview                              *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
-	touchPreview                             *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
-	reportSessionActivity                    *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
-	unexposePort                             *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
-	listExposedPorts                         *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
-	createPreviewUrl                         *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
-	deletePreviewUrl                         *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
-	bindPreviewUrl                           *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
-	unbindPreviewUrl                         *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
-	listPreviewUrls                          *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
-	getPreviewUrl                            *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
-	resolvePreviewToken                      *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
-	updateSSHAuthorizedKeys                  *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
-	createSnapshot                           *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
-	getSnapshot                              *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
-	getSnapshotDownloadURL                   *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
-	listSnapshots                            *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
-	listSessionSnapshots                     *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
-	listDanglingSnapshots                    *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
-	listWorkspaceSnapshots                   *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
-	listProjectSnapshots                     *connect.Client[v1.ListProjectSnapshotsRequest, v1.ListProjectSnapshotsResponse]
-	getWorkspaceSandboxUsage                 *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
-	getWorkspaceSandboxSettings              *connect.Client[v1.GetWorkspaceSandboxSettingsRequest, v1.GetWorkspaceSandboxSettingsResponse]
-	updateWorkspaceSandboxSettings           *connect.Client[v1.UpdateWorkspaceSandboxSettingsRequest, v1.UpdateWorkspaceSandboxSettingsResponse]
-	getWorkspaceSnapshotRetentionSettings    *connect.Client[v1.GetWorkspaceSnapshotRetentionSettingsRequest, v1.GetWorkspaceSnapshotRetentionSettingsResponse]
-	updateWorkspaceSnapshotRetentionSettings *connect.Client[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest, v1.UpdateWorkspaceSnapshotRetentionSettingsResponse]
-	updateSnapshot                           *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
-	deleteSnapshot                           *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
-	createTemplate                           *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
-	getTemplate                              *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
-	listTemplates                            *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
-	listProjectTemplates                     *connect.Client[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse]
-	updateTemplate                           *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
-	deleteTemplate                           *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
-	buildTemplate                            *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
-	cancelTemplateBuild                      *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
-	getTemplateBuild                         *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
-	listActiveTemplateBuilds                 *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
-	publishRegistryImage                     *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
-	setRegistryImageVisibility               *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
-	deleteRegistryImage                      *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
-	deleteRegistryImageVersion               *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
-	listRegistryImages                       *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
-	getRegistryImage                         *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
-	resolveRegistryRef                       *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
-	shareImage                               *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
-	revokeRegistryShareGrant                 *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
-	listRegistryShareGrants                  *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
-	unshareRegistryImage                     *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
-	whoAmI                                   *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
+	createSession              *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createSessionCredential    *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
+	getSession                 *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	waitSession                *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
+	listSessions               *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	listWorkspaceSandboxes     *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
+	listProjectSandboxes       *connect.Client[v1.ListProjectSandboxesRequest, v1.ListProjectSandboxesResponse]
+	updateSession              *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
+	createVolume               *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
+	getVolume                  *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
+	listVolumes                *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
+	listProjectVolumes         *connect.Client[v1.ListProjectVolumesRequest, v1.ListProjectVolumesResponse]
+	updateVolume               *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
+	deleteVolume               *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
+	resizeVolume               *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
+	attachVolume               *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
+	detachVolume               *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
+	executeCommand             *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
+	streamCommandOutput        *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
+	gitOperation               *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
+	pauseSession               *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
+	resumeSession              *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
+	terminateSession           *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
+	terminateSessions          *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
+	extendSession              *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
+	getArtifactUploadUrl       *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
+	getArtifactDownloadUrl     *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
+	exposePort                 *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
+	openPreview                *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
+	touchPreview               *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
+	reportSessionActivity      *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
+	unexposePort               *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
+	listExposedPorts           *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
+	createPreviewUrl           *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
+	deletePreviewUrl           *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
+	bindPreviewUrl             *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
+	unbindPreviewUrl           *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
+	listPreviewUrls            *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
+	getPreviewUrl              *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
+	resolvePreviewToken        *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
+	updateSSHAuthorizedKeys    *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
+	createSnapshot             *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
+	getSnapshot                *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
+	getSnapshotDownloadURL     *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
+	listSnapshots              *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
+	listSessionSnapshots       *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
+	listDanglingSnapshots      *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
+	listWorkspaceSnapshots     *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
+	listProjectSnapshots       *connect.Client[v1.ListProjectSnapshotsRequest, v1.ListProjectSnapshotsResponse]
+	getWorkspaceSandboxUsage   *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
+	updateSnapshot             *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
+	deleteSnapshot             *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
+	createTemplate             *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
+	getTemplate                *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
+	listTemplates              *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
+	listProjectTemplates       *connect.Client[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse]
+	updateTemplate             *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
+	deleteTemplate             *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
+	buildTemplate              *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
+	cancelTemplateBuild        *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
+	getTemplateBuild           *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
+	listActiveTemplateBuilds   *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
+	publishRegistryImage       *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
+	setRegistryImageVisibility *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
+	deleteRegistryImage        *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
+	deleteRegistryImageVersion *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
+	listRegistryImages         *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
+	getRegistryImage           *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
+	resolveRegistryRef         *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
+	shareImage                 *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
+	revokeRegistryShareGrant   *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
+	listRegistryShareGrants    *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
+	unshareRegistryImage       *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
+	whoAmI                     *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
 }
 
 // CreateSession calls tenki.sandbox.v1.SandboxService.CreateSession.
@@ -1230,33 +1184,6 @@ func (c *sandboxServiceClient) GetWorkspaceSandboxUsage(ctx context.Context, req
 	return c.getWorkspaceSandboxUsage.CallUnary(ctx, req)
 }
 
-// GetWorkspaceSandboxSettings calls tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings.
-func (c *sandboxServiceClient) GetWorkspaceSandboxSettings(ctx context.Context, req *connect.Request[v1.GetWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.GetWorkspaceSandboxSettingsResponse], error) {
-	return c.getWorkspaceSandboxSettings.CallUnary(ctx, req)
-}
-
-// UpdateWorkspaceSandboxSettings calls
-// tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings.
-func (c *sandboxServiceClient) UpdateWorkspaceSandboxSettings(ctx context.Context, req *connect.Request[v1.UpdateWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSandboxSettingsResponse], error) {
-	return c.updateWorkspaceSandboxSettings.CallUnary(ctx, req)
-}
-
-// GetWorkspaceSnapshotRetentionSettings calls
-// tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) GetWorkspaceSnapshotRetentionSettings(ctx context.Context, req *connect.Request[v1.GetWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.GetWorkspaceSnapshotRetentionSettingsResponse], error) {
-	return c.getWorkspaceSnapshotRetentionSettings.CallUnary(ctx, req)
-}
-
-// UpdateWorkspaceSnapshotRetentionSettings calls
-// tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) UpdateWorkspaceSnapshotRetentionSettings(ctx context.Context, req *connect.Request[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSnapshotRetentionSettingsResponse], error) {
-	return c.updateWorkspaceSnapshotRetentionSettings.CallUnary(ctx, req)
-}
-
 // UpdateSnapshot calls tenki.sandbox.v1.SandboxService.UpdateSnapshot.
 func (c *sandboxServiceClient) UpdateSnapshot(ctx context.Context, req *connect.Request[v1.UpdateSnapshotRequest]) (*connect.Response[v1.UpdateSnapshotResponse], error) {
 	return c.updateSnapshot.CallUnary(ctx, req)
@@ -1438,12 +1365,6 @@ type SandboxServiceHandler interface {
 	// Deprecated: do not use.
 	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)
 	GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error)
-	GetWorkspaceSandboxSettings(context.Context, *connect.Request[v1.GetWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.GetWorkspaceSandboxSettingsResponse], error)
-	UpdateWorkspaceSandboxSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSandboxSettingsResponse], error)
-	// Deprecated: do not use.
-	GetWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.GetWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.GetWorkspaceSnapshotRetentionSettingsResponse], error)
-	// Deprecated: do not use.
-	UpdateWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSnapshotRetentionSettingsResponse], error)
 	UpdateSnapshot(context.Context, *connect.Request[v1.UpdateSnapshotRequest]) (*connect.Response[v1.UpdateSnapshotResponse], error)
 	DeleteSnapshot(context.Context, *connect.Request[v1.DeleteSnapshotRequest]) (*connect.Response[v1.DeleteSnapshotResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateTemplateRequest]) (*connect.Response[v1.CreateTemplateResponse], error)
@@ -1779,30 +1700,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSandboxUsage")),
 		connect.WithHandlerOptions(opts...),
 	)
-	sandboxServiceGetWorkspaceSandboxSettingsHandler := connect.NewUnaryHandler(
-		SandboxServiceGetWorkspaceSandboxSettingsProcedure,
-		svc.GetWorkspaceSandboxSettings,
-		connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSandboxSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	sandboxServiceUpdateWorkspaceSandboxSettingsHandler := connect.NewUnaryHandler(
-		SandboxServiceUpdateWorkspaceSandboxSettingsProcedure,
-		svc.UpdateWorkspaceSandboxSettings,
-		connect.WithSchema(sandboxServiceMethods.ByName("UpdateWorkspaceSandboxSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	sandboxServiceGetWorkspaceSnapshotRetentionSettingsHandler := connect.NewUnaryHandler(
-		SandboxServiceGetWorkspaceSnapshotRetentionSettingsProcedure,
-		svc.GetWorkspaceSnapshotRetentionSettings,
-		connect.WithSchema(sandboxServiceMethods.ByName("GetWorkspaceSnapshotRetentionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	sandboxServiceUpdateWorkspaceSnapshotRetentionSettingsHandler := connect.NewUnaryHandler(
-		SandboxServiceUpdateWorkspaceSnapshotRetentionSettingsProcedure,
-		svc.UpdateWorkspaceSnapshotRetentionSettings,
-		connect.WithSchema(sandboxServiceMethods.ByName("UpdateWorkspaceSnapshotRetentionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
 	sandboxServiceUpdateSnapshotHandler := connect.NewUnaryHandler(
 		SandboxServiceUpdateSnapshotProcedure,
 		svc.UpdateSnapshot,
@@ -2049,14 +1946,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceListProjectSnapshotsHandler.ServeHTTP(w, r)
 		case SandboxServiceGetWorkspaceSandboxUsageProcedure:
 			sandboxServiceGetWorkspaceSandboxUsageHandler.ServeHTTP(w, r)
-		case SandboxServiceGetWorkspaceSandboxSettingsProcedure:
-			sandboxServiceGetWorkspaceSandboxSettingsHandler.ServeHTTP(w, r)
-		case SandboxServiceUpdateWorkspaceSandboxSettingsProcedure:
-			sandboxServiceUpdateWorkspaceSandboxSettingsHandler.ServeHTTP(w, r)
-		case SandboxServiceGetWorkspaceSnapshotRetentionSettingsProcedure:
-			sandboxServiceGetWorkspaceSnapshotRetentionSettingsHandler.ServeHTTP(w, r)
-		case SandboxServiceUpdateWorkspaceSnapshotRetentionSettingsProcedure:
-			sandboxServiceUpdateWorkspaceSnapshotRetentionSettingsHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateSnapshotProcedure:
 			sandboxServiceUpdateSnapshotHandler.ServeHTTP(w, r)
 		case SandboxServiceDeleteSnapshotProcedure:
@@ -2312,22 +2201,6 @@ func (UnimplementedSandboxServiceHandler) ListProjectSnapshots(context.Context, 
 
 func (UnimplementedSandboxServiceHandler) GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) GetWorkspaceSandboxSettings(context.Context, *connect.Request[v1.GetWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.GetWorkspaceSandboxSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxSettings is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) UpdateWorkspaceSandboxSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSandboxSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSandboxSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateWorkspaceSandboxSettings is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) GetWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.GetWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.GetWorkspaceSnapshotRetentionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetWorkspaceSnapshotRetentionSettings is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) UpdateWorkspaceSnapshotRetentionSettings(context.Context, *connect.Request[v1.UpdateWorkspaceSnapshotRetentionSettingsRequest]) (*connect.Response[v1.UpdateWorkspaceSnapshotRetentionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateWorkspaceSnapshotRetentionSettings is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) UpdateSnapshot(context.Context, *connect.Request[v1.UpdateSnapshotRequest]) (*connect.Response[v1.UpdateSnapshotResponse], error) {

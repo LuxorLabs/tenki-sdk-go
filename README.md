@@ -77,6 +77,12 @@ client, err := tenkisandbox.New(
 Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.
 Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.tenki.cloud`.
 
+### Migrating to v0.7.0
+
+Version 0.7.0 removes the generated workspace settings and pause-retention RPCs.
+Direct users of `GetWorkspaceSandboxUsage` should use the
+`max_concurrent_jobs` key for shared concurrency usage.
+
 ### Migrating to v0.6.0
 
 Version 0.6.0 removes `WithCookieName` and support for Ory session tokens and
@@ -111,6 +117,43 @@ Workspace API keys determine Sandbox scope automatically; ordinary calls do not 
 - `(*Session).ReadFile(ctx, path string) ([]byte, error)`
 - `(*Session).WaitReady(ctx, timeout) error` — alternative wait for sessions obtained via `Get`/`List`; `Create` already returns ready sessions by default
 - `(*Session).Close(ctx) error`
+
+### Process control
+
+- `(*Session).Command(argv []string, opts ...RunOptions) *Command`
+- `(*Command).Exec(ctx) (*Result, error)` — buffered; blocks until the process exits
+- `(*Command).Stream(ctx) (*RunHandle, error)` — live handle; blocks until the process has started
+- `(*RunHandle).Signal(os.Signal) error` / `(*RunHandle).Kill() error` — enqueue a signal frame; both return once it is sent, **not** when the process has exited
+- `(*RunHandle).Wait() (*Result, error)` — blocks until the process is actually dead
+
+```go
+proc, _ := sess.Command([]string{"sleep", "3600"}).Stream(ctx)
+_ = proc.Signal(syscall.SIGTERM) // returns once the frame is sent
+res, _ := proc.Wait()            // returns once the process has exited
+// res.Status == CommandStatusFailed, res.ExitCode == -1
+```
+
+Unlike the Python and TypeScript SDKs, Go's `Result` does not expose which
+signal terminated the process — the wire value is only used to derive `Status`.
+
+`Kill()` always sends SIGKILL — use `Signal(syscall.SIGTERM)` for a graceful
+stop. Only SIGKILL, SIGTERM, SIGINT, SIGHUP, SIGUSR1 and SIGUSR2 reach the
+guest; **any other `os.Signal` is silently sent as SIGTERM**, so a
+`Signal(syscall.SIGQUIT)` stops the process gracefully rather than failing.
+Signalling after the process has exited is best-effort: it usually returns a
+stream error, but a caller must not rely on getting one. `Wait()` delivers its
+result once, so call it from a single goroutine only.
+
+Process lifetime is bound to the Run stream, not to the handle. Once that stream
+tears down — you cancel the `ctx` you passed to `Stream`, the connection breaks,
+or the edge times the idle connection out (~30s) — the platform sends SIGTERM,
+escalates to SIGKILL after 5s and reaps within 10s.
+
+Dropping the handle does **not** tear the stream down on its own: `RunHandle` has
+no `Close`, and the request side is closed only after an exit frame or a stream
+error. An abandoned process can keep running, and one that keeps writing output
+keeps its own stream alive indefinitely. To stop a process, cancel the context or
+signal it and `Wait()`. There is no reattach.
 
 ### Session Git scope
 
@@ -205,8 +248,10 @@ Publish and share sandbox images (templates/snapshots/images).
 ### Create options
 
 - `WithName(string)`
-- `WithAllowInbound(bool)` default: `true` (server-side)
-- `WithAllowOutbound(bool)` default: `true`
+- `WithAllowInbound(bool)` default: `true` (sent explicitly on every Create)
+- `WithAllowOutbound(bool)` default: `true` (sent explicitly on every Create)
+  - both are create-time settings and cannot be changed on an existing session;
+    `session.InboundEnabled` / `session.OutboundEnabled` report what a session was created with
 - `WithEnvs(map[string]string)` session-scoped env defaults
 - `WithMaxDuration(time.Duration)`
 - `WithCPUCores(int32)` default: `2`
