@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"errors"
 	"testing"
 
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
@@ -47,6 +48,77 @@ func TestIsRunFirstFrameTimeout(t *testing.T) {
 				t.Fatalf("isRunFirstFrameTimeout(%q) = %v, want %v", tc.reason, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestIsRunSessionTerminated(t *testing.T) {
+	cases := []struct {
+		name   string
+		reason string
+		want   bool
+	}{
+		{"empty", "", false},
+		{"random", "echo: command not found", false},
+		{"capability_unavailable_must_not_match", "capability_unavailable: foo", false},
+		{"session_terminated_bare", "session_terminated", true},
+		{"session_terminated_with_cause", "session_terminated:guest_agent_liveness", true},
+		{
+			"session_terminated_with_cause_and_detail",
+			"session_terminated:guest_agent_liveness: silent for 2m0s",
+			true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			exit := &sandboxv1.RunExit{Reason: tc.reason}
+			if got := isRunSessionTerminated(exit); got != tc.want {
+				t.Fatalf("isRunSessionTerminated(%q) = %v, want %v", tc.reason, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunSessionTerminationCause(t *testing.T) {
+	cases := []struct {
+		name   string
+		reason string
+		want   string
+	}{
+		{"not_a_termination_reason", "capability_unavailable: foo", ""},
+		{"bare_prefix_has_no_cause", "session_terminated", ""},
+		{"cause_only", "session_terminated:guest_agent_liveness", "guest_agent_liveness"},
+		{"cause_with_detail", "session_terminated:guest_shutdown: powered off", "guest_shutdown"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := runSessionTerminationCause(tc.reason); got != tc.want {
+				t.Fatalf("runSessionTerminationCause(%q) = %q, want %q", tc.reason, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSessionTerminatedPredicateContract(t *testing.T) {
+	terminated := &SessionTerminatedError{Primitive: "run", Cause: "guest_agent_liveness"}
+	capErr := &CapabilityUnavailableError{Primitive: "run", Message: "capability_unavailable: x"}
+
+	if !IsSessionTerminated(terminated) {
+		t.Fatal("IsSessionTerminated should match SessionTerminatedError")
+	}
+	// Callers written against the sentinel keep working.
+	if !errors.Is(terminated, ErrSessionTerminated) {
+		t.Fatal("SessionTerminatedError must satisfy errors.Is(err, ErrSessionTerminated)")
+	}
+	if IsSessionTerminated(capErr) {
+		t.Fatal("IsSessionTerminated must NOT match CapabilityUnavailableError")
+	}
+	// A platform teardown is not the caller's fault: retrying on a fresh session
+	// is the documented recovery.
+	if !terminated.IsRetryable() {
+		t.Fatal("SessionTerminatedError must be retryable")
+	}
+	if IsCapabilityUnavailable(terminated) {
+		t.Fatal("IsCapabilityUnavailable must NOT match SessionTerminatedError")
 	}
 }
 

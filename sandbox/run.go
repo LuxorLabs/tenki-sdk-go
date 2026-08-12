@@ -235,6 +235,13 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 			if isRunCapabilityUnavailable(exit) {
 				return nil, nil, &CapabilityUnavailableError{Primitive: "run", Message: exit.GetReason()}
 			}
+			if isRunSessionTerminated(exit) {
+				return nil, nil, &SessionTerminatedError{
+					Primitive: "run",
+					Cause:     runSessionTerminationCause(exit.GetReason()),
+					Message:   exit.GetReason(),
+				}
+			}
 			return nil, nil, errors.New(exit.GetReason())
 		}
 		started := first.GetStarted()
@@ -292,6 +299,14 @@ func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
 			}
 			if isRunCapabilityUnavailable(exit) {
 				h.errCh <- &CapabilityUnavailableError{Primitive: "run", Message: exit.GetReason()}
+				return
+			}
+			if isRunSessionTerminated(exit) {
+				h.errCh <- &SessionTerminatedError{
+					Primitive: "run",
+					Cause:     runSessionTerminationCause(exit.GetReason()),
+					Message:   exit.GetReason(),
+				}
 				return
 			}
 			result.ExitCode = exit.GetExitCode()
@@ -391,6 +406,26 @@ func (h *RunHandle) closeRequest() {
 
 func isRunCapabilityUnavailable(exit *sandboxv1.RunExit) bool {
 	return strings.HasPrefix(exit.GetReason(), "capability_unavailable")
+}
+
+// sessionTerminatedReasonPrefix marks an exit the platform synthesized after
+// tearing the session down, as opposed to one the command produced. Reasons are
+// formatted `session_terminated:<cause>[: detail]` by node-agent.
+const sessionTerminatedReasonPrefix = "session_terminated"
+
+func isRunSessionTerminated(exit *sandboxv1.RunExit) bool {
+	return strings.HasPrefix(exit.GetReason(), sessionTerminatedReasonPrefix)
+}
+
+// runSessionTerminationCause extracts the cause token from a
+// `session_terminated:<cause>[: detail]` reason.
+func runSessionTerminationCause(reason string) string {
+	rest, ok := strings.CutPrefix(reason, sessionTerminatedReasonPrefix+":")
+	if !ok {
+		return ""
+	}
+	cause, _, _ := strings.Cut(rest, ":")
+	return strings.TrimSpace(cause)
 }
 
 func isRunFirstFrameTimeout(exit *sandboxv1.RunExit) bool {

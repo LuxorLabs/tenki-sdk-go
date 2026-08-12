@@ -191,6 +191,40 @@ func (e *PrimitiveTimeoutError) Error() string {
 	return "sandbox: primitive timed out waiting for guest-agent reply"
 }
 
+// SessionTerminatedError means the platform tore the sandbox session down while
+// the stream was open — the command did not finish, so the caller can retry on a
+// fresh session. Cause is the machine-readable termination cause, e.g.
+// "guest_agent_liveness". It satisfies errors.Is(err, ErrSessionTerminated) so
+// callers written against the sentinel keep working.
+type SessionTerminatedError struct {
+	Primitive string
+	Cause     string
+	Message   string
+}
+
+func IsSessionTerminated(err error) bool {
+	return errors.Is(err, ErrSessionTerminated)
+}
+
+func (e *SessionTerminatedError) Is(target error) bool {
+	return target == ErrSessionTerminated
+}
+
+func (e *SessionTerminatedError) Error() string {
+	if e == nil {
+		return "sandbox: session terminated by the platform"
+	}
+	if e.Message != "" {
+		return e.Message
+	}
+	if e.Cause != "" {
+		return "sandbox: session terminated by the platform: " + e.Cause
+	}
+	return "sandbox: session terminated by the platform"
+}
+
+func (e *SessionTerminatedError) IsRetryable() bool { return true }
+
 // GitOperationFailedError classifies an in-guest git failure surfaced by
 // node-agent as FailedPrecondition.
 type GitOperationFailedError struct {
