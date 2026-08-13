@@ -36,6 +36,9 @@ type GitCloneParams struct {
 // GitCheckoutParams controls checkout behavior.
 type GitCheckoutParams struct {
 	Create bool
+	// Directory is the repository to operate on (git -C); required when the
+	// repo was cloned into a subdirectory.
+	Directory string
 }
 
 // GitDiffParams controls diff behavior.
@@ -44,6 +47,9 @@ type GitDiffParams struct {
 	Base  string
 	Head  string
 	Path  string
+	// Directory is the repository to operate on (git -C); required when the
+	// repo was cloned into a subdirectory.
+	Directory string
 }
 
 // GitLogParams controls log behavior.
@@ -51,6 +57,9 @@ type GitLogParams struct {
 	MaxCount int
 	Range    string
 	Path     string
+	// Directory is the repository to operate on (git -C); required when the
+	// repo was cloned into a subdirectory.
+	Directory string
 }
 
 // GitFetchPRParams controls fetch+checkout behavior for pull requests.
@@ -85,6 +94,9 @@ func (g *Git) Checkout(ctx context.Context, ref string, params GitCheckoutParams
 	if params.Create {
 		args["create"] = "true"
 	}
+	if params.Directory != "" {
+		args["directory"] = params.Directory
+	}
 	return g.session.GitOperation(ctx, GitCheckout, args)
 }
 
@@ -103,6 +115,9 @@ func (g *Git) Diff(ctx context.Context, params GitDiffParams) (string, error) {
 	if params.Path != "" {
 		args["path"] = params.Path
 	}
+	if params.Directory != "" {
+		args["directory"] = params.Directory
+	}
 	return g.session.GitOperation(ctx, GitDiff, args)
 }
 
@@ -117,6 +132,9 @@ func (g *Git) Log(ctx context.Context, params GitLogParams) (string, error) {
 	}
 	if params.Path != "" {
 		args["path"] = params.Path
+	}
+	if params.Directory != "" {
+		args["directory"] = params.Directory
 	}
 	return g.session.GitOperation(ctx, GitLog, args)
 }
