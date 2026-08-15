@@ -22,8 +22,6 @@ import (
 
 const (
 	headerAuthorization    = "Authorization"
-	headerClientFamily     = "X-Tenki-Client-Family"
-	headerClientGeneration = "X-Tenki-Client-Generation"
 	defaultCreateOwnerType = "SERVICE"
 	defaultCreateOwnerID   = "self"
 )
@@ -499,8 +497,6 @@ func (i *authInterceptor) setHeaders(headerSetter interface {
 func setClientAuthHeaders(headerSetter interface {
 	Set(string, string)
 }, authToken string) {
-	headerSetter.Set(headerClientFamily, "go_sdk")
-	headerSetter.Set(headerClientGeneration, "workspace_v1")
 	headerSetter.Set(headerAuthorization, "Bearer "+authToken)
 }
 
