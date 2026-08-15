@@ -145,7 +145,7 @@ func TestListSessionSnapshots(t *testing.T) {
 		}
 		return connect.NewResponse(&sandboxv1.ListSessionSnapshotsResponse{
 			Snapshots: []*sandboxv1.Snapshot{
-				{Id: "snap-001", SessionId: "sess-001", ProjectId: "proj-001"},
+				{Id: "snap-001", SessionId: "sess-001"},
 			},
 		}), nil
 	}

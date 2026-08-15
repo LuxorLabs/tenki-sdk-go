@@ -49,19 +49,19 @@ func newPreviewURLTestClient(t *testing.T, handler *previewURLHandler) *Client {
 	return client
 }
 
-func TestPreviewURLRequestsInferWorkspaceAndOmitProject(t *testing.T) {
+func TestPreviewURLRequestsInferWorkspace(t *testing.T) {
 	t.Parallel()
 	const workspaceID = "01900000-0000-7000-8000-0000000000aa"
 	handler := &previewURLHandler{}
 	handler.create = func(req *connect.Request[sandboxv1.CreatePreviewUrlRequest]) (*connect.Response[sandboxv1.CreatePreviewUrlResponse], error) {
-		if req.Msg.GetWorkspaceId() != "" || req.Msg.GetProjectId() != "" {
-			t.Fatalf("unexpected scope: workspace=%q project=%q", req.Msg.GetWorkspaceId(), req.Msg.GetProjectId())
+		if req.Msg.GetWorkspaceId() != "" {
+			t.Fatalf("unexpected workspace scope: %q", req.Msg.GetWorkspaceId())
 		}
 		return connect.NewResponse(&sandboxv1.CreatePreviewUrlResponse{PreviewUrl: &sandboxv1.PreviewUrl{Id: "preview-1", WorkspaceId: workspaceID}}), nil
 	}
 	handler.list = func(req *connect.Request[sandboxv1.ListPreviewUrlsRequest]) (*connect.Response[sandboxv1.ListPreviewUrlsResponse], error) {
-		if req.Msg.GetWorkspaceId() != "" || req.Msg.GetProjectId() != "" {
-			t.Fatalf("unexpected scope: workspace=%q project=%q", req.Msg.GetWorkspaceId(), req.Msg.GetProjectId())
+		if req.Msg.GetWorkspaceId() != "" {
+			t.Fatalf("unexpected workspace scope: %q", req.Msg.GetWorkspaceId())
 		}
 		if req.Msg.GetPageToken() == "next" {
 			return connect.NewResponse(&sandboxv1.ListPreviewUrlsResponse{

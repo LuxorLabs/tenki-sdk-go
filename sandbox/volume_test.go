@@ -113,9 +113,6 @@ func TestCreateVolume(t *testing.T) {
 		if req.Msg.GetWorkspaceId() != "" {
 			t.Fatalf("unexpected workspace_id: %q", req.Msg.GetWorkspaceId())
 		}
-		if req.Msg.GetProjectId() != "" {
-			t.Fatalf("unexpected project_id: %q", req.Msg.GetProjectId())
-		}
 		if req.Msg.GetName() != "my-vol" {
 			t.Fatalf("unexpected name: %q", req.Msg.GetName())
 		}

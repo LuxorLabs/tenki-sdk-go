@@ -59,9 +59,6 @@ const (
 	// SandboxServiceListWorkspaceSandboxesProcedure is the fully-qualified name of the SandboxService's
 	// ListWorkspaceSandboxes RPC.
 	SandboxServiceListWorkspaceSandboxesProcedure = "/tenki.sandbox.v1.SandboxService/ListWorkspaceSandboxes"
-	// SandboxServiceListProjectSandboxesProcedure is the fully-qualified name of the SandboxService's
-	// ListProjectSandboxes RPC.
-	SandboxServiceListProjectSandboxesProcedure = "/tenki.sandbox.v1.SandboxService/ListProjectSandboxes"
 	// SandboxServiceUpdateSessionProcedure is the fully-qualified name of the SandboxService's
 	// UpdateSession RPC.
 	SandboxServiceUpdateSessionProcedure = "/tenki.sandbox.v1.SandboxService/UpdateSession"
@@ -74,9 +71,6 @@ const (
 	// SandboxServiceListVolumesProcedure is the fully-qualified name of the SandboxService's
 	// ListVolumes RPC.
 	SandboxServiceListVolumesProcedure = "/tenki.sandbox.v1.SandboxService/ListVolumes"
-	// SandboxServiceListProjectVolumesProcedure is the fully-qualified name of the SandboxService's
-	// ListProjectVolumes RPC.
-	SandboxServiceListProjectVolumesProcedure = "/tenki.sandbox.v1.SandboxService/ListProjectVolumes"
 	// SandboxServiceUpdateVolumeProcedure is the fully-qualified name of the SandboxService's
 	// UpdateVolume RPC.
 	SandboxServiceUpdateVolumeProcedure = "/tenki.sandbox.v1.SandboxService/UpdateVolume"
@@ -185,9 +179,6 @@ const (
 	// SandboxServiceListWorkspaceSnapshotsProcedure is the fully-qualified name of the SandboxService's
 	// ListWorkspaceSnapshots RPC.
 	SandboxServiceListWorkspaceSnapshotsProcedure = "/tenki.sandbox.v1.SandboxService/ListWorkspaceSnapshots"
-	// SandboxServiceListProjectSnapshotsProcedure is the fully-qualified name of the SandboxService's
-	// ListProjectSnapshots RPC.
-	SandboxServiceListProjectSnapshotsProcedure = "/tenki.sandbox.v1.SandboxService/ListProjectSnapshots"
 	// SandboxServiceGetWorkspaceSandboxUsageProcedure is the fully-qualified name of the
 	// SandboxService's GetWorkspaceSandboxUsage RPC.
 	SandboxServiceGetWorkspaceSandboxUsageProcedure = "/tenki.sandbox.v1.SandboxService/GetWorkspaceSandboxUsage"
@@ -212,9 +203,6 @@ const (
 	// SandboxServiceListTemplatesProcedure is the fully-qualified name of the SandboxService's
 	// ListTemplates RPC.
 	SandboxServiceListTemplatesProcedure = "/tenki.sandbox.v1.SandboxService/ListTemplates"
-	// SandboxServiceListProjectTemplatesProcedure is the fully-qualified name of the SandboxService's
-	// ListProjectTemplates RPC.
-	SandboxServiceListProjectTemplatesProcedure = "/tenki.sandbox.v1.SandboxService/ListProjectTemplates"
 	// SandboxServiceUpdateTemplateProcedure is the fully-qualified name of the SandboxService's
 	// UpdateTemplate RPC.
 	SandboxServiceUpdateTemplateProcedure = "/tenki.sandbox.v1.SandboxService/UpdateTemplate"
@@ -312,14 +300,10 @@ type SandboxServiceClient interface {
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
 	ListWorkspaceSandboxes(context.Context, *connect.Request[v1.ListWorkspaceSandboxesRequest]) (*connect.Response[v1.ListWorkspaceSandboxesResponse], error)
-	// Deprecated: do not use.
-	ListProjectSandboxes(context.Context, *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error)
 	UpdateSession(context.Context, *connect.Request[v1.UpdateSessionRequest]) (*connect.Response[v1.UpdateSessionResponse], error)
 	CreateVolume(context.Context, *connect.Request[v1.CreateVolumeRequest]) (*connect.Response[v1.CreateVolumeResponse], error)
 	GetVolume(context.Context, *connect.Request[v1.GetVolumeRequest]) (*connect.Response[v1.GetVolumeResponse], error)
 	ListVolumes(context.Context, *connect.Request[v1.ListVolumesRequest]) (*connect.Response[v1.ListVolumesResponse], error)
-	// Deprecated: do not use.
-	ListProjectVolumes(context.Context, *connect.Request[v1.ListProjectVolumesRequest]) (*connect.Response[v1.ListProjectVolumesResponse], error)
 	UpdateVolume(context.Context, *connect.Request[v1.UpdateVolumeRequest]) (*connect.Response[v1.UpdateVolumeResponse], error)
 	DeleteVolume(context.Context, *connect.Request[v1.DeleteVolumeRequest]) (*connect.Response[v1.DeleteVolumeResponse], error)
 	ResizeVolume(context.Context, *connect.Request[v1.ResizeVolumeRequest]) (*connect.Response[v1.ResizeVolumeResponse], error)
@@ -359,8 +343,6 @@ type SandboxServiceClient interface {
 	ListDanglingSnapshots(context.Context, *connect.Request[v1.ListDanglingSnapshotsRequest]) (*connect.Response[v1.ListDanglingSnapshotsResponse], error)
 	// Deprecated: do not use.
 	ListWorkspaceSnapshots(context.Context, *connect.Request[v1.ListWorkspaceSnapshotsRequest]) (*connect.Response[v1.ListWorkspaceSnapshotsResponse], error)
-	// Deprecated: do not use.
-	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)
 	GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error)
 	// Workspace wildcard preview domains (one wildcard certificate per
 	// workspace per region, self-managed at the regional edge). Enabling is
@@ -372,8 +354,6 @@ type SandboxServiceClient interface {
 	CreateTemplate(context.Context, *connect.Request[v1.CreateTemplateRequest]) (*connect.Response[v1.CreateTemplateResponse], error)
 	GetTemplate(context.Context, *connect.Request[v1.GetTemplateRequest]) (*connect.Response[v1.GetTemplateResponse], error)
 	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
-	// Deprecated: do not use.
-	ListProjectTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 	UpdateTemplate(context.Context, *connect.Request[v1.UpdateTemplateRequest]) (*connect.Response[v1.UpdateTemplateResponse], error)
 	DeleteTemplate(context.Context, *connect.Request[v1.DeleteTemplateRequest]) (*connect.Response[v1.DeleteTemplateResponse], error)
 	BuildTemplate(context.Context, *connect.Request[v1.BuildTemplateRequest]) (*connect.Response[v1.BuildTemplateResponse], error)
@@ -442,12 +422,6 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("ListWorkspaceSandboxes")),
 			connect.WithClientOptions(opts...),
 		),
-		listProjectSandboxes: connect.NewClient[v1.ListProjectSandboxesRequest, v1.ListProjectSandboxesResponse](
-			httpClient,
-			baseURL+SandboxServiceListProjectSandboxesProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("ListProjectSandboxes")),
-			connect.WithClientOptions(opts...),
-		),
 		updateSession: connect.NewClient[v1.UpdateSessionRequest, v1.UpdateSessionResponse](
 			httpClient,
 			baseURL+SandboxServiceUpdateSessionProcedure,
@@ -470,12 +444,6 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceListVolumesProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("ListVolumes")),
-			connect.WithClientOptions(opts...),
-		),
-		listProjectVolumes: connect.NewClient[v1.ListProjectVolumesRequest, v1.ListProjectVolumesResponse](
-			httpClient,
-			baseURL+SandboxServiceListProjectVolumesProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("ListProjectVolumes")),
 			connect.WithClientOptions(opts...),
 		),
 		updateVolume: connect.NewClient[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse](
@@ -694,12 +662,6 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("ListWorkspaceSnapshots")),
 			connect.WithClientOptions(opts...),
 		),
-		listProjectSnapshots: connect.NewClient[v1.ListProjectSnapshotsRequest, v1.ListProjectSnapshotsResponse](
-			httpClient,
-			baseURL+SandboxServiceListProjectSnapshotsProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("ListProjectSnapshots")),
-			connect.WithClientOptions(opts...),
-		),
 		getWorkspaceSandboxUsage: connect.NewClient[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse](
 			httpClient,
 			baseURL+SandboxServiceGetWorkspaceSandboxUsageProcedure,
@@ -746,12 +708,6 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceListTemplatesProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("ListTemplates")),
-			connect.WithClientOptions(opts...),
-		),
-		listProjectTemplates: connect.NewClient[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse](
-			httpClient,
-			baseURL+SandboxServiceListProjectTemplatesProcedure,
-			connect.WithSchema(sandboxServiceMethods.ByName("ListProjectTemplates")),
 			connect.WithClientOptions(opts...),
 		),
 		updateTemplate: connect.NewClient[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse](
@@ -873,12 +829,10 @@ type sandboxServiceClient struct {
 	waitSession                   *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
 	listSessions                  *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	listWorkspaceSandboxes        *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
-	listProjectSandboxes          *connect.Client[v1.ListProjectSandboxesRequest, v1.ListProjectSandboxesResponse]
 	updateSession                 *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
 	createVolume                  *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
 	getVolume                     *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
 	listVolumes                   *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
-	listProjectVolumes            *connect.Client[v1.ListProjectVolumesRequest, v1.ListProjectVolumesResponse]
 	updateVolume                  *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
 	deleteVolume                  *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
 	resizeVolume                  *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
@@ -915,7 +869,6 @@ type sandboxServiceClient struct {
 	listSessionSnapshots          *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
 	listDanglingSnapshots         *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
 	listWorkspaceSnapshots        *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
-	listProjectSnapshots          *connect.Client[v1.ListProjectSnapshotsRequest, v1.ListProjectSnapshotsResponse]
 	getWorkspaceSandboxUsage      *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
 	getWorkspacePreviewDomains    *connect.Client[v1.GetWorkspacePreviewDomainsRequest, v1.GetWorkspacePreviewDomainsResponse]
 	updateWorkspacePreviewDomains *connect.Client[v1.UpdateWorkspacePreviewDomainsRequest, v1.UpdateWorkspacePreviewDomainsResponse]
@@ -924,7 +877,6 @@ type sandboxServiceClient struct {
 	createTemplate                *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
 	getTemplate                   *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
 	listTemplates                 *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
-	listProjectTemplates          *connect.Client[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse]
 	updateTemplate                *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
 	deleteTemplate                *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
 	buildTemplate                 *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
@@ -977,13 +929,6 @@ func (c *sandboxServiceClient) ListWorkspaceSandboxes(ctx context.Context, req *
 	return c.listWorkspaceSandboxes.CallUnary(ctx, req)
 }
 
-// ListProjectSandboxes calls tenki.sandbox.v1.SandboxService.ListProjectSandboxes.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) ListProjectSandboxes(ctx context.Context, req *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error) {
-	return c.listProjectSandboxes.CallUnary(ctx, req)
-}
-
 // UpdateSession calls tenki.sandbox.v1.SandboxService.UpdateSession.
 func (c *sandboxServiceClient) UpdateSession(ctx context.Context, req *connect.Request[v1.UpdateSessionRequest]) (*connect.Response[v1.UpdateSessionResponse], error) {
 	return c.updateSession.CallUnary(ctx, req)
@@ -1002,13 +947,6 @@ func (c *sandboxServiceClient) GetVolume(ctx context.Context, req *connect.Reque
 // ListVolumes calls tenki.sandbox.v1.SandboxService.ListVolumes.
 func (c *sandboxServiceClient) ListVolumes(ctx context.Context, req *connect.Request[v1.ListVolumesRequest]) (*connect.Response[v1.ListVolumesResponse], error) {
 	return c.listVolumes.CallUnary(ctx, req)
-}
-
-// ListProjectVolumes calls tenki.sandbox.v1.SandboxService.ListProjectVolumes.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) ListProjectVolumes(ctx context.Context, req *connect.Request[v1.ListProjectVolumesRequest]) (*connect.Response[v1.ListProjectVolumesResponse], error) {
-	return c.listProjectVolumes.CallUnary(ctx, req)
 }
 
 // UpdateVolume calls tenki.sandbox.v1.SandboxService.UpdateVolume.
@@ -1197,13 +1135,6 @@ func (c *sandboxServiceClient) ListWorkspaceSnapshots(ctx context.Context, req *
 	return c.listWorkspaceSnapshots.CallUnary(ctx, req)
 }
 
-// ListProjectSnapshots calls tenki.sandbox.v1.SandboxService.ListProjectSnapshots.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) ListProjectSnapshots(ctx context.Context, req *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error) {
-	return c.listProjectSnapshots.CallUnary(ctx, req)
-}
-
 // GetWorkspaceSandboxUsage calls tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage.
 func (c *sandboxServiceClient) GetWorkspaceSandboxUsage(ctx context.Context, req *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error) {
 	return c.getWorkspaceSandboxUsage.CallUnary(ctx, req)
@@ -1243,13 +1174,6 @@ func (c *sandboxServiceClient) GetTemplate(ctx context.Context, req *connect.Req
 // ListTemplates calls tenki.sandbox.v1.SandboxService.ListTemplates.
 func (c *sandboxServiceClient) ListTemplates(ctx context.Context, req *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error) {
 	return c.listTemplates.CallUnary(ctx, req)
-}
-
-// ListProjectTemplates calls tenki.sandbox.v1.SandboxService.ListProjectTemplates.
-//
-// Deprecated: do not use.
-func (c *sandboxServiceClient) ListProjectTemplates(ctx context.Context, req *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
-	return c.listProjectTemplates.CallUnary(ctx, req)
 }
 
 // UpdateTemplate calls tenki.sandbox.v1.SandboxService.UpdateTemplate.
@@ -1351,14 +1275,10 @@ type SandboxServiceHandler interface {
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
 	ListWorkspaceSandboxes(context.Context, *connect.Request[v1.ListWorkspaceSandboxesRequest]) (*connect.Response[v1.ListWorkspaceSandboxesResponse], error)
-	// Deprecated: do not use.
-	ListProjectSandboxes(context.Context, *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error)
 	UpdateSession(context.Context, *connect.Request[v1.UpdateSessionRequest]) (*connect.Response[v1.UpdateSessionResponse], error)
 	CreateVolume(context.Context, *connect.Request[v1.CreateVolumeRequest]) (*connect.Response[v1.CreateVolumeResponse], error)
 	GetVolume(context.Context, *connect.Request[v1.GetVolumeRequest]) (*connect.Response[v1.GetVolumeResponse], error)
 	ListVolumes(context.Context, *connect.Request[v1.ListVolumesRequest]) (*connect.Response[v1.ListVolumesResponse], error)
-	// Deprecated: do not use.
-	ListProjectVolumes(context.Context, *connect.Request[v1.ListProjectVolumesRequest]) (*connect.Response[v1.ListProjectVolumesResponse], error)
 	UpdateVolume(context.Context, *connect.Request[v1.UpdateVolumeRequest]) (*connect.Response[v1.UpdateVolumeResponse], error)
 	DeleteVolume(context.Context, *connect.Request[v1.DeleteVolumeRequest]) (*connect.Response[v1.DeleteVolumeResponse], error)
 	ResizeVolume(context.Context, *connect.Request[v1.ResizeVolumeRequest]) (*connect.Response[v1.ResizeVolumeResponse], error)
@@ -1398,8 +1318,6 @@ type SandboxServiceHandler interface {
 	ListDanglingSnapshots(context.Context, *connect.Request[v1.ListDanglingSnapshotsRequest]) (*connect.Response[v1.ListDanglingSnapshotsResponse], error)
 	// Deprecated: do not use.
 	ListWorkspaceSnapshots(context.Context, *connect.Request[v1.ListWorkspaceSnapshotsRequest]) (*connect.Response[v1.ListWorkspaceSnapshotsResponse], error)
-	// Deprecated: do not use.
-	ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error)
 	GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error)
 	// Workspace wildcard preview domains (one wildcard certificate per
 	// workspace per region, self-managed at the regional edge). Enabling is
@@ -1411,8 +1329,6 @@ type SandboxServiceHandler interface {
 	CreateTemplate(context.Context, *connect.Request[v1.CreateTemplateRequest]) (*connect.Response[v1.CreateTemplateResponse], error)
 	GetTemplate(context.Context, *connect.Request[v1.GetTemplateRequest]) (*connect.Response[v1.GetTemplateResponse], error)
 	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
-	// Deprecated: do not use.
-	ListProjectTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 	UpdateTemplate(context.Context, *connect.Request[v1.UpdateTemplateRequest]) (*connect.Response[v1.UpdateTemplateResponse], error)
 	DeleteTemplate(context.Context, *connect.Request[v1.DeleteTemplateRequest]) (*connect.Response[v1.DeleteTemplateResponse], error)
 	BuildTemplate(context.Context, *connect.Request[v1.BuildTemplateRequest]) (*connect.Response[v1.BuildTemplateResponse], error)
@@ -1477,12 +1393,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("ListWorkspaceSandboxes")),
 		connect.WithHandlerOptions(opts...),
 	)
-	sandboxServiceListProjectSandboxesHandler := connect.NewUnaryHandler(
-		SandboxServiceListProjectSandboxesProcedure,
-		svc.ListProjectSandboxes,
-		connect.WithSchema(sandboxServiceMethods.ByName("ListProjectSandboxes")),
-		connect.WithHandlerOptions(opts...),
-	)
 	sandboxServiceUpdateSessionHandler := connect.NewUnaryHandler(
 		SandboxServiceUpdateSessionProcedure,
 		svc.UpdateSession,
@@ -1505,12 +1415,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceListVolumesProcedure,
 		svc.ListVolumes,
 		connect.WithSchema(sandboxServiceMethods.ByName("ListVolumes")),
-		connect.WithHandlerOptions(opts...),
-	)
-	sandboxServiceListProjectVolumesHandler := connect.NewUnaryHandler(
-		SandboxServiceListProjectVolumesProcedure,
-		svc.ListProjectVolumes,
-		connect.WithSchema(sandboxServiceMethods.ByName("ListProjectVolumes")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceUpdateVolumeHandler := connect.NewUnaryHandler(
@@ -1729,12 +1633,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("ListWorkspaceSnapshots")),
 		connect.WithHandlerOptions(opts...),
 	)
-	sandboxServiceListProjectSnapshotsHandler := connect.NewUnaryHandler(
-		SandboxServiceListProjectSnapshotsProcedure,
-		svc.ListProjectSnapshots,
-		connect.WithSchema(sandboxServiceMethods.ByName("ListProjectSnapshots")),
-		connect.WithHandlerOptions(opts...),
-	)
 	sandboxServiceGetWorkspaceSandboxUsageHandler := connect.NewUnaryHandler(
 		SandboxServiceGetWorkspaceSandboxUsageProcedure,
 		svc.GetWorkspaceSandboxUsage,
@@ -1781,12 +1679,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceListTemplatesProcedure,
 		svc.ListTemplates,
 		connect.WithSchema(sandboxServiceMethods.ByName("ListTemplates")),
-		connect.WithHandlerOptions(opts...),
-	)
-	sandboxServiceListProjectTemplatesHandler := connect.NewUnaryHandler(
-		SandboxServiceListProjectTemplatesProcedure,
-		svc.ListProjectTemplates,
-		connect.WithSchema(sandboxServiceMethods.ByName("ListProjectTemplates")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceUpdateTemplateHandler := connect.NewUnaryHandler(
@@ -1911,8 +1803,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceListSessionsHandler.ServeHTTP(w, r)
 		case SandboxServiceListWorkspaceSandboxesProcedure:
 			sandboxServiceListWorkspaceSandboxesHandler.ServeHTTP(w, r)
-		case SandboxServiceListProjectSandboxesProcedure:
-			sandboxServiceListProjectSandboxesHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateSessionProcedure:
 			sandboxServiceUpdateSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateVolumeProcedure:
@@ -1921,8 +1811,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceGetVolumeHandler.ServeHTTP(w, r)
 		case SandboxServiceListVolumesProcedure:
 			sandboxServiceListVolumesHandler.ServeHTTP(w, r)
-		case SandboxServiceListProjectVolumesProcedure:
-			sandboxServiceListProjectVolumesHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateVolumeProcedure:
 			sandboxServiceUpdateVolumeHandler.ServeHTTP(w, r)
 		case SandboxServiceDeleteVolumeProcedure:
@@ -1995,8 +1883,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceListDanglingSnapshotsHandler.ServeHTTP(w, r)
 		case SandboxServiceListWorkspaceSnapshotsProcedure:
 			sandboxServiceListWorkspaceSnapshotsHandler.ServeHTTP(w, r)
-		case SandboxServiceListProjectSnapshotsProcedure:
-			sandboxServiceListProjectSnapshotsHandler.ServeHTTP(w, r)
 		case SandboxServiceGetWorkspaceSandboxUsageProcedure:
 			sandboxServiceGetWorkspaceSandboxUsageHandler.ServeHTTP(w, r)
 		case SandboxServiceGetWorkspacePreviewDomainsProcedure:
@@ -2013,8 +1899,6 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceGetTemplateHandler.ServeHTTP(w, r)
 		case SandboxServiceListTemplatesProcedure:
 			sandboxServiceListTemplatesHandler.ServeHTTP(w, r)
-		case SandboxServiceListProjectTemplatesProcedure:
-			sandboxServiceListProjectTemplatesHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateTemplateProcedure:
 			sandboxServiceUpdateTemplateHandler.ServeHTTP(w, r)
 		case SandboxServiceDeleteTemplateProcedure:
@@ -2084,10 +1968,6 @@ func (UnimplementedSandboxServiceHandler) ListWorkspaceSandboxes(context.Context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes is not implemented"))
 }
 
-func (UnimplementedSandboxServiceHandler) ListProjectSandboxes(context.Context, *connect.Request[v1.ListProjectSandboxesRequest]) (*connect.Response[v1.ListProjectSandboxesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListProjectSandboxes is not implemented"))
-}
-
 func (UnimplementedSandboxServiceHandler) UpdateSession(context.Context, *connect.Request[v1.UpdateSessionRequest]) (*connect.Response[v1.UpdateSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateSession is not implemented"))
 }
@@ -2102,10 +1982,6 @@ func (UnimplementedSandboxServiceHandler) GetVolume(context.Context, *connect.Re
 
 func (UnimplementedSandboxServiceHandler) ListVolumes(context.Context, *connect.Request[v1.ListVolumesRequest]) (*connect.Response[v1.ListVolumesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListVolumes is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) ListProjectVolumes(context.Context, *connect.Request[v1.ListProjectVolumesRequest]) (*connect.Response[v1.ListProjectVolumesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListProjectVolumes is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) UpdateVolume(context.Context, *connect.Request[v1.UpdateVolumeRequest]) (*connect.Response[v1.UpdateVolumeResponse], error) {
@@ -2252,10 +2128,6 @@ func (UnimplementedSandboxServiceHandler) ListWorkspaceSnapshots(context.Context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots is not implemented"))
 }
 
-func (UnimplementedSandboxServiceHandler) ListProjectSnapshots(context.Context, *connect.Request[v1.ListProjectSnapshotsRequest]) (*connect.Response[v1.ListProjectSnapshotsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListProjectSnapshots is not implemented"))
-}
-
 func (UnimplementedSandboxServiceHandler) GetWorkspaceSandboxUsage(context.Context, *connect.Request[v1.GetWorkspaceSandboxUsageRequest]) (*connect.Response[v1.GetWorkspaceSandboxUsageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage is not implemented"))
 }
@@ -2286,10 +2158,6 @@ func (UnimplementedSandboxServiceHandler) GetTemplate(context.Context, *connect.
 
 func (UnimplementedSandboxServiceHandler) ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListTemplates is not implemented"))
-}
-
-func (UnimplementedSandboxServiceHandler) ListProjectTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListProjectTemplates is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) UpdateTemplate(context.Context, *connect.Request[v1.UpdateTemplateRequest]) (*connect.Response[v1.UpdateTemplateResponse], error) {

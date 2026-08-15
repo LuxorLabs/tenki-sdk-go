@@ -330,12 +330,10 @@ func TestCreateWithImageFromBuildUsesDigestRef(t *testing.T) {
 	digestRef := "acme/node-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	var gotRef string
 	var gotWorkspaceID string
-	var gotProjectID string
 	handler := &templateHandler{
 		createSessionFn: func(req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
 			gotRef = req.Msg.GetRegistryRef()
 			gotWorkspaceID = req.Msg.GetWorkspaceId()
-			gotProjectID = req.Msg.GetProjectId()
 			return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: &sandboxv1.SandboxSession{
 				Id: "01900000-0000-7000-8000-0000000000dd", State: sandboxv1.SessionState_SESSION_STATE_RUNNING,
 			}}), nil
@@ -350,8 +348,8 @@ func TestCreateWithImageFromBuildUsesDigestRef(t *testing.T) {
 	if gotRef != digestRef {
 		t.Fatalf("registry ref = %q", gotRef)
 	}
-	if gotWorkspaceID != "ws-001" || gotProjectID != "" {
-		t.Fatalf("scope = workspace %q project %q", gotWorkspaceID, gotProjectID)
+	if gotWorkspaceID != "ws-001" {
+		t.Fatalf("workspace scope = %q", gotWorkspaceID)
 	}
 
 	if _, err := client.Create(context.Background(), WithWorkspaceID("ws-001"), WithImage(&RegistryImage{Name: "node-api", WorkspaceSlug: "acme"}), WithWaitReady(false)); err != nil {

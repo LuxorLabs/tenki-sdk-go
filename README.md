@@ -77,11 +77,11 @@ client, err := tenkisandbox.New(
 Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.
 Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.tenki.cloud`.
 
-### Migrating to v0.7.0
+### Migrating to v1.0.0
 
-Version 0.7.0 removes the generated workspace settings and pause-retention RPCs.
-Direct users of `GetWorkspaceSandboxUsage` should use the
-`max_concurrent_jobs` key for shared concurrency usage.
+Version 1.0.0 removes all deprecated Project fields, messages, and RPCs from
+the generated v1 API. The protobuf package remains `tenki.sandbox.v1`; use
+Workspace-scoped fields and RPCs instead.
 
 ### Migrating to v0.6.0
 
