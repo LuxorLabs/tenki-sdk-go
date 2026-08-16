@@ -287,12 +287,12 @@ func TestSessionExecPassesCwd(t *testing.T) {
 	runHandler, endpoint := newDataPlaneRunTestServer(t)
 	client := newStreamTestClient(t, &streamTestHandler{})
 
-	if _, err := newStreamTestSession(client, endpoint).Exec(context.Background(), "pwd", WithDir("project")); err != nil {
+	if _, err := newStreamTestSession(client, endpoint).Exec(context.Background(), "pwd", WithDir("app")); err != nil {
 		t.Fatalf("Exec: %v", err)
 	}
 
-	if got := firstRunStartCwd(t, runHandler); got != "project" {
-		t.Fatalf("cwd = %q, want project", got)
+	if got := firstRunStartCwd(t, runHandler); got != "app" {
+		t.Fatalf("cwd = %q, want app", got)
 	}
 }
 
@@ -302,7 +302,7 @@ func TestSessionStreamPassesAbsoluteCwd(t *testing.T) {
 	runHandler, endpoint := newDataPlaneRunTestServer(t)
 	client := newStreamTestClient(t, &streamTestHandler{})
 
-	stream, err := newStreamTestSession(client, endpoint).Stream(context.Background(), "pwd", WithDir("/home/tenki/project"))
+	stream, err := newStreamTestSession(client, endpoint).Stream(context.Background(), "pwd", WithDir("/home/tenki/app"))
 	if err != nil {
 		t.Fatalf("Stream: %v", err)
 	}
@@ -310,8 +310,8 @@ func TestSessionStreamPassesAbsoluteCwd(t *testing.T) {
 		t.Fatalf("Wait: %v", err)
 	}
 
-	if got := firstRunStartCwd(t, runHandler); got != "/home/tenki/project" {
-		t.Fatalf("cwd = %q, want /home/tenki/project", got)
+	if got := firstRunStartCwd(t, runHandler); got != "/home/tenki/app" {
+		t.Fatalf("cwd = %q, want /home/tenki/app", got)
 	}
 }
 
@@ -321,7 +321,7 @@ func TestSessionCommandPassesCwd(t *testing.T) {
 	runHandler, endpoint := newDataPlaneRunTestServer(t)
 	client := newStreamTestClient(t, &streamTestHandler{})
 
-	result, err := newStreamTestSession(client, endpoint).Command([]string{"pwd"}, RunOptions{Dir: "project"}).Exec(context.Background())
+	result, err := newStreamTestSession(client, endpoint).Command([]string{"pwd"}, RunOptions{Dir: "app"}).Exec(context.Background())
 	if err != nil {
 		t.Fatalf("Command Exec: %v", err)
 	}
@@ -329,8 +329,8 @@ func TestSessionCommandPassesCwd(t *testing.T) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 
-	if got := firstRunStartCwd(t, runHandler); got != "project" {
-		t.Fatalf("cwd = %q, want project", got)
+	if got := firstRunStartCwd(t, runHandler); got != "app" {
+		t.Fatalf("cwd = %q, want app", got)
 	}
 }
 
