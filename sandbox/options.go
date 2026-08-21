@@ -40,8 +40,9 @@ const (
 	DefaultTemplateSpecCreateTimeout = 2 * time.Hour
 	DefaultSnapshotCreateTimeout     = 5 * time.Minute
 	DefaultRestoreTimeout            = 5 * time.Minute
-	DefaultExecTimeout               = 30 * time.Second
-	DefaultVolumeDetachTimeout       = 2 * time.Minute
+	// DefaultExecTimeout is a suggested value for WithTimeout, not applied automatically.
+	DefaultExecTimeout         = 30 * time.Second
+	DefaultVolumeDetachTimeout = 2 * time.Minute
 )
 
 type clientConfig struct {

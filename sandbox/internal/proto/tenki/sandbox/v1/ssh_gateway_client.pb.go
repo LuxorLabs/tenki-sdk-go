@@ -275,7 +275,10 @@ func (x *SSHCertPermissions) GetAllowX11Forwarding() bool {
 type ListActiveSSHGatewaysRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional region filter. Empty = all regions.
-	Region        string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// Optional session used to resolve the owning host's region. When set, the
+	// engine returns only gateways that can reach that session's host.
+	SessionId     string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -313,6 +316,13 @@ func (*ListActiveSSHGatewaysRequest) Descriptor() ([]byte, []int) {
 func (x *ListActiveSSHGatewaysRequest) GetRegion() string {
 	if x != nil {
 		return x.Region
+	}
+	return ""
+}
+
+func (x *ListActiveSSHGatewaysRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
 	}
 	return ""
 }
@@ -483,9 +493,11 @@ const file_tenki_sandbox_v1_ssh_gateway_client_proto_rawDesc = "" +
 	"\x16allow_agent_forwarding\x18\x02 \x01(\bR\x14allowAgentForwarding\x12=\n" +
 	"\x1ballow_port_forwarding_local\x18\x03 \x01(\bR\x18allowPortForwardingLocal\x12?\n" +
 	"\x1callow_port_forwarding_remote\x18\x04 \x01(\bR\x19allowPortForwardingRemote\x120\n" +
-	"\x14allow_x11_forwarding\x18\x05 \x01(\bR\x12allowX11Forwarding\"6\n" +
+	"\x14allow_x11_forwarding\x18\x05 \x01(\bR\x12allowX11Forwarding\"b\n" +
 	"\x1cListActiveSSHGatewaysRequest\x12\x16\n" +
-	"\x06region\x18\x01 \x01(\tR\x06region\"_\n" +
+	"\x06region\x18\x01 \x01(\tR\x06region\x12*\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\tsessionId\"_\n" +
 	"\x1dListActiveSSHGatewaysResponse\x12>\n" +
 	"\bgateways\x18\x01 \x03(\v2\".tenki.sandbox.v1.ActiveSSHGatewayR\bgateways\"\xa7\x02\n" +
 	"\x10ActiveSSHGateway\x12\x1d\n" +

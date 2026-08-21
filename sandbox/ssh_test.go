@@ -72,13 +72,17 @@ func TestOverrideGatewayHost(t *testing.T) {
 // discovery-fallback tests below. Other RPCs return Unimplemented.
 type fakeSSHGatewayServer struct {
 	sandboxv1connect.UnimplementedSSHGatewayClientServiceHandler
-	resp *sandboxv1.ListActiveSSHGatewaysResponse
+	resp       *sandboxv1.ListActiveSSHGatewaysResponse
+	requestIDs chan string
 }
 
 func (f *fakeSSHGatewayServer) ListActiveSSHGateways(
 	_ context.Context,
-	_ *connect.Request[sandboxv1.ListActiveSSHGatewaysRequest],
+	req *connect.Request[sandboxv1.ListActiveSSHGatewaysRequest],
 ) (*connect.Response[sandboxv1.ListActiveSSHGatewaysResponse], error) {
+	if f.requestIDs != nil {
+		f.requestIDs <- req.Msg.GetSessionId()
+	}
 	return connect.NewResponse(f.resp), nil
 }
 
@@ -108,7 +112,9 @@ func newDiscoveryTestClient(t *testing.T, srv *fakeSSHGatewayServer) *Client {
 func TestDiscoverSSHGateway_PreferEngineWsBridgeEndpoint(t *testing.T) {
 	t.Parallel()
 
+	requestIDs := make(chan string, 1)
 	srv := &fakeSSHGatewayServer{
+		requestIDs: requestIDs,
 		resp: &sandboxv1.ListActiveSSHGatewaysResponse{
 			Gateways: []*sandboxv1.ActiveSSHGateway{
 				{
@@ -127,6 +133,9 @@ func TestDiscoverSSHGateway_PreferEngineWsBridgeEndpoint(t *testing.T) {
 	want := "wss://edge.example.com/v1/ssh/00000000-0000-0000-0000-000000000001"
 	if got != want {
 		t.Fatalf("DiscoverSSHGateway = %q, want %q", got, want)
+	}
+	if requested := <-requestIDs; requested != "00000000-0000-0000-0000-000000000001" {
+		t.Fatalf("ListActiveSSHGateways session_id = %q", requested)
 	}
 }
 

@@ -26,17 +26,20 @@ type Output struct {
 
 // Result is the normalized command execution result.
 type Result struct {
-	SessionID   string
-	Command     string
-	Args        []string
-	Status      CommandStatus
-	ExitCode    int32
-	Duration    time.Duration
-	StartedAt   *time.Time
-	EndedAt     *time.Time
-	Outputs     []Output
-	Stdout      []byte
-	Stderr      []byte
+	SessionID string
+	Command   string
+	Args      []string
+	Status    CommandStatus
+	ExitCode  int32
+	Duration  time.Duration
+	StartedAt *time.Time
+	EndedAt   *time.Time
+	Outputs   []Output
+	Stdout    []byte
+	Stderr    []byte
+	// Reason is the guest's terminal reason: "exit", "signaled", "timeout" or
+	// "grace_timeout".
+	Reason string
 }
 
 // StdoutString returns trimmed stdout as a string.

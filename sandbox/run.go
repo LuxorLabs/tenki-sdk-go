@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -20,9 +21,12 @@ type Command struct {
 }
 
 type RunOptions struct {
-	Env        map[string]string
-	Dir        string
-	Stdin      io.Reader
+	Env   map[string]string
+	Dir   string
+	Stdin io.Reader
+	// Timeout bounds the run's wall-clock duration; nil or zero means unbounded.
+	// The guest-agent enforces it and caps it at its own maximum, then reports a
+	// spent budget as CommandStatusTimedOut rather than as an error.
 	Timeout    *time.Duration
 	Privileged bool
 }
@@ -37,6 +41,11 @@ type RunHandle struct {
 	waitCh    chan *Result
 	errCh     chan error
 	closeOnce sync.Once
+
+	settleMu      sync.Mutex
+	settled       bool
+	settledResult *Result
+	settledErr    error
 }
 
 type sandboxv1connectRunStream interface {
@@ -188,9 +197,7 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 			StreamStdin: true,
 			Privileged:  c.opts.Privileged,
 		}
-		if c.opts.Timeout != nil && *c.opts.Timeout > 0 {
-			start.TimeoutMs = uint32(*c.opts.Timeout / time.Millisecond)
-		}
+		start.TimeoutMs = runTimeoutMs(c.opts.Timeout)
 		if err := stream.Send(&sandboxv1.RunRequest{Payload: &sandboxv1.RunRequest_Start{Start: start}}); err != nil {
 			if !reauthAttempted && c.session.reauthOnUnauthenticated(ctx, err) {
 				reauthAttempted = true
@@ -252,6 +259,19 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 	}
 }
 
+// runTimeoutMs renders RunOptions.Timeout for the wire; 0 means unbounded.
+// Clamped so an oversized budget cannot wrap into a much shorter one.
+func runTimeoutMs(timeout *time.Duration) uint32 {
+	if timeout == nil || *timeout <= 0 {
+		return 0
+	}
+	ms := *timeout / time.Millisecond
+	if ms > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(ms)
+}
+
 func (h *RunHandle) pumpStdin(r *io.PipeReader) {
 	buf := make([]byte, 32*1024)
 	for {
@@ -311,11 +331,14 @@ func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
 			}
 			result.ExitCode = exit.GetExitCode()
 			result.Duration = time.Duration(exit.GetDurationMs()) * time.Millisecond
-			if exit.GetExitCode() == 0 && exit.GetSignal() == "" {
-				result.Status = CommandStatusSucceeded
-			} else if exit.GetTimedOut() {
+			result.Reason = exit.GetReason()
+			// A timed-out run can carry exit_code 0, so check TimedOut first.
+			switch {
+			case exit.GetTimedOut():
 				result.Status = CommandStatusTimedOut
-			} else {
+			case exit.GetExitCode() == 0 && exit.GetSignal() == "":
+				result.Status = CommandStatusSucceeded
+			default:
 				result.Status = CommandStatusFailed
 			}
 			h.waitCh <- result
@@ -334,12 +357,34 @@ func (h *RunHandle) Kill() error {
 	return h.Signal(os.Kill)
 }
 
+// settle caches the first terminal outcome so a repeated Wait cannot block.
+func (h *RunHandle) settle(result *Result, err error) (*Result, error) {
+	h.settleMu.Lock()
+	defer h.settleMu.Unlock()
+	if !h.settled {
+		h.settled, h.settledResult, h.settledErr = true, result, err
+	}
+	return h.settledResult, h.settledErr
+}
+
+func (h *RunHandle) settledOutcome() (*Result, error, bool) {
+	h.settleMu.Lock()
+	defer h.settleMu.Unlock()
+	return h.settledResult, h.settledErr, h.settled
+}
+
+// Wait blocks until the process exits or the stream fails. A spent budget is not
+// an error: it returns CommandStatusTimedOut with a nil error. Repeated calls
+// return the first outcome.
 func (h *RunHandle) Wait() (*Result, error) {
+	if result, err, ok := h.settledOutcome(); ok {
+		return result, err
+	}
 	select {
 	case result := <-h.waitCh:
-		return result, nil
+		return h.settle(result, nil)
 	case err := <-h.errCh:
-		return nil, err
+		return h.settle(nil, err)
 	}
 }
 

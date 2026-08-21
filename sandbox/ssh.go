@@ -107,7 +107,7 @@ func (c *Client) DiscoverSSHGateway(ctx context.Context, sessionID string) strin
 	}
 	headers := http.Header{}
 	c.setAuthHeaders(headers)
-	req := connect.NewRequest(&sandboxv1.ListActiveSSHGatewaysRequest{})
+	req := connect.NewRequest(&sandboxv1.ListActiveSSHGatewaysRequest{SessionId: sessionID})
 	for k, v := range headers {
 		if len(v) > 0 {
 			req.Header().Set(k, v[0])

@@ -265,9 +265,62 @@ Publish and share sandbox images (templates/snapshots/images).
 ### Exec options
 
 - `WithArgs(...string)`
-- `WithTimeout(time.Duration)`
+- `WithTimeout(time.Duration)` — unbounded when unset
 - `WithEnv(key, value string)`
 - `WithEnvs(map[string]string)` command env overrides
+
+### Timeouts
+
+Commands are unbounded by default. `WithTimeout` sends the budget to the
+guest-agent, which enforces it: on expiry it signals the process (`SIGTERM`,
+escalating to `SIGKILL`) and reports the run as timed out.
+
+A timeout is **not** a Go error — it comes back as an ordinary result with
+`CommandStatusTimedOut`, carrying the output captured before the budget expired:
+
+```go
+result, err := session.Exec(ctx, "bash",
+	tenkisandbox.WithArgs("-lc", "npm ci"),
+	tenkisandbox.WithTimeout(2*time.Minute),
+)
+if err != nil {
+	return err // transport or session failure, not a timeout
+}
+if result.Status.IsTimedOut() {
+	// result.Reason is "timeout", or "grace_timeout" when the guest could not
+	// reap the process. Partial output usually shows where it stalled.
+	log.Printf("timed out (%s); partial output: %s", result.Reason, result.StdoutString())
+}
+```
+
+The guest caps the request at its own configured maximum command timeout, and
+older guest-agents accept `WithTimeout` but ignore it, leaving the run unbounded.
+
+### Background processes and long-running services
+
+A command returns when its **stdout and stderr reach EOF**, not when the shell
+exits. A backgrounded process inherits both streams and holds them open, so this
+waits for the server rather than the shell:
+
+```go
+// Hangs: the server inherits stdout/stderr.
+session.Exec(ctx, "sh", tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 &"))
+```
+
+Redirect **both** streams to detach it:
+
+```go
+session.Exec(ctx, "sh",
+	tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 >/tmp/http.log 2>&1 &"))
+```
+
+Redirecting only stdout is not enough — stderr still holds the stream open — and
+`nohup` does not help, because it blocks `SIGHUP` rather than stream inheritance.
+This is standard POSIX behavior, the same as Go's own `exec.Cmd` with piped output.
+
+To keep hold of a service instead, use `session.Command(...).Stream(ctx)` and read
+from the handle; for services you always want running, start them from a template
+start command.
 
 ## Error handling
 
@@ -294,7 +347,8 @@ tenkisandbox.MiB  // 1,048,576
 - `DefaultSessionCreateTimeout` (3m)
 - `DefaultSnapshotCreateTimeout` (5m)
 - `DefaultRestoreTimeout` (5m)
-- `DefaultExecTimeout` (30s)
+- `DefaultExecTimeout` (30s) — a suggested value for `WithTimeout`, **not** applied
+  automatically; commands are unbounded unless you set a timeout
 
 ## Constraints
 
