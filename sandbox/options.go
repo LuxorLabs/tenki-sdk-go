@@ -53,6 +53,7 @@ type clientConfig struct {
 	httpTimeout           time.Duration
 	dataPlaneReadyTimeout time.Duration
 	connectOpts           []connect.ClientOption
+	warningHandler        WarningHandler
 }
 
 func defaultClientConfig() clientConfig {
@@ -60,7 +61,15 @@ func defaultClientConfig() clientConfig {
 		baseURL:               defaultBaseURL,
 		httpTimeout:           defaultClientTimeout,
 		dataPlaneReadyTimeout: defaultDataPlaneReadyTimeout,
+		warningHandler:        defaultWarningHandler,
 	}
+}
+
+// WithWarningHandler replaces warning emission. Pass nil to suppress warnings.
+func WithWarningHandler(handler WarningHandler) Option {
+	return optionFunc(func(cfg *clientConfig) {
+		cfg.warningHandler = handler
+	})
 }
 
 // Option configures Client behavior.
@@ -239,10 +248,11 @@ type exposeConfig struct {
 }
 
 type updateSessionConfig struct {
-	name    *string
-	tags    []string
-	tagsSet bool
-	sticky  *bool
+	name        *string
+	tags        []string
+	tagsSet     bool
+	sticky      *bool
+	maxDuration *time.Duration
 }
 
 type updateSnapshotConfig struct {
@@ -875,6 +885,13 @@ func WithWaitTimeout(timeout time.Duration) CreateOption {
 func WithSetSticky(sticky bool) UpdateSessionOption {
 	return updateSessionOptionFunc(func(cfg *updateSessionConfig) {
 		cfg.sticky = &sticky
+	})
+}
+
+// WithSetMaxDuration sets the lifetime and requires WithSetSticky.
+func WithSetMaxDuration(maxDuration time.Duration) UpdateSessionOption {
+	return updateSessionOptionFunc(func(cfg *updateSessionConfig) {
+		cfg.maxDuration = &maxDuration
 	})
 }
 

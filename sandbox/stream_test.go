@@ -492,11 +492,23 @@ func TestSessionPauseResume(t *testing.T) {
 	t.Parallel()
 
 	h := &streamTestHandler{}
+	pauseCalls := 0
 	h.pauseSessionFn = func(req *connect.Request[sandboxv1.PauseSessionRequest]) (*connect.Response[sandboxv1.PauseSessionResponse], error) {
 		if req.Msg.GetSessionId() != "session-1" {
 			t.Fatalf("unexpected pause session id: %q", req.Msg.GetSessionId())
 		}
-		return connect.NewResponse(&sandboxv1.PauseSessionResponse{Session: &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_PAUSED}}), nil
+		pauseCalls++
+		if pauseCalls == 1 && req.Msg.GetAsync() {
+			t.Fatal("Pause sent async=true")
+		}
+		if pauseCalls == 2 && !req.Msg.GetAsync() {
+			t.Fatal("PauseAsync did not send async=true")
+		}
+		state := sandboxv1.SessionState_SESSION_STATE_PAUSED
+		if req.Msg.GetAsync() {
+			state = sandboxv1.SessionState_SESSION_STATE_PAUSING
+		}
+		return connect.NewResponse(&sandboxv1.PauseSessionResponse{Session: &sandboxv1.SandboxSession{Id: "session-1", State: state}}), nil
 	}
 	h.resumeSessionFn = func(req *connect.Request[sandboxv1.ResumeSessionRequest]) (*connect.Response[sandboxv1.ResumeSessionResponse], error) {
 		if req.Msg.GetSessionId() != "session-1" {
@@ -529,6 +541,15 @@ func TestSessionPauseResume(t *testing.T) {
 		t.Fatalf("unexpected resumed state: %q", session.State)
 	}
 	assertSessionDataPlaneReset(t, session)
+	if err := session.PauseAsync(context.Background()); err != nil {
+		t.Fatalf("PauseAsync: %v", err)
+	}
+	if session.State != SessionStatePausing {
+		t.Fatalf("unexpected pausing state: %q", session.State)
+	}
+	if pauseCalls != 2 {
+		t.Fatalf("pause calls = %d, want 2", pauseCalls)
+	}
 }
 
 func assertSessionDataPlaneReset(t *testing.T, session *Session) {

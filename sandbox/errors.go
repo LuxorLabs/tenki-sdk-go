@@ -37,6 +37,7 @@ var (
 	ErrSnapshotNotFound        = errors.New("sandbox: snapshot not found")
 	ErrSnapshotFailed          = errors.New("sandbox: snapshot failed")
 	ErrResumeFailed            = errors.New("sandbox: resume failed")
+	ErrPauseFailed             = errors.New("sandbox: pause failed")
 	ErrSnapshotNotDurable      = errors.New("sandbox: snapshot upload did not become durable")
 	ErrTemplateNotFound        = errors.New("sandbox: template not found")
 	ErrRegistryImageNotFound   = errors.New("sandbox: registry image not found")

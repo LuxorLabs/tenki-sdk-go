@@ -72,6 +72,21 @@ client, err := tenkisandbox.New(
 )
 ```
 
+Creation warnings are retained on `session.Warnings` and emitted to stderr by default.
+Replace or suppress emission with `WithWarningHandler`:
+
+```go
+client, err := tenkisandbox.New(
+	tenkisandbox.WithWarningHandler(func(warning tenkisandbox.SandboxWarning) {
+		log.Printf("sandbox warning [%s]: %s", warning.Code, warning.Message)
+	}),
+)
+```
+
+When `WithSticky()` and `WithMaxDuration(...)` are both supplied, sticky takes precedence and the requested duration is discarded.
+The returned session contains `STICKY_OVERRIDES_MAX_DURATION`.
+Sticky disables automatic idle pause and remains enabled across manual pause and resume.
+
 ## Configuration
 
 Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.
@@ -116,7 +131,32 @@ Workspace API keys determine Sandbox scope automatically; ordinary calls do not 
 - `(*Session).WriteFile(ctx, path string, data []byte) error`
 - `(*Session).ReadFile(ctx, path string) ([]byte, error)`
 - `(*Session).WaitReady(ctx, timeout) error` — alternative wait for sessions obtained via `Get`/`List`; `Create` already returns ready sessions by default
+- `(*Session).Pause(ctx) error`
+- `(*Session).PauseAsync(ctx) error`
+- `(*Session).WaitPaused(ctx, timeout) error` - waits for durable pause completion; pass a non-positive timeout to wait until `ctx` is canceled
+- `(*Session).Resume(ctx) error`
+- `(*Session).WaitResumed(ctx, timeout) error`
 - `(*Session).Close(ctx) error`
+
+### Durable pause
+
+`Pause` preserves legacy completion semantics and returns only after the pause completes.
+`PauseAsync` returns after the service accepts the request and moves the session to `PAUSING`.
+Call `WaitPaused` after `PauseAsync` when the caller needs a durable checkpoint before continuing.
+It returns when the session reaches `PAUSED`, returns `ErrPauseFailed` if a verified rollback restores `RUNNING`, and respects context cancellation.
+
+```go
+if err := session.PauseAsync(ctx); err != nil {
+	return err
+}
+if err := session.WaitPaused(ctx, 0); err != nil {
+	return err
+}
+```
+
+`DURABLE_CEPH` snapshots can resume on a capability-matched host in the same datacenter while R2 replication continues.
+`DURABLE` snapshots are portable to eligible hosts.
+`LOCAL_READY` is not resumable for pause operations.
 
 ### Process control
 
@@ -244,6 +284,7 @@ Publish and share sandbox images (templates/snapshots/images).
 - `WithHTTPClient(*http.Client)`
 - `WithHTTPTimeout(time.Duration)` default: `30s`
 - `WithConnectClientOptions(...connect.ClientOption)`
+- `WithWarningHandler(WarningHandler)`; pass `nil` to suppress warning emission
 
 ### Create options
 
@@ -254,6 +295,7 @@ Publish and share sandbox images (templates/snapshots/images).
     `session.InboundEnabled` / `session.OutboundEnabled` report what a session was created with
 - `WithEnvs(map[string]string)` session-scoped env defaults
 - `WithMaxDuration(time.Duration)`
+- `WithSticky()`; overrides and discards `WithMaxDuration`
 - `WithCPUCores(int32)` default: `2`
 - `WithMemoryMB(int32)` default: `4096`
 - `WithMetadata(map[string]string)`
@@ -311,7 +353,7 @@ Redirect **both** streams to detach it:
 
 ```go
 session.Exec(ctx, "sh",
-	tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 >/tmp/http.log 2>&1 &"))
+	tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 >/home/tenki/http.log 2>&1 &"))
 ```
 
 Redirecting only stdout is not enough — stderr still holds the stream open — and

@@ -44,6 +44,7 @@ type Client struct {
 	dataPlaneReadyTimeout  time.Duration
 	sandbox                sandboxv1connect.SandboxServiceClient
 	sshGateway             sandboxv1connect.SSHGatewayClientServiceClient
+	warningHandler         WarningHandler
 }
 
 var (
@@ -131,6 +132,7 @@ func New(opts ...Option) (*Client, error) {
 		dataPlaneReadyTimeout:  cfg.dataPlaneReadyTimeout,
 		sandbox:                sandboxClient,
 		sshGateway:             sshGatewayClient,
+		warningHandler:         cfg.warningHandler,
 	}
 	if prewarmControlPlane {
 		go prewarmControlPlaneConnection(cfg.httpClient, cfg.baseURL)

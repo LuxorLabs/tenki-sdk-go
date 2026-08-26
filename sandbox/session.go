@@ -108,6 +108,7 @@ type Session struct {
 	SourceRegistryWorkspaceID string
 	SourceRegistryRef         string
 	SourceTemplateID          string
+	Warnings                  []SandboxWarning
 }
 
 type ExposedPort struct {
@@ -142,6 +143,12 @@ func newSessionFromCreate(client *Client, resp *sandboxv1.CreateSessionResponse)
 		return newSession(client, nil)
 	}
 	session := newSession(client, resp.GetSession())
+	session.Warnings = sandboxWarningsFromProto(resp.GetWarnings())
+	if client != nil && client.warningHandler != nil {
+		for _, warning := range session.Warnings {
+			client.warningHandler(warning)
+		}
+	}
 	session.applyDataPlaneResponse(resp.GetDataPlaneEndpoint(), resp.GetCredential(), resp.GetRouteStatus())
 	return session
 }
@@ -787,6 +794,8 @@ func (s *Session) waitReadyPoll(ctx context.Context, timeout time.Duration) erro
 // right after Resume before WaitResumed has observed RESUMING from the server.
 const resumeRevertGrace = 3 * time.Second
 
+const pauseRevertGrace = 3 * time.Second
+
 // WaitResumed waits until an in-flight resume reaches RUNNING or fails.
 // Unlike WaitReady — which only treats TERMINATED/TERMINATING as terminal and
 // would spin until timeout — a session that reverts from RESUMING back to a
@@ -842,6 +851,52 @@ func (s *Session) resumeFailedError() error {
 		return fmt.Errorf("%w: session %s reverted to %s: %s", ErrResumeFailed, s.ID, s.State, s.LastResumeError)
 	}
 	return fmt.Errorf("%w: session %s reverted to %s", ErrResumeFailed, s.ID, s.State)
+}
+
+// A non-positive timeout waits until the context is canceled.
+func (s *Session) WaitPaused(ctx context.Context, timeout time.Duration) error {
+	var deadline time.Time
+	if timeout > 0 {
+		deadline = time.Now().Add(timeout)
+	}
+	start := time.Now()
+	sawPausing := false
+	attempt := 0
+	for deadline.IsZero() || time.Now().Before(deadline) {
+		updated, err := s.client.Get(ctx, s.ID)
+		if err != nil {
+			if connect.CodeOf(err) == connect.CodeNotFound {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(pollBackoff(attempt)):
+				}
+				attempt++
+				continue
+			}
+			return err
+		}
+		s.copyFrom(updated)
+		switch {
+		case s.State == SessionStatePaused:
+			return nil
+		case s.State.IsTerminal():
+			return s.terminalStateError()
+		case s.State == SessionStatePausing:
+			sawPausing = true
+		case s.State == SessionStateRunning:
+			if sawPausing || time.Since(start) > pauseRevertGrace {
+				return fmt.Errorf("%w: session %s reverted to %s", ErrPauseFailed, s.ID, s.State)
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(pollBackoff(attempt)):
+		}
+		attempt++
+	}
+	return fmt.Errorf("timeout waiting for session %s to pause", s.ID)
 }
 
 func (s *Session) terminalStateError() error {
@@ -958,7 +1013,19 @@ func (s *Session) Stream(ctx context.Context, command string, opts ...ExecOption
 
 // Pause suspends this session and refreshes local session state from the response.
 func (s *Session) Pause(ctx context.Context) error {
-	resp, err := s.client.sandbox.PauseSession(ctx, connect.NewRequest(&sandboxv1.PauseSessionRequest{SessionId: s.ID}))
+	return s.pause(ctx, false)
+}
+
+// PauseAsync requests a pause and returns once the server accepts it.
+func (s *Session) PauseAsync(ctx context.Context) error {
+	return s.pause(ctx, true)
+}
+
+func (s *Session) pause(ctx context.Context, async bool) error {
+	resp, err := s.client.sandbox.PauseSession(ctx, connect.NewRequest(&sandboxv1.PauseSessionRequest{
+		SessionId: s.ID,
+		Async:     async,
+	}))
 	if err != nil {
 		return mapError(err)
 	}
@@ -1152,6 +1219,12 @@ func (s *Session) Update(ctx context.Context, opts ...UpdateSessionOption) error
 		}
 		opt.applyUpdateSession(&cfg)
 	}
+	if cfg.maxDuration != nil && *cfg.maxDuration <= 0 {
+		return errors.New("sandbox: max duration must be positive")
+	}
+	if cfg.maxDuration != nil && cfg.sticky == nil {
+		return errors.New("sandbox: sticky must be set when max duration is provided")
+	}
 
 	req := &sandboxv1.UpdateSessionRequest{SessionId: s.ID}
 	if cfg.name != nil {
@@ -1167,6 +1240,9 @@ func (s *Session) Update(ctx context.Context, opts ...UpdateSessionOption) error
 	if cfg.sticky != nil {
 		req.Sticky = cfg.sticky
 	}
+	if cfg.maxDuration != nil {
+		req.MaxDuration = durationpb.New(*cfg.maxDuration)
+	}
 
 	resp, err := s.client.sandbox.UpdateSession(ctx, connect.NewRequest(req))
 	if err != nil {
@@ -1174,6 +1250,14 @@ func (s *Session) Update(ctx context.Context, opts ...UpdateSessionOption) error
 	}
 	if resp != nil && resp.Msg != nil && resp.Msg.Session != nil {
 		s.apply(resp.Msg.Session)
+	}
+	if resp != nil && resp.Msg != nil {
+		s.Warnings = sandboxWarningsFromProto(resp.Msg.GetWarnings())
+		if s.client.warningHandler != nil {
+			for _, warning := range s.Warnings {
+				s.client.warningHandler(warning)
+			}
+		}
 	}
 	return nil
 }

@@ -160,3 +160,25 @@ func TestWaitResumedSurfacesTerminalState(t *testing.T) {
 		t.Fatalf("WaitResumed error = %v, want terminal state error", err)
 	}
 }
+
+func TestWaitResumedNonPositiveTimeoutFailsFast(t *testing.T) {
+	t.Parallel()
+
+	for _, timeout := range []time.Duration{0, -time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			handler := &waitResumedHandler{states: []sandboxv1.SessionState{
+				sandboxv1.SessionState_SESSION_STATE_RESUMING,
+			}}
+			server, client := newWaitSessionTestServer(t, handler)
+			defer server.Close()
+
+			err := newWaitResumedSession(client).WaitResumed(context.Background(), timeout)
+			if err == nil || !strings.Contains(err.Error(), "timeout waiting for session") {
+				t.Fatalf("WaitResumed error = %v, want immediate timeout", err)
+			}
+			if calls := handler.getCalls.Load(); calls != 0 {
+				t.Fatalf("GetSession calls = %d, want 0", calls)
+			}
+		})
+	}
+}
