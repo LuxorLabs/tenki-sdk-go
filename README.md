@@ -398,6 +398,9 @@ tenkisandbox.MiB  // 1,048,576
 - Process `cwd` values follow the guest contract: relative paths are normalized under the sandbox guest workdir
   (`/home/tenki` by default), absolute paths are used unchanged, and missing or non-directory targets fail before the
   process starts.
+- `cwd` sets the spawned process's directory. A login shell (`bash -lc`) sources the guest's startup files first, so a
+  `cd` in `~/.bashrc` or `~/.profile` runs before your command and wins over `cwd`; use `bash -c` when the directory
+  must hold.
 - Create/list ownership is derived from auth context.
 - Volume size: 1 MiB - 100 GiB.
 - Session CPU: 1-16 cores. Memory: 128-65536 MB, aligned to 2 MiB.
