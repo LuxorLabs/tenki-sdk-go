@@ -772,7 +772,9 @@ func WithMemoryMB(memoryMB int32) CreateOption {
 	})
 }
 
-// WithDiskSizeGB sets ephemeral root disk size on Create requests.
+// WithDiskSizeGB sets ephemeral root disk size on Create requests, in GB.
+// Range is 5-100. A Create with no image, snapshot or template spec defaults
+// to 5; one with a source inherits that source's disk unless this is set.
 func WithDiskSizeGB(gb int) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		value := int32(gb)
@@ -1063,7 +1065,10 @@ func WithTemplateResources(cpuCores, memoryMB int32) TemplateOption {
 	})
 }
 
-// WithTemplateDiskSizeGB sets the template default ephemeral root disk size.
+// WithTemplateDiskSizeGB sets the template default ephemeral root disk size,
+// in GB. Must be 0 or 5-100, where 0 leaves the template without a disk
+// default. Sessions created from the template inherit this unless they pass
+// their own WithDiskSizeGB.
 func WithTemplateDiskSizeGB(gb int32) TemplateOption {
 	return templateOptionFunc(func(cfg *templateConfig) {
 		if cfg.resources == nil {

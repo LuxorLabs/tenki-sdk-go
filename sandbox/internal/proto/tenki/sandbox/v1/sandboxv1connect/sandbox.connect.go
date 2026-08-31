@@ -50,6 +50,9 @@ const (
 	// SandboxServiceGetSessionProcedure is the fully-qualified name of the SandboxService's GetSession
 	// RPC.
 	SandboxServiceGetSessionProcedure = "/tenki.sandbox.v1.SandboxService/GetSession"
+	// SandboxServiceGetSessionMetricsProcedure is the fully-qualified name of the SandboxService's
+	// GetSessionMetrics RPC.
+	SandboxServiceGetSessionMetricsProcedure = "/tenki.sandbox.v1.SandboxService/GetSessionMetrics"
 	// SandboxServiceWaitSessionProcedure is the fully-qualified name of the SandboxService's
 	// WaitSession RPC.
 	SandboxServiceWaitSessionProcedure = "/tenki.sandbox.v1.SandboxService/WaitSession"
@@ -296,6 +299,7 @@ type SandboxServiceClient interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
+	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest]) (*connect.ServerStreamForClient[v1.WaitSessionResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
@@ -402,6 +406,12 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceGetSessionProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("GetSession")),
+			connect.WithClientOptions(opts...),
+		),
+		getSessionMetrics: connect.NewClient[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse](
+			httpClient,
+			baseURL+SandboxServiceGetSessionMetricsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("GetSessionMetrics")),
 			connect.WithClientOptions(opts...),
 		),
 		waitSession: connect.NewClient[v1.WaitSessionRequest, v1.WaitSessionResponse](
@@ -826,6 +836,7 @@ type sandboxServiceClient struct {
 	createSession                 *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	createSessionCredential       *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
 	getSession                    *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	getSessionMetrics             *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
 	waitSession                   *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
 	listSessions                  *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	listWorkspaceSandboxes        *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
@@ -910,6 +921,11 @@ func (c *sandboxServiceClient) CreateSessionCredential(ctx context.Context, req 
 // GetSession calls tenki.sandbox.v1.SandboxService.GetSession.
 func (c *sandboxServiceClient) GetSession(ctx context.Context, req *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error) {
 	return c.getSession.CallUnary(ctx, req)
+}
+
+// GetSessionMetrics calls tenki.sandbox.v1.SandboxService.GetSessionMetrics.
+func (c *sandboxServiceClient) GetSessionMetrics(ctx context.Context, req *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error) {
+	return c.getSessionMetrics.CallUnary(ctx, req)
 }
 
 // WaitSession calls tenki.sandbox.v1.SandboxService.WaitSession.
@@ -1271,6 +1287,7 @@ type SandboxServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
+	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest], *connect.ServerStream[v1.WaitSessionResponse]) error
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
@@ -1373,6 +1390,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceGetSessionProcedure,
 		svc.GetSession,
 		connect.WithSchema(sandboxServiceMethods.ByName("GetSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceGetSessionMetricsHandler := connect.NewUnaryHandler(
+		SandboxServiceGetSessionMetricsProcedure,
+		svc.GetSessionMetrics,
+		connect.WithSchema(sandboxServiceMethods.ByName("GetSessionMetrics")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceWaitSessionHandler := connect.NewServerStreamHandler(
@@ -1797,6 +1820,8 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceCreateSessionCredentialHandler.ServeHTTP(w, r)
 		case SandboxServiceGetSessionProcedure:
 			sandboxServiceGetSessionHandler.ServeHTTP(w, r)
+		case SandboxServiceGetSessionMetricsProcedure:
+			sandboxServiceGetSessionMetricsHandler.ServeHTTP(w, r)
 		case SandboxServiceWaitSessionProcedure:
 			sandboxServiceWaitSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceListSessionsProcedure:
@@ -1954,6 +1979,10 @@ func (UnimplementedSandboxServiceHandler) CreateSessionCredential(context.Contex
 
 func (UnimplementedSandboxServiceHandler) GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetSession is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetSessionMetrics is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest], *connect.ServerStream[v1.WaitSessionResponse]) error {

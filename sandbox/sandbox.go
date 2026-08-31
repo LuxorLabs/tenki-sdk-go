@@ -179,7 +179,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		}
 		opt.applyCreate(&cfg)
 	}
-	if err := validateCreateResources(cfg.cpuCores, cfg.memoryMB, cfg.diskSizeGB); err != nil {
+	if err := ValidateCreateResources(cfg.cpuCores, cfg.memoryMB, cfg.diskSizeGB); err != nil {
 		return nil, err
 	}
 	sourceCount := 0
