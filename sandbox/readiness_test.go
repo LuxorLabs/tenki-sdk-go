@@ -18,10 +18,11 @@ import (
 
 type readinessEngineHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
-	calls          atomic.Int32
-	notReadyBefore int32
-	failed         bool
-	endpoint       string
+	calls                atomic.Int32
+	notReadyBefore       int32
+	omitNotReadyEndpoint bool
+	failed               bool
+	endpoint             string
 }
 
 func (h *readinessEngineHandler) CreateSessionCredential(
@@ -35,9 +36,13 @@ func (h *readinessEngineHandler) CreateSessionCredential(
 	} else if n <= h.notReadyBefore {
 		status = sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_NOT_READY
 	}
+	endpoint := h.endpoint
+	if status == sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_NOT_READY && h.omitNotReadyEndpoint {
+		endpoint = ""
+	}
 	return connect.NewResponse(&sandboxv1.CreateSessionCredentialResponse{
 		Credential:        testSessionCredential("ready", time.Now().Add(time.Hour)),
-		DataPlaneEndpoint: h.endpoint,
+		DataPlaneEndpoint: endpoint,
 		RouteStatus:       status,
 	}), nil
 }
@@ -125,9 +130,23 @@ func TestNewPrewarmsDefaultControlPlaneConnection(t *testing.T) {
 	}
 }
 
-func TestRouteStatusNotReadyRetriesUntilVerified(t *testing.T) {
+func TestRouteStatusNotReadyWithEndpointReturnsImmediately(t *testing.T) {
 	t.Parallel()
 	engine := &readinessEngineHandler{notReadyBefore: 2}
+	client, _ := newReadinessHarness(t, engine, &readinessDataPlaneHandler{}, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+
+	if _, err := session.dataPlane(context.Background()); err != nil {
+		t.Fatalf("dataPlane: %v", err)
+	}
+	if got := engine.calls.Load(); got != 1 {
+		t.Fatalf("credential calls got %d, want 1", got)
+	}
+}
+
+func TestRouteStatusNotReadyWithoutEndpointRetriesUntilVerified(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{notReadyBefore: 2, omitNotReadyEndpoint: true}
 	client, _ := newReadinessHarness(t, engine, &readinessDataPlaneHandler{}, WithDataPlaneReadyTimeout(time.Second))
 	session := &Session{client: client, ID: "session-1"}
 
@@ -164,6 +183,28 @@ func TestRouteStatusFailedReturnsTerminalError(t *testing.T) {
 	var notReady *DataPlaneNotReadyError
 	if !errors.As(err, &notReady) || !notReady.Terminal || notReady.IsRetryable() {
 		t.Fatalf("expected terminal DataPlaneNotReadyError, got %#v", err)
+	}
+}
+
+func TestRefreshHintedDataPlaneKeepsHintAfterFailedRenewal(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{failed: true}
+	client, endpoint := newReadinessHarness(t, engine, &readinessDataPlaneHandler{}, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("hinted", time.Now().Add(time.Hour)), true)
+	defer session.resetDataPlane()
+
+	session.dataPlaneMu.RLock()
+	hintedClient := session.dataPlaneClient
+	session.dataPlaneMu.RUnlock()
+	if err := session.refreshHintedDataPlane(context.Background(), hintedClient); err == nil {
+		t.Fatal("refreshHintedDataPlane error = nil, want terminal route error")
+	}
+	session.dataPlaneMu.RLock()
+	fromHint := session.dataPlaneFromHint
+	session.dataPlaneMu.RUnlock()
+	if !fromHint {
+		t.Fatal("dataPlaneFromHint = false after failed refresh, want true")
 	}
 }
 
@@ -218,7 +259,7 @@ func TestRunStreamOpenRetriesEdgeNotReady(t *testing.T) {
 	dataPlane.runFailures.Store(1)
 	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
 	session := &Session{client: client, ID: "session-1"}
-	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)))
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
 
 	handle, err := session.Command([]string{"true"}).Stream(context.Background())
 	if err != nil {
@@ -239,7 +280,7 @@ func TestRunStreamOpenRetriesTransientReset(t *testing.T) {
 	dataPlane.runFailures.Store(1)
 	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
 	session := &Session{client: client, ID: "session-1"}
-	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)))
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
 
 	handle, err := session.Command([]string{"true"}).Stream(context.Background())
 	if err != nil {
@@ -254,6 +295,93 @@ func TestRunStreamOpenRetriesTransientReset(t *testing.T) {
 	_ = handle.Stdin.Close()
 }
 
+func TestRunStreamOpenRetriesProvisioningSessionNotFound(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{
+		runFailure: connect.NewError(connect.CodeNotFound, errors.New("session not found")),
+	}
+	dataPlane.runFailures.Store(1)
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), true)
+
+	handle, err := session.Command([]string{"true"}).Stream(context.Background())
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	if got := dataPlane.runCalls.Load(); got != 2 {
+		t.Fatalf("run calls got %d, want 2", got)
+	}
+	if got := engine.calls.Load(); got != 1 {
+		t.Fatalf("credential refresh calls got %d, want 1", got)
+	}
+	_ = handle.Stdin.Close()
+}
+
+func TestRunStreamOpenRetriesProvisioningUnavailable(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{
+		runFailure: connect.NewError(connect.CodeUnavailable, errors.New("HTTP status 503 Service Unavailable")),
+	}
+	dataPlane.runFailures.Store(1)
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), true)
+
+	handle, err := session.Command([]string{"true"}).Stream(context.Background())
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	if got := dataPlane.runCalls.Load(); got != 2 {
+		t.Fatalf("run calls got %d, want 2", got)
+	}
+	_ = handle.Stdin.Close()
+}
+
+func TestRunStreamOpenDoesNotRetrySessionNotFoundAfterVerification(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{
+		runFailure: connect.NewError(connect.CodeNotFound, errors.New("session not found")),
+	}
+	dataPlane.runFailures.Store(1)
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
+	session.markCurrentDataPlaneVerified()
+
+	_, err := session.Command([]string{"true"}).Stream(context.Background())
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("stream error got %v, want not found", err)
+	}
+	if got := dataPlane.runCalls.Load(); got != 1 {
+		t.Fatalf("run calls got %d, want 1", got)
+	}
+}
+
+func TestRunStreamOpenDoesNotRetryGenericUnavailableAfterVerification(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{
+		runFailure: connect.NewError(connect.CodeUnavailable, errors.New("HTTP status 503 Service Unavailable")),
+	}
+	dataPlane.runFailures.Store(1)
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
+	session.markCurrentDataPlaneVerified()
+
+	_, err := session.Command([]string{"true"}).Stream(context.Background())
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("stream error got %v, want unavailable", err)
+	}
+	if got := dataPlane.runCalls.Load(); got != 1 {
+		t.Fatalf("run calls got %d, want 1", got)
+	}
+}
+
 func TestRunStreamOpenDoesNotRetryNonTransientAborted(t *testing.T) {
 	t.Parallel()
 	engine := &readinessEngineHandler{}
@@ -263,7 +391,7 @@ func TestRunStreamOpenDoesNotRetryNonTransientAborted(t *testing.T) {
 	dataPlane.runFailures.Store(1)
 	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
 	session := &Session{client: client, ID: "session-1"}
-	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)))
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
 
 	_, err := session.Command([]string{"true"}).Stream(context.Background())
 	if connect.CodeOf(err) != connect.CodeAborted {

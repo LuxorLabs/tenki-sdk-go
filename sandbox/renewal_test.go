@@ -90,7 +90,7 @@ func TestRenewalContinuityAcrossPausedMintRejection(t *testing.T) {
 	t.Cleanup(func() { _ = client.Close() })
 
 	session := &Session{client: client, ID: "session-1"}
-	session.configureDataPlane(server.URL, testSessionCredential("initial", time.Now().Add(60*time.Millisecond)))
+	session.configureDataPlane(server.URL, testSessionCredential("initial", time.Now().Add(60*time.Millisecond)), false)
 	result, err := session.Command([]string{"echo"}).Exec(context.Background())
 	if err != nil {
 		t.Fatalf("exec: %v", err)

@@ -151,7 +151,7 @@ func newTunnelTestSession(t *testing.T, scripts ...*tunnelServerScript) (*Sessio
 	}
 	t.Cleanup(func() { _ = client.Close() })
 	session := &Session{client: client, ID: "session-1"}
-	session.configureDataPlane(dataServer.URL, testSessionCredential("tunnel-test", time.Now().Add(time.Hour)))
+	session.configureDataPlane(dataServer.URL, testSessionCredential("tunnel-test", time.Now().Add(time.Hour)), false)
 	return session, h
 }
 

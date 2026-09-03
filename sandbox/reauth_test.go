@@ -102,7 +102,7 @@ func newReauthSession(t *testing.T) (*Session, *reauthEngineHandler) {
 	session := &Session{client: client, ID: "session-1"}
 	// Far-future expiry so the proactive renewal loop / 10ms guard never fire;
 	// the only re-mint must be the reactive one under test.
-	session.configureDataPlane(server.URL, testSessionCredential("initial", time.Now().Add(time.Hour)))
+	session.configureDataPlane(server.URL, testSessionCredential("initial", time.Now().Add(time.Hour)), false)
 	return session, engine
 }
 

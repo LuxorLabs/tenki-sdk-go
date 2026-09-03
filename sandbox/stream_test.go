@@ -193,7 +193,7 @@ func newStreamTestSession(client *Client, endpoint string) *Session {
 	session.configureDataPlane(endpoint, &sandboxv1.SessionCredential{
 		Credential: "test-session-cert",
 		ExpiresAt:  timestamppb.New(time.Now().Add(time.Hour)),
-	})
+	}, false)
 	return session
 }
 
@@ -237,8 +237,8 @@ func TestSessionStreamUsesDataPlaneRun(t *testing.T) {
 	if result.ExitCode != 0 || result.Duration != 12*time.Millisecond || result.Status != CommandStatusSucceeded {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if len(runHandler.statPaths) != 1 || runHandler.statPaths[0] != "/home/tenki" {
-		t.Fatalf("expected readiness stat on /home/tenki, got %#v", runHandler.statPaths)
+	if len(runHandler.statPaths) != 0 {
+		t.Fatalf("Run must not issue a readiness stat, got %#v", runHandler.statPaths)
 	}
 	if len(runHandler.starts) != 1 {
 		t.Fatalf("expected one data-plane run start, got %d", len(runHandler.starts))
@@ -532,7 +532,7 @@ func TestSessionPauseResume(t *testing.T) {
 	session.configureDataPlane(endpoint, &sandboxv1.SessionCredential{
 		Credential: "resumed-session-cert",
 		ExpiresAt:  timestamppb.New(time.Now().Add(time.Hour)),
-	})
+	}, false)
 	session.markCurrentDataPlaneVerified()
 	if err := session.Resume(context.Background()); err != nil {
 		t.Fatalf("Resume: %v", err)

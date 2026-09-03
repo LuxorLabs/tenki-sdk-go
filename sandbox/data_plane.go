@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,17 @@ import (
 const dataPlaneCredentialHeader = "x-tenki-session-cert"
 
 var errDataPlaneEndpointUnavailable = errors.New("sandbox: data-plane endpoint unavailable")
+
+type sharedDataPlaneHTTPClient struct {
+	client     *http.Client
+	references int
+}
+
+type dataPlaneEndpointHints struct {
+	mu        sync.Mutex
+	endpoint  string
+	resolving chan struct{}
+}
 
 // dataPlaneReadyBackoff returns the wait before the next readiness probe.
 func dataPlaneReadyBackoff(attempt int) time.Duration {
@@ -88,6 +101,118 @@ func newDataPlaneHTTPClient(endpoint string) *http.Client {
 		}
 	}
 	return &http.Client{Transport: transport}
+}
+
+func dataPlaneOrigin(endpoint string) (string, error) {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return "", fmt.Errorf("sandbox: invalid data-plane endpoint %q", endpoint)
+	}
+	return parsed.Scheme + "://" + parsed.Host, nil
+}
+
+func (c *Client) acquireDataPlaneHTTPClient(endpoint string) (*http.Client, func(), error) {
+	origin, err := dataPlaneOrigin(endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.dataPlanePoolMu.Lock()
+	shared := c.dataPlanePool[origin]
+	if shared == nil {
+		if c.dataPlanePool == nil {
+			c.dataPlanePool = make(map[string]*sharedDataPlaneHTTPClient)
+		}
+		shared = &sharedDataPlaneHTTPClient{client: newDataPlaneHTTPClient(origin)}
+		c.dataPlanePool[origin] = shared
+	}
+	shared.references++
+	c.dataPlanePoolMu.Unlock()
+
+	var once sync.Once
+	release := func() {
+		once.Do(func() {
+			c.dataPlanePoolMu.Lock()
+			defer c.dataPlanePoolMu.Unlock()
+			if current := c.dataPlanePool[origin]; current != shared {
+				return
+			}
+			shared.references--
+			if shared.references > 0 {
+				return
+			}
+			delete(c.dataPlanePool, origin)
+			if transport, ok := shared.client.Transport.(interface{ CloseIdleConnections() }); ok {
+				transport.CloseIdleConnections()
+			}
+		})
+	}
+	return shared.client, release, nil
+}
+
+func (c *Client) closeDataPlaneHTTPClients() {
+	c.dataPlanePoolMu.Lock()
+	defer c.dataPlanePoolMu.Unlock()
+	for origin, shared := range c.dataPlanePool {
+		if transport, ok := shared.client.Transport.(interface{ CloseIdleConnections() }); ok {
+			transport.CloseIdleConnections()
+		}
+		delete(c.dataPlanePool, origin)
+	}
+}
+
+func (h *dataPlaneEndpointHints) remember(endpoint string) {
+	endpoint = strings.TrimSpace(endpoint)
+	if endpoint == "" {
+		return
+	}
+	h.mu.Lock()
+	h.endpoint = endpoint
+	h.mu.Unlock()
+}
+
+func (h *dataPlaneEndpointHints) current() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.endpoint
+}
+
+func (h *dataPlaneEndpointHints) resolve(ctx context.Context, resolve func() error) (string, error) {
+	for {
+		h.mu.Lock()
+		if h.endpoint != "" {
+			endpoint := h.endpoint
+			h.mu.Unlock()
+			return endpoint, nil
+		}
+		if h.resolving == nil {
+			wait := make(chan struct{})
+			h.resolving = wait
+			h.mu.Unlock()
+			err := resolve()
+			h.mu.Lock()
+			endpoint := h.endpoint
+			close(wait)
+			h.resolving = nil
+			h.mu.Unlock()
+			if err != nil {
+				return "", err
+			}
+			if endpoint == "" {
+				return "", errDataPlaneEndpointUnavailable
+			}
+			return endpoint, nil
+		}
+		wait := h.resolving
+		h.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-wait:
+		}
+	}
 }
 
 func (c *Client) dataPlaneClientOptions(session *Session) []connect.ClientOption {

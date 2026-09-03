@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -45,6 +46,9 @@ type Client struct {
 	sandbox                sandboxv1connect.SandboxServiceClient
 	sshGateway             sandboxv1connect.SSHGatewayClientServiceClient
 	warningHandler         WarningHandler
+	dataPlanePoolMu        sync.Mutex
+	dataPlanePool          map[string]*sharedDataPlaneHTTPClient
+	dataPlaneHints         dataPlaneEndpointHints
 }
 
 var (
@@ -156,7 +160,11 @@ func prewarmControlPlaneConnection(httpClient *http.Client, baseURL string) {
 
 // Close closes idle HTTP connections held by the underlying transport.
 func (c *Client) Close() error {
-	if c == nil || c.httpClient == nil || c.httpClient.Transport == nil {
+	if c == nil {
+		return nil
+	}
+	c.closeDataPlaneHTTPClients()
+	if c.httpClient == nil || c.httpClient.Transport == nil {
 		return nil
 	}
 
@@ -171,6 +179,7 @@ func (c *Client) Close() error {
 //
 // If readiness fails after admission, the returned *WaitReadyFailedError carries
 // the live session so callers can close it or continue waiting.
+// Data-plane origins are regional and shareable; session credentials keep routes isolated.
 func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, error) {
 	cfg := defaultCreateConfig(c)
 	for _, opt := range opts {

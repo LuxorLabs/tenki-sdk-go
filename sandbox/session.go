@@ -58,11 +58,15 @@ type Session struct {
 
 	Git *Git
 
+	dataPlaneHints      *dataPlaneEndpointHints
+	localDataPlaneHints dataPlaneEndpointHints
 	dataPlaneMu         sync.RWMutex
 	dataPlaneEndpoint   string
 	dataPlaneCredential string
 	dataPlaneExpiresAt  time.Time
 	dataPlaneClient     sandboxv1connect.SandboxSessionDataPlaneServiceClient
+	dataPlaneRelease    func()
+	dataPlaneFromHint   bool
 	renewalCancel       context.CancelFunc
 
 	// dataPlaneReadyMu guards a one-time readiness probe per data-plane client.
@@ -133,9 +137,19 @@ const (
 
 func newSession(client *Client, protoSession *sandboxv1.SandboxSession) *Session {
 	session := &Session{client: client}
+	if client != nil {
+		session.dataPlaneHints = &client.dataPlaneHints
+	}
 	session.Git = &Git{session: session}
 	session.apply(protoSession)
 	return session
+}
+
+func (s *Session) endpointHints() *dataPlaneEndpointHints {
+	if s.dataPlaneHints != nil {
+		return s.dataPlaneHints
+	}
+	return &s.localDataPlaneHints
 }
 
 func newSessionFromCreate(client *Client, resp *sandboxv1.CreateSessionResponse) *Session {
@@ -319,27 +333,39 @@ func (s *Session) copyFrom(other *Session) {
 	s.SourceTemplateID = other.SourceTemplateID
 }
 
-func (s *Session) configureDataPlane(endpoint string, credential *sandboxv1.SessionCredential) {
+func (s *Session) configureDataPlane(endpoint string, credential *sandboxv1.SessionCredential, fromHint bool) {
 	if s == nil {
 		return
 	}
 	endpoint = strings.TrimSpace(endpoint)
-	if endpoint == "" {
-		return
+	if endpoint != "" && !fromHint {
+		s.endpointHints().remember(endpoint)
 	}
 	s.dataPlaneMu.Lock()
 	defer s.dataPlaneMu.Unlock()
-	if s.dataPlaneEndpoint != endpoint || s.dataPlaneClient == nil {
+	if endpoint != "" && (s.dataPlaneEndpoint != endpoint || s.dataPlaneClient == nil) {
+		httpClient, release, err := s.client.acquireDataPlaneHTTPClient(endpoint)
+		if err != nil {
+			return
+		}
 		if s.renewalCancel != nil {
 			s.renewalCancel()
 			s.renewalCancel = nil
 		}
+		if s.dataPlaneRelease != nil {
+			s.dataPlaneRelease()
+			s.dataPlaneRelease = nil
+		}
 		s.dataPlaneEndpoint = endpoint
 		s.dataPlaneClient = sandboxv1connect.NewSandboxSessionDataPlaneServiceClient(
-			newDataPlaneHTTPClient(endpoint),
+			httpClient,
 			endpoint,
 			s.client.dataPlaneClientOptions(s)...,
 		)
+		s.dataPlaneRelease = release
+	}
+	if endpoint != "" && s.dataPlaneEndpoint == endpoint {
+		s.dataPlaneFromHint = fromHint
 	}
 	if credential != nil {
 		s.setDataPlaneCredentialLocked(credential)
@@ -354,7 +380,7 @@ func (s *Session) applyDataPlaneResponse(
 	if routeStatus == sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_FAILED {
 		return
 	}
-	s.configureDataPlane(endpoint, credential)
+	s.configureDataPlane(endpoint, credential, false)
 	if routeStatus == sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_VERIFIED {
 		s.markCurrentDataPlaneVerified()
 		return
@@ -455,6 +481,11 @@ func (s *Session) resetDataPlane() {
 	s.dataPlaneCredential = ""
 	s.dataPlaneExpiresAt = time.Time{}
 	s.dataPlaneClient = nil
+	s.dataPlaneFromHint = false
+	if s.dataPlaneRelease != nil {
+		s.dataPlaneRelease()
+		s.dataPlaneRelease = nil
+	}
 	s.dataPlaneMu.Unlock()
 
 	s.dataPlaneReadyMu.Lock()
@@ -463,16 +494,48 @@ func (s *Session) resetDataPlane() {
 }
 
 func (s *Session) dataPlane(ctx context.Context) (sandboxv1connect.SandboxSessionDataPlaneServiceClient, error) {
+	return s.resolveDataPlane(ctx, true)
+}
+
+// runDataPlane is the Run transport-readiness boundary: its first response
+// verifies serving, so probing with Stat first would duplicate the round trip.
+func (s *Session) runDataPlane(ctx context.Context) (sandboxv1connect.SandboxSessionDataPlaneServiceClient, error) {
+	return s.resolveDataPlane(ctx, false)
+}
+
+func (s *Session) resolveDataPlane(ctx context.Context, verifyServing bool) (sandboxv1connect.SandboxSessionDataPlaneServiceClient, error) {
+	if s == nil || s.client == nil {
+		return nil, errors.New("sandbox: nil session")
+	}
 	s.dataPlaneMu.RLock()
 	client := s.dataPlaneClient
 	credential := s.dataPlaneCredential
 	expiresAt := s.dataPlaneExpiresAt
 	endpoint := s.dataPlaneEndpoint
 	s.dataPlaneMu.RUnlock()
-	// Empty endpoint = CreateSession was called pre-provision; bootstrap via CreateSessionCredential.
+	if (strings.TrimSpace(endpoint) == "" || client == nil) && credential != "" {
+		if hint := s.endpointHints().current(); hint != "" {
+			s.configureDataPlane(hint, nil, true)
+			s.dataPlaneMu.RLock()
+			client = s.dataPlaneClient
+			endpoint = s.dataPlaneEndpoint
+			s.dataPlaneMu.RUnlock()
+		}
+	}
+	// Empty endpoint = CreateSession was called pre-provision; bootstrap via one
+	// CreateSessionCredential resolution, then reuse its node-origin hint.
 	if strings.TrimSpace(endpoint) == "" || client == nil {
-		if err := s.renewDataPlaneCredential(ctx); err != nil {
+		resolved, err := s.endpointHints().resolve(ctx, func() error {
+			return s.renewDataPlaneCredential(ctx)
+		})
+		if err != nil {
 			return nil, err
+		}
+		s.dataPlaneMu.RLock()
+		client = s.dataPlaneClient
+		s.dataPlaneMu.RUnlock()
+		if client == nil {
+			s.configureDataPlane(resolved, nil, true)
 		}
 		s.dataPlaneMu.RLock()
 		client = s.dataPlaneClient
@@ -481,8 +544,10 @@ func (s *Session) dataPlane(ctx context.Context) (sandboxv1connect.SandboxSessio
 		if strings.TrimSpace(endpoint) == "" || client == nil {
 			return nil, errDataPlaneEndpointUnavailable
 		}
-		if err := s.ensureDataPlaneServing(ctx, client); err != nil {
-			return nil, err
+		if verifyServing {
+			if err := s.ensureDataPlaneServing(ctx, client); err != nil {
+				return nil, err
+			}
 		}
 		return client, nil
 	}
@@ -494,10 +559,44 @@ func (s *Session) dataPlane(ctx context.Context) (sandboxv1connect.SandboxSessio
 	s.dataPlaneMu.RLock()
 	client = s.dataPlaneClient
 	s.dataPlaneMu.RUnlock()
-	if err := s.ensureDataPlaneServing(ctx, client); err != nil {
-		return nil, err
+	if verifyServing {
+		if err := s.ensureDataPlaneServing(ctx, client); err != nil {
+			return nil, err
+		}
 	}
 	return client, nil
+}
+
+func (s *Session) dataPlaneProvisioningPending(client sandboxv1connect.SandboxSessionDataPlaneServiceClient) bool {
+	s.dataPlaneMu.RLock()
+	current := s.dataPlaneClient
+	s.dataPlaneMu.RUnlock()
+	s.dataPlaneReadyMu.Lock()
+	verified := s.dataPlaneVerifiedClient
+	s.dataPlaneReadyMu.Unlock()
+	return current == client && verified != client
+}
+
+func (s *Session) markDataPlaneVerified(client sandboxv1connect.SandboxSessionDataPlaneServiceClient) {
+	s.dataPlaneMu.RLock()
+	current := s.dataPlaneClient
+	s.dataPlaneMu.RUnlock()
+	if current != client {
+		return
+	}
+	s.dataPlaneReadyMu.Lock()
+	s.dataPlaneVerifiedClient = client
+	s.dataPlaneReadyMu.Unlock()
+}
+
+func (s *Session) refreshHintedDataPlane(ctx context.Context, client sandboxv1connect.SandboxSessionDataPlaneServiceClient) error {
+	s.dataPlaneMu.Lock()
+	if s.dataPlaneClient != client || !s.dataPlaneFromHint {
+		s.dataPlaneMu.Unlock()
+		return nil
+	}
+	s.dataPlaneMu.Unlock()
+	return s.renewDataPlaneCredential(ctx)
 }
 
 // ensureDataPlaneServing probes the per-session edge route once per client
@@ -632,6 +731,10 @@ func (s *Session) renewDataPlaneCredential(ctx context.Context) error {
 			case sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_FAILED:
 				return terminalDataPlaneNotReadyError(nil)
 			case sandboxv1.DataPlaneRouteStatus_DATA_PLANE_ROUTE_STATUS_NOT_READY:
+				if endpoint := strings.TrimSpace(resp.Msg.GetDataPlaneEndpoint()); endpoint != "" {
+					s.applyDataPlaneResponse(endpoint, resp.Msg.GetCredential(), resp.Msg.GetRouteStatus())
+					return nil
+				}
 				lastErr = dataPlaneNotReadyError(nil)
 			default:
 				if endpoint := strings.TrimSpace(resp.Msg.GetDataPlaneEndpoint()); endpoint != "" {
@@ -1052,6 +1155,7 @@ func (s *Session) Resume(ctx context.Context) error {
 // Close terminates this session.
 func (s *Session) Close(ctx context.Context) error {
 	s.stopDataPlaneRenewal()
+	defer s.resetDataPlane()
 	resp, err := s.client.sandbox.TerminateSession(ctx, connect.NewRequest(&sandboxv1.TerminateSessionRequest{
 		SessionId: s.ID,
 	}))

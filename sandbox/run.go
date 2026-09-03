@@ -62,8 +62,18 @@ type dataPlaneRunStream struct {
 	}
 }
 
-func isRetryableRunStreamEstablishmentError(err error) bool {
+func isProvisioningSessionNotFound(err error, provisioningPending bool) bool {
+	return provisioningPending && connect.CodeOf(err) == connect.CodeNotFound && strings.Contains(strings.ToLower(err.Error()), "session not found")
+}
+
+func isRetryableRunStreamEstablishmentError(err error, provisioningPending bool) bool {
 	if isEdgeNotReady(err) {
+		return true
+	}
+	if isProvisioningSessionNotFound(err, provisioningPending) {
+		return true
+	}
+	if provisioningPending && connect.CodeOf(err) == connect.CodeUnavailable {
 		return true
 	}
 	for current, depth := err, 0; current != nil && depth < 4; current, depth = errors.Unwrap(current), depth+1 {
@@ -84,7 +94,19 @@ func isRetryableRunStreamEstablishmentError(err error) bool {
 }
 
 func waitRunStreamEstablishmentRetry(readyCtx, parent context.Context, attempt int, lastErr error) error {
-	if err := waitDataPlaneReadyBackoff(readyCtx, parent, attempt, lastErr); err != nil {
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	if err := readyCtx.Err(); err != nil {
+		if isEdgeNotReady(lastErr) {
+			return err
+		}
+		return lastErr
+	}
+	if attempt == 0 {
+		return nil
+	}
+	if err := waitDataPlaneReadyBackoff(readyCtx, parent, attempt-1, lastErr); err != nil {
 		if isEdgeNotReady(lastErr) || errors.Is(parent.Err(), context.Canceled) {
 			return err
 		}
@@ -184,7 +206,7 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 	defer cancel()
 	reauthAttempted := false
 	for attempt := 0; ; attempt++ {
-		dp, err := c.session.dataPlane(ctx)
+		dp, err := c.session.runDataPlane(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -204,8 +226,14 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 				_ = stream.CloseRequest()
 				continue
 			}
-			if isRetryableRunStreamEstablishmentError(err) {
+			provisioningPending := c.session.dataPlaneProvisioningPending(dp)
+			if isRetryableRunStreamEstablishmentError(err, provisioningPending) {
 				_ = stream.CloseRequest()
+				if isProvisioningSessionNotFound(err, provisioningPending) {
+					if refreshErr := c.session.refreshHintedDataPlane(ctx, dp); refreshErr != nil {
+						return nil, nil, refreshErr
+					}
+				}
 				if waitErr := waitRunStreamEstablishmentRetry(readyCtx, ctx, attempt, err); waitErr != nil {
 					return nil, nil, waitErr
 				}
@@ -223,8 +251,14 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 				_ = stream.CloseRequest()
 				continue
 			}
-			if isRetryableRunStreamEstablishmentError(err) {
+			provisioningPending := c.session.dataPlaneProvisioningPending(dp)
+			if isRetryableRunStreamEstablishmentError(err, provisioningPending) {
 				_ = stream.CloseRequest()
+				if isProvisioningSessionNotFound(err, provisioningPending) {
+					if refreshErr := c.session.refreshHintedDataPlane(ctx, dp); refreshErr != nil {
+						return nil, nil, refreshErr
+					}
+				}
 				if waitErr := waitRunStreamEstablishmentRetry(readyCtx, ctx, attempt, err); waitErr != nil {
 					return nil, nil, waitErr
 				}
@@ -255,6 +289,7 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 		if started == nil {
 			return nil, nil, errors.New("sandbox run did not start")
 		}
+		c.session.markDataPlaneVerified(dp)
 		return stream, started, nil
 	}
 }
