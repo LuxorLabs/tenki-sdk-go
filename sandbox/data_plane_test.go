@@ -141,14 +141,14 @@ func TestDataPlaneEndpointResolutionWaitersRetryResolverFailure(t *testing.T) {
 	}
 }
 
-func TestClientSessionsShareDataPlaneEndpointHints(t *testing.T) {
+func TestClientSessionsIsolateDataPlaneEndpointHints(t *testing.T) {
 	client := &Client{}
 	first := newSession(client, nil)
 	second := newSession(client, nil)
 	first.endpointHints().remember("https://node.test")
 
-	if got := second.endpointHints().current(); got != "https://node.test" {
-		t.Fatalf("second endpoint = %q, want shared node hint", got)
+	if got := second.endpointHints().current(); got != "" {
+		t.Fatalf("second endpoint = %q, want isolated node hint", got)
 	}
 }
 

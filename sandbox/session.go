@@ -58,7 +58,6 @@ type Session struct {
 
 	Git *Git
 
-	dataPlaneHints      *dataPlaneEndpointHints
 	localDataPlaneHints dataPlaneEndpointHints
 	dataPlaneMu         sync.RWMutex
 	dataPlaneEndpoint   string
@@ -137,18 +136,12 @@ const (
 
 func newSession(client *Client, protoSession *sandboxv1.SandboxSession) *Session {
 	session := &Session{client: client}
-	if client != nil {
-		session.dataPlaneHints = &client.dataPlaneHints
-	}
 	session.Git = &Git{session: session}
 	session.apply(protoSession)
 	return session
 }
 
 func (s *Session) endpointHints() *dataPlaneEndpointHints {
-	if s.dataPlaneHints != nil {
-		return s.dataPlaneHints
-	}
 	return &s.localDataPlaneHints
 }
 
@@ -472,6 +465,7 @@ func (s *Session) resetDataPlane() {
 	if s == nil {
 		return
 	}
+	s.endpointHints().clear()
 	s.dataPlaneMu.Lock()
 	if s.renewalCancel != nil {
 		s.renewalCancel()
@@ -1464,9 +1458,10 @@ func (s *Session) isVolumeDetached(volumeID string) bool {
 		if volume.VolumeID != volumeID {
 			continue
 		}
-		return volume.State == volumeAttachmentStateDetached
+		if volume.State != volumeAttachmentStateDetached {
+			return false
+		}
 	}
-	// Treat a missing attachment as detached because the engine may stop returning
-	// the record after the detach completes.
+	// A missing attachment is detached because the engine may stop returning it.
 	return true
 }

@@ -554,6 +554,9 @@ func TestSessionPauseResume(t *testing.T) {
 
 func assertSessionDataPlaneReset(t *testing.T, session *Session) {
 	t.Helper()
+	if endpoint := session.endpointHints().current(); endpoint != "" {
+		t.Fatalf("data-plane endpoint hint not reset: %q", endpoint)
+	}
 	session.dataPlaneMu.RLock()
 	endpoint := session.dataPlaneEndpoint
 	credential := session.dataPlaneCredential

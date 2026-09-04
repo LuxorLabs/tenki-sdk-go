@@ -179,6 +179,12 @@ func (h *dataPlaneEndpointHints) current() string {
 	return h.endpoint
 }
 
+func (h *dataPlaneEndpointHints) clear() {
+	h.mu.Lock()
+	h.endpoint = ""
+	h.mu.Unlock()
+}
+
 func (h *dataPlaneEndpointHints) resolve(ctx context.Context, resolve func() error) (string, error) {
 	for {
 		h.mu.Lock()

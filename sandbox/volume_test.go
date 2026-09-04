@@ -528,6 +528,7 @@ func TestDetachVolumeWaitsPastSyncPending(t *testing.T) {
 			Session: &sandboxv1.SandboxSession{
 				Id: "session-1",
 				VolumeAttachments: []*sandboxv1.VolumeAttachment{
+					{VolumeId: "vol-001", State: "DETACHED"},
 					{VolumeId: "vol-001", State: state},
 				},
 			},

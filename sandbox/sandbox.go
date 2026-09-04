@@ -48,7 +48,6 @@ type Client struct {
 	warningHandler         WarningHandler
 	dataPlanePoolMu        sync.Mutex
 	dataPlanePool          map[string]*sharedDataPlaneHTTPClient
-	dataPlaneHints         dataPlaneEndpointHints
 }
 
 var (
