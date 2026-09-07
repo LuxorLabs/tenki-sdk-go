@@ -178,7 +178,7 @@ func (RegistrySortBy) EnumDescriptor() ([]byte, []int) {
 type RegistryImage struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	Id                     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	WorkspaceId            string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	WorkspaceId            *string                `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3,oneof" json:"workspace_id,omitempty"`
 	WorkspaceSlug          string                 `protobuf:"bytes,3,opt,name=workspace_slug,json=workspaceSlug,proto3" json:"workspace_slug,omitempty"`
 	Name                   string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Kind                   RegistryImageKind      `protobuf:"varint,5,opt,name=kind,proto3,enum=tenki.sandbox.v1.RegistryImageKind" json:"kind,omitempty"`
@@ -238,8 +238,8 @@ func (x *RegistryImage) GetId() string {
 }
 
 func (x *RegistryImage) GetWorkspaceId() string {
-	if x != nil {
-		return x.WorkspaceId
+	if x != nil && x.WorkspaceId != nil {
+		return *x.WorkspaceId
 	}
 	return ""
 }
@@ -462,7 +462,7 @@ func (x *RegistryTag) GetLegacyRef() string {
 type RegistryImageSummary struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	Id                     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	WorkspaceId            string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	WorkspaceId            *string                `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3,oneof" json:"workspace_id,omitempty"`
 	WorkspaceSlug          string                 `protobuf:"bytes,3,opt,name=workspace_slug,json=workspaceSlug,proto3" json:"workspace_slug,omitempty"`
 	Name                   string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Kind                   RegistryImageKind      `protobuf:"varint,5,opt,name=kind,proto3,enum=tenki.sandbox.v1.RegistryImageKind" json:"kind,omitempty"`
@@ -521,8 +521,8 @@ func (x *RegistryImageSummary) GetId() string {
 }
 
 func (x *RegistryImageSummary) GetWorkspaceId() string {
-	if x != nil {
-		return x.WorkspaceId
+	if x != nil && x.WorkspaceId != nil {
+		return *x.WorkspaceId
 	}
 	return ""
 }
@@ -762,7 +762,7 @@ func (x *RegistryImageDetail) GetLegacyRef() string {
 type ResolvedRegistryRef struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	ImageId             string                 `protobuf:"bytes,1,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
-	OwningWorkspaceId   string                 `protobuf:"bytes,2,opt,name=owning_workspace_id,json=owningWorkspaceId,proto3" json:"owning_workspace_id,omitempty"`
+	OwningWorkspaceId   *string                `protobuf:"bytes,2,opt,name=owning_workspace_id,json=owningWorkspaceId,proto3,oneof" json:"owning_workspace_id,omitempty"`
 	OwningWorkspaceSlug string                 `protobuf:"bytes,3,opt,name=owning_workspace_slug,json=owningWorkspaceSlug,proto3" json:"owning_workspace_slug,omitempty"`
 	ImageName           string                 `protobuf:"bytes,4,opt,name=image_name,json=imageName,proto3" json:"image_name,omitempty"`
 	Tag                 *string                `protobuf:"bytes,5,opt,name=tag,proto3,oneof" json:"tag,omitempty"`
@@ -815,8 +815,8 @@ func (x *ResolvedRegistryRef) GetImageId() string {
 }
 
 func (x *ResolvedRegistryRef) GetOwningWorkspaceId() string {
-	if x != nil {
-		return x.OwningWorkspaceId
+	if x != nil && x.OwningWorkspaceId != nil {
+		return *x.OwningWorkspaceId
 	}
 	return ""
 }
@@ -2368,33 +2368,34 @@ var File_tenki_sandbox_v1_registry_proto protoreflect.FileDescriptor
 
 const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\n" +
-	"\x1ftenki/sandbox/v1/registry.proto\x12\x10tenki.sandbox.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc0\a\n" +
+	"\x1ftenki/sandbox/v1/registry.proto\x12\x10tenki.sandbox.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd6\a\n" +
 	"\rRegistryImage\x12\x18\n" +
-	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12+\n" +
-	"\fworkspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12%\n" +
+	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x120\n" +
+	"\fworkspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\vworkspaceId\x88\x01\x01\x12%\n" +
 	"\x0eworkspace_slug\x18\x03 \x01(\tR\rworkspaceSlug\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x127\n" +
 	"\x04kind\x18\x05 \x01(\x0e2#.tenki.sandbox.v1.RegistryImageKindR\x04kind\x12D\n" +
 	"\n" +
 	"visibility\x18\x06 \x01(\x0e2$.tenki.sandbox.v1.RegistryVisibilityR\n" +
 	"visibility\x12\x19\n" +
-	"\x05title\x18\a \x01(\tH\x00R\x05title\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\b \x01(\tH\x01R\vdescription\x88\x01\x01\x12\x16\n" +
+	"\x05title\x18\a \x01(\tH\x01R\x05title\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\b \x01(\tH\x02R\vdescription\x88\x01\x01\x12\x16\n" +
 	"\x06labels\x18\t \x03(\tR\x06labels\x12;\n" +
 	"\x12source_template_id\x18\n" +
-	" \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x02R\x10sourceTemplateId\x88\x01\x01\x12;\n" +
-	"\x12source_snapshot_id\x18\v \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x03R\x10sourceSnapshotId\x88\x01\x01\x121\n" +
+	" \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x03R\x10sourceTemplateId\x88\x01\x01\x12;\n" +
+	"\x12source_snapshot_id\x18\v \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x04R\x10sourceSnapshotId\x88\x01\x01\x121\n" +
 	"\x04tags\x18\f \x03(\v2\x1d.tenki.sandbox.v1.RegistryTagR\x04tags\x129\n" +
 	"\n" +
 	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
 	"\x19changes_not_yet_published\x18\x0f \x01(\bR\x16changesNotYetPublished\x129\n" +
-	"\x06digest\x18\x10 \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x04R\x06digest\x88\x01\x01\x12\"\n" +
+	"\x06digest\x18\x10 \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x05R\x06digest\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"digest_ref\x18\x11 \x01(\tH\x05R\tdigestRef\x88\x01\x01\x12&\n" +
+	"digest_ref\x18\x11 \x01(\tH\x06R\tdigestRef\x88\x01\x01\x12&\n" +
 	"\n" +
-	"legacy_ref\x18\x12 \x01(\tB\x02\x18\x01H\x06R\tlegacyRef\x88\x01\x01B\b\n" +
+	"legacy_ref\x18\x12 \x01(\tB\x02\x18\x01H\aR\tlegacyRef\x88\x01\x01B\x0f\n" +
+	"\r_workspace_idB\b\n" +
 	"\x06_titleB\x0e\n" +
 	"\f_descriptionB\x15\n" +
 	"\x13_source_template_idB\x15\n" +
@@ -2416,10 +2417,10 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\n" +
 	"legacy_ref\x18\b \x01(\tB\x02\x18\x01H\x01R\tlegacyRef\x88\x01\x01B\r\n" +
 	"\v_digest_refB\r\n" +
-	"\v_legacy_ref\"\xdf\a\n" +
+	"\v_legacy_ref\"\xf5\a\n" +
 	"\x14RegistryImageSummary\x12\x18\n" +
-	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12+\n" +
-	"\fworkspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\vworkspaceId\x12%\n" +
+	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x120\n" +
+	"\fworkspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\vworkspaceId\x88\x01\x01\x12%\n" +
 	"\x0eworkspace_slug\x18\x03 \x01(\tR\rworkspaceSlug\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x127\n" +
 	"\x04kind\x18\x05 \x01(\x0e2#.tenki.sandbox.v1.RegistryImageKindR\x04kind\x12D\n" +
@@ -2428,18 +2429,19 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"visibility\x12\x16\n" +
 	"\x06labels\x18\a \x03(\tR\x06labels\x121\n" +
 	"\x04tags\x18\b \x03(\v2\x1d.tenki.sandbox.v1.RegistryTagR\x04tags\x12;\n" +
-	"\x12latest_snapshot_id\x18\t \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\x10latestSnapshotId\x88\x01\x01\x12\x1d\n" +
+	"\x12latest_snapshot_id\x18\t \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\x10latestSnapshotId\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"latest_ref\x18\n" +
 	" \x01(\tR\tlatestRef\x129\n" +
 	"\n" +
 	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
 	"\x19changes_not_yet_published\x18\f \x01(\bR\x16changesNotYetPublished\x12;\n" +
-	"\x12source_template_id\x18\r \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\x10sourceTemplateId\x88\x01\x01\x12;\n" +
-	"\x12source_snapshot_id\x18\x0e \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x02R\x10sourceSnapshotId\x88\x01\x01\x12F\n" +
-	"\rlatest_digest\x18\x0f \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x03R\flatestDigest\x88\x01\x01\x12/\n" +
-	"\x11latest_digest_ref\x18\x10 \x01(\tH\x04R\x0flatestDigestRef\x88\x01\x01\x123\n" +
-	"\x11latest_legacy_ref\x18\x11 \x01(\tB\x02\x18\x01H\x05R\x0flatestLegacyRef\x88\x01\x01B\x15\n" +
+	"\x12source_template_id\x18\r \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x02R\x10sourceTemplateId\x88\x01\x01\x12;\n" +
+	"\x12source_snapshot_id\x18\x0e \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x03R\x10sourceSnapshotId\x88\x01\x01\x12F\n" +
+	"\rlatest_digest\x18\x0f \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x04R\flatestDigest\x88\x01\x01\x12/\n" +
+	"\x11latest_digest_ref\x18\x10 \x01(\tH\x05R\x0flatestDigestRef\x88\x01\x01\x123\n" +
+	"\x11latest_legacy_ref\x18\x11 \x01(\tB\x02\x18\x01H\x06R\x0flatestLegacyRef\x88\x01\x01B\x0f\n" +
+	"\r_workspace_idB\x15\n" +
 	"\x13_latest_snapshot_idB\x15\n" +
 	"\x13_source_template_idB\x15\n" +
 	"\x13_source_snapshot_idB\x10\n" +
@@ -2473,26 +2475,27 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\r_resolved_refB\x12\n" +
 	"\x10_resolved_digestB\r\n" +
 	"\v_digest_refB\r\n" +
-	"\v_legacy_ref\"\xd5\x04\n" +
+	"\v_legacy_ref\"\xf2\x04\n" +
 	"\x13ResolvedRegistryRef\x12#\n" +
-	"\bimage_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\aimageId\x128\n" +
-	"\x13owning_workspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x11owningWorkspaceId\x122\n" +
+	"\bimage_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\aimageId\x12=\n" +
+	"\x13owning_workspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\x11owningWorkspaceId\x88\x01\x01\x122\n" +
 	"\x15owning_workspace_slug\x18\x03 \x01(\tR\x13owningWorkspaceSlug\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x04 \x01(\tR\timageName\x12\x15\n" +
-	"\x03tag\x18\x05 \x01(\tH\x00R\x03tag\x88\x01\x01\x12.\n" +
-	"\vsnapshot_id\x18\x06 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\n" +
+	"\x03tag\x18\x05 \x01(\tH\x01R\x03tag\x88\x01\x01\x12.\n" +
+	"\vsnapshot_id\x18\x06 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x02R\n" +
 	"snapshotId\x88\x01\x01\x127\n" +
 	"\x04kind\x18\a \x01(\x0e2#.tenki.sandbox.v1.RegistryImageKindR\x04kind\x12D\n" +
 	"\n" +
 	"visibility\x18\b \x01(\x0e2$.tenki.sandbox.v1.RegistryVisibilityR\n" +
 	"visibility\x129\n" +
-	"\x06digest\x18\t \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x02R\x06digest\x88\x01\x01\x12\"\n" +
+	"\x06digest\x18\t \x01(\tB\x1c\xbaH\x19r\x172\x15^sha256:[0-9a-f]{64}$H\x03R\x06digest\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"digest_ref\x18\n" +
-	" \x01(\tH\x03R\tdigestRef\x88\x01\x01\x12&\n" +
+	" \x01(\tH\x04R\tdigestRef\x88\x01\x01\x12&\n" +
 	"\n" +
-	"legacy_ref\x18\v \x01(\tB\x02\x18\x01H\x04R\tlegacyRef\x88\x01\x01B\x06\n" +
+	"legacy_ref\x18\v \x01(\tB\x02\x18\x01H\x05R\tlegacyRef\x88\x01\x01B\x16\n" +
+	"\x14_owning_workspace_idB\x06\n" +
 	"\x04_tagB\x0e\n" +
 	"\f_snapshot_idB\t\n" +
 	"\a_digestB\r\n" +

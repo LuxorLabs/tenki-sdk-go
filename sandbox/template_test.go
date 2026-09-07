@@ -628,7 +628,7 @@ func TestRegistryLookupsSendWorkspaceID(t *testing.T) {
 		return connect.NewResponse(&sandboxv1.GetRegistryImageResponse{Detail: &sandboxv1.RegistryImageDetail{
 			Image: &sandboxv1.RegistryImage{
 				Id:            "01900000-0000-7000-8000-0000000000bb",
-				WorkspaceId:   workspaceID,
+				WorkspaceId:   &workspaceID,
 				Name:          "base",
 				Kind:          sandboxv1.RegistryImageKind_REGISTRY_IMAGE_KIND_TEMPLATE,
 				Visibility:    sandboxv1.RegistryVisibility_REGISTRY_VISIBILITY_PRIVATE,
@@ -642,7 +642,7 @@ func TestRegistryLookupsSendWorkspaceID(t *testing.T) {
 		}
 		return connect.NewResponse(&sandboxv1.ResolveRegistryRefResponse{Resolved: &sandboxv1.ResolvedRegistryRef{
 			ImageId:             "01900000-0000-7000-8000-0000000000bb",
-			OwningWorkspaceId:   workspaceID,
+			OwningWorkspaceId:   &workspaceID,
 			OwningWorkspaceSlug: "acme",
 			ImageName:           "base",
 			Kind:                sandboxv1.RegistryImageKind_REGISTRY_IMAGE_KIND_TEMPLATE,

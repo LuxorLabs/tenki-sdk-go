@@ -566,7 +566,7 @@ func registryImageFromProto(in *sandboxv1.RegistryImage) *RegistryImage {
 	}
 	return &RegistryImage{
 		ID:                     in.Id,
-		WorkspaceID:            in.WorkspaceId,
+		WorkspaceID:            in.GetWorkspaceId(),
 		WorkspaceSlug:          in.WorkspaceSlug,
 		Name:                   in.Name,
 		Kind:                   registryKindFromProto(in.Kind),
@@ -591,7 +591,7 @@ func registrySummaryFromProto(in *sandboxv1.RegistryImageSummary) *RegistryImage
 	}
 	return &RegistryImageSummary{
 		ID:                     in.Id,
-		WorkspaceID:            in.WorkspaceId,
+		WorkspaceID:            in.GetWorkspaceId(),
 		WorkspaceSlug:          in.WorkspaceSlug,
 		Name:                   in.Name,
 		Kind:                   registryKindFromProto(in.Kind),
@@ -668,7 +668,7 @@ func resolvedRegistryRefFromProto(in *sandboxv1.ResolvedRegistryRef) *ResolvedRe
 	}
 	return &ResolvedRegistryRef{
 		ImageID:             in.ImageId,
-		OwningWorkspaceID:   in.OwningWorkspaceId,
+		OwningWorkspaceID:   in.GetOwningWorkspaceId(),
 		OwningWorkspaceSlug: in.OwningWorkspaceSlug,
 		ImageName:           in.ImageName,
 		SnapshotID:          in.GetSnapshotId(),
