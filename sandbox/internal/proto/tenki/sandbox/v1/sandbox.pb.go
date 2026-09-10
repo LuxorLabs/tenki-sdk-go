@@ -6465,13 +6465,24 @@ func (x *RunStarted) GetStdinWindowBytes() uint32 {
 }
 
 type RunExit struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExitCode      int32                  `protobuf:"varint,1,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
-	Signal        string                 `protobuf:"bytes,2,opt,name=signal,proto3" json:"signal,omitempty"`
-	TimedOut      bool                   `protobuf:"varint,3,opt,name=timed_out,json=timedOut,proto3" json:"timed_out,omitempty"`
-	DurationMs    uint64                 `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
-	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
-	Errno         int32                  `protobuf:"varint,6,opt,name=errno,proto3" json:"errno,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ExitCode   int32                  `protobuf:"varint,1,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Signal     string                 `protobuf:"bytes,2,opt,name=signal,proto3" json:"signal,omitempty"`
+	TimedOut   bool                   `protobuf:"varint,3,opt,name=timed_out,json=timedOut,proto3" json:"timed_out,omitempty"`
+	DurationMs uint64                 `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	Reason     string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Errno      int32                  `protobuf:"varint,6,opt,name=errno,proto3" json:"errno,omitempty"`
+	// Sandbox filesystem state sampled across the run. min_available is the
+	// low-water mark: a tool that hits ENOSPC then removes its own temp files
+	// (pip, containerd) leaves the disk looking healthy at exit, so the exit-time
+	// sample alone cannot tell a caller the run ran out of space. Zero when the
+	// guest could not stat the filesystem.
+	DiskTotalBytes        int64 `protobuf:"varint,7,opt,name=disk_total_bytes,json=diskTotalBytes,proto3" json:"disk_total_bytes,omitempty"`
+	DiskAvailableBytes    int64 `protobuf:"varint,8,opt,name=disk_available_bytes,json=diskAvailableBytes,proto3" json:"disk_available_bytes,omitempty"`
+	DiskMinAvailableBytes int64 `protobuf:"varint,9,opt,name=disk_min_available_bytes,json=diskMinAvailableBytes,proto3" json:"disk_min_available_bytes,omitempty"`
+	// disk_free_bytes counts the filesystem reserve that disk_available_bytes
+	// excludes. Both are needed to report usage the way df does.
+	DiskFreeBytes int64 `protobuf:"varint,10,opt,name=disk_free_bytes,json=diskFreeBytes,proto3" json:"disk_free_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6544,6 +6555,34 @@ func (x *RunExit) GetReason() string {
 func (x *RunExit) GetErrno() int32 {
 	if x != nil {
 		return x.Errno
+	}
+	return 0
+}
+
+func (x *RunExit) GetDiskTotalBytes() int64 {
+	if x != nil {
+		return x.DiskTotalBytes
+	}
+	return 0
+}
+
+func (x *RunExit) GetDiskAvailableBytes() int64 {
+	if x != nil {
+		return x.DiskAvailableBytes
+	}
+	return 0
+}
+
+func (x *RunExit) GetDiskMinAvailableBytes() int64 {
+	if x != nil {
+		return x.DiskMinAvailableBytes
+	}
+	return 0
+}
+
+func (x *RunExit) GetDiskFreeBytes() int64 {
+	if x != nil {
+		return x.DiskFreeBytes
 	}
 	return 0
 }
@@ -13292,7 +13331,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\n" +
 	"RunStarted\x12\x10\n" +
 	"\x03pid\x18\x01 \x01(\x04R\x03pid\x12,\n" +
-	"\x12stdin_window_bytes\x18\x02 \x01(\rR\x10stdinWindowBytes\"\xaa\x01\n" +
+	"\x12stdin_window_bytes\x18\x02 \x01(\rR\x10stdinWindowBytes\"\xe7\x02\n" +
 	"\aRunExit\x12\x1b\n" +
 	"\texit_code\x18\x01 \x01(\x05R\bexitCode\x12\x16\n" +
 	"\x06signal\x18\x02 \x01(\tR\x06signal\x12\x1b\n" +
@@ -13300,7 +13339,12 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\vduration_ms\x18\x04 \x01(\x04R\n" +
 	"durationMs\x12\x16\n" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x14\n" +
-	"\x05errno\x18\x06 \x01(\x05R\x05errno\"<\n" +
+	"\x05errno\x18\x06 \x01(\x05R\x05errno\x12(\n" +
+	"\x10disk_total_bytes\x18\a \x01(\x03R\x0ediskTotalBytes\x120\n" +
+	"\x14disk_available_bytes\x18\b \x01(\x03R\x12diskAvailableBytes\x127\n" +
+	"\x18disk_min_available_bytes\x18\t \x01(\x03R\x15diskMinAvailableBytes\x12&\n" +
+	"\x0fdisk_free_bytes\x18\n" +
+	" \x01(\x03R\rdiskFreeBytes\"<\n" +
 	"\x0eRunFlowControl\x12*\n" +
 	"\x11stdin_grant_bytes\x18\x01 \x01(\rR\x0fstdinGrantBytes\"\x89\x02\n" +
 	"\x16OpenCodeProviderConfig\x12\x19\n" +

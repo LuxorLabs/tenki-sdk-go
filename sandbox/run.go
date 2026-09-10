@@ -367,6 +367,12 @@ func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
 			result.ExitCode = exit.GetExitCode()
 			result.Duration = time.Duration(exit.GetDurationMs()) * time.Millisecond
 			result.Reason = exit.GetReason()
+			result.Disk = DiskUsage{
+				TotalBytes:        exit.GetDiskTotalBytes(),
+				FreeBytes:         exit.GetDiskFreeBytes(),
+				AvailableBytes:    exit.GetDiskAvailableBytes(),
+				MinAvailableBytes: exit.GetDiskMinAvailableBytes(),
+			}
 			// A timed-out run can carry exit_code 0, so check TimedOut first.
 			switch {
 			case exit.GetTimedOut():

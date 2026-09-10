@@ -203,6 +203,16 @@ signal it and `Wait()`. There is no reattach.
 - `session.Git.Log(ctx, GitLogParams)`
 - `session.Git.FetchPR(ctx, prNum, GitFetchPRParams)`
 
+### Disk space
+
+The root disk defaults to 5 GB and holds the base image as well as your work, so a fresh
+sandbox already reports around 56% used. It is fixed at create time and cannot be grown in
+place — pass `WithDiskSizeGB` (5–100) to `Create` if you need more.
+
+Every `Result` carries `Disk`. `result.Disk.Exhausted()` reports whether the sandbox ran
+out of space at any point during the command — check it even when the command exited 0, since
+npm reports `ENOSPC` as a warning and still exits successfully with a broken install.
+
 ### Volumes
 
 - `(*Client).CreateVolume(ctx, opts ...CreateVolumeOption) (*Volume, error)`

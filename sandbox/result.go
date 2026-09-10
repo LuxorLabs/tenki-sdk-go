@@ -40,6 +40,9 @@ type Result struct {
 	// Reason is the guest's terminal reason: "exit", "signaled", "timeout" or
 	// "grace_timeout".
 	Reason string
+	// Disk is the sandbox filesystem state sampled across the run. Zero-valued
+	// when the guest did not report it (older guest-agent, or a stat failure).
+	Disk DiskUsage
 }
 
 // StdoutString returns trimmed stdout as a string.
