@@ -324,9 +324,6 @@ type ResilientHostPortTunnelStateEvent struct {
 }
 
 type ResilientHostPortTunnel struct {
-	SandboxPort    uint32
-	SandboxAddress string
-
 	ctx       context.Context
 	cancel    context.CancelFunc
 	session   *Session
@@ -363,16 +360,14 @@ func (s *Session) ExposeHostPortResilient(ctx context.Context, hostAddr string, 
 		return nil, err
 	}
 	tunnel := &ResilientHostPortTunnel{
-		SandboxPort:    current.SandboxPort,
-		SandboxAddress: current.SandboxAddress,
-		ctx:            childCtx,
-		cancel:         cancel,
-		session:        s,
-		hostAddr:       hostAddr,
-		options:        opt,
-		current:        current,
-		state:          ResilientHostPortTunnelStateOpen,
-		termCh:         make(chan HostPortTunnelTermination, 1),
+		ctx:      childCtx,
+		cancel:   cancel,
+		session:  s,
+		hostAddr: hostAddr,
+		options:  opt,
+		current:  current,
+		state:    ResilientHostPortTunnelStateOpen,
+		termCh:   make(chan HostPortTunnelTermination, 1),
 	}
 	go tunnel.reconnectLoop()
 	return tunnel, nil
@@ -393,6 +388,13 @@ func (t *ResilientHostPortTunnel) Close() error {
 	}
 	t.finish(HostPortTunnelTermination{Reason: TunnelTerminationSDKClosed})
 	return err
+}
+
+// Endpoint returns the last opened address and port as one consistent snapshot.
+func (t *ResilientHostPortTunnel) Endpoint() (address string, port uint32) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.current.SandboxAddress, t.current.SandboxPort
 }
 
 func (t *ResilientHostPortTunnel) State() ResilientHostPortTunnelState {
@@ -462,10 +464,8 @@ func (t *ResilientHostPortTunnel) reconnectLoop() {
 			}
 			attempt = 0
 			t.mu.Lock()
-			previousPort := t.SandboxPort
+			previousPort := t.current.SandboxPort
 			t.current = next
-			t.SandboxPort = next.SandboxPort
-			t.SandboxAddress = next.SandboxAddress
 			t.state = ResilientHostPortTunnelStateOpen
 			t.mu.Unlock()
 			t.emit(ResilientHostPortTunnelStateEvent{State: "open", SandboxPort: next.SandboxPort})

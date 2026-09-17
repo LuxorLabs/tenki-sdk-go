@@ -37,7 +37,6 @@ func newSession(t *testing.T) (*sandbox.Session, func()) {
 	createOpts := []sandbox.CreateOption{
 		sandbox.WithName(fmt.Sprintf("dial-go-e2e-%d", time.Now().UnixNano())),
 		sandbox.WithMaxDuration(20 * time.Minute),
-		sandbox.WithIdleTimeout(10 * time.Minute),
 	}
 	if ws := os.Getenv("TENKI_SANDBOX_WORKSPACE_ID"); ws != "" {
 		createOpts = append(createOpts, sandbox.WithWorkspaceID(ws))

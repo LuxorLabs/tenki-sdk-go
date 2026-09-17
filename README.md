@@ -158,6 +158,47 @@ if err := session.WaitPaused(ctx, 0); err != nil {
 `DURABLE` snapshots are portable to eligible hosts.
 `LOCAL_READY` is not resumable for pause operations.
 
+### What survives a pause
+
+Pause captures the VM's full memory, not only its disk: a resumed session is the
+same running machine, not a reboot. Processes keep their PIDs and their in-memory
+state, and the guest clock stops for the duration of the pause.
+
+`/tmp` is cleared across a pause. Keep durable state under `/home/tenki`, which
+is preserved.
+
+While a session is paused it serves no traffic: preview requests return `404`
+until it resumes. The client connection itself is not dropped — a held
+keep-alive connection returns `200` again after resume — so treat a paused
+session as unavailable rather than disconnected.
+
+SSH is different: a held transport fails on use while paused and does not
+recover after resume, so reconnect rather than retry on it. A fresh
+connection succeeds as soon as the session is `RUNNING` again.
+
+```go
+sh := func(line string) (*tenkisandbox.Result, error) {
+	return session.Exec(ctx, "bash", tenkisandbox.WithArgs("-lc", line))
+}
+
+sh("echo hello > ~/marker")
+sh("setsid nohup sleep 3600 >/dev/null 2>&1 </dev/null &")
+pid, _ := sh("pgrep -n sleep")
+
+if err := session.Pause(ctx); err != nil {
+	return err
+}
+if err := session.Resume(ctx); err != nil {
+	return err
+}
+
+marker, _ := sh("cat ~/marker")
+alive, _ := sh("kill -0 " + pid.StdoutString() + " && echo alive")
+
+fmt.Println(marker.StdoutString()) // "hello" - the marker file survived
+fmt.Println(alive.StdoutString())  // "alive" - same process, same memory
+```
+
 ### Process control
 
 - `(*Session).Command(argv []string, opts ...RunOptions) *Command`
@@ -266,6 +307,7 @@ Expose a port from inside the sandbox to the caller.
 - `(*Session).ExposeHostPort(ctx, hostAddr string, opts ...HostPortTunnelOptions) (*HostPortTunnel, error)`
 - `(*Session).HostPortTunnel(ctx, host string, port int, opts ...HostPortTunnelOptions)`
 - `(*Session).ExposeHostPortResilient(ctx, hostAddr, opts ...ResilientHostPortTunnelOptions)` - auto-reconnect
+- `(*ResilientHostPortTunnel).Endpoint()` - read the current address and port safely during reconnects
 - `(*HostPortTunnel).Terminated() <-chan HostPortTunnelTermination` / `.Close()`
 
 Publish a stable, browser-openable URL bound to a session port:
@@ -273,6 +315,11 @@ Publish a stable, browser-openable URL bound to a session port:
 - `(*Client).CreatePreviewURL(ctx, slug string, sessionID *string, port *int32) (*PreviewURL, error)`
 - `(*Client).BindPreviewURL(ctx, previewURLID, sessionID string, port int32)` / `UnbindPreviewURL`
 - `(*Client).ListPreviewURLs(ctx)` / `GetPreviewURL` / `DeletePreviewURL`
+
+For resilient tunnels, replace reads of `SandboxAddress` and `SandboxPort` with
+`address, port := tunnel.Endpoint()`. The method returns both values from the same
+connection. During reconnects and after closure it retains the last opened endpoint;
+use `State()` to check availability. Ordinary `HostPortTunnel` fields are unchanged.
 
 ### Registry
 
@@ -313,6 +360,20 @@ Publish and share sandbox images (templates/snapshots/images).
 - `WithVolume(volumeID, mountPath, ...VolumeOption)`
 - `WithSnapshot(snapshotID)` / `WithImage(image)` (mutually exclusive)
 - `WithCloneRepo(repoURL)` / `WithGitHubToken(token)`
+- `WithAllowDomains(...string)` / `WithAllowCIDRs(...string)` restrict outbound access; no effect when `WithAllowOutbound(false)` is set
+
+### Restricting outbound access
+
+A session that may only reach PyPI:
+
+```go
+session, err := client.Create(ctx,
+	tenkisandbox.WithAllowDomains("pypi.org", "*.pypi.org", "files.pythonhosted.org"),
+)
+```
+
+`WithAllowOutbound(false)` still blocks everything, regardless of `WithAllowDomains`/`WithAllowCIDRs`.
+Read the allowlist back with `session.Egress()`.
 
 ### Exec options
 
@@ -414,3 +475,55 @@ tenkisandbox.MiB  // 1,048,576
 - Create/list ownership is derived from auth context.
 - Volume size: 1 MiB - 100 GiB.
 - Session CPU: 1-16 cores. Memory: 128-65536 MB, aligned to 2 MiB.
+
+## Workspace secrets
+
+The workspace client exposes secret management through `client.Secrets` and does not require a sandbox Session:
+
+```go
+import "github.com/LuxorLabs/tenki-sdk-go/sandbox/workspace"
+
+client, err := workspace.NewWorkspaceClient(workspace.WorkspaceOptions{WorkspaceID: workspaceID})
+if err != nil { return err }
+defer client.Close()
+secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes,
+    workspace.SecretPolicy{
+        DeliveryMode: workspace.SecretGuestAndInjection,
+        DestinationMode: workspace.SecretDestinationUnset,
+    }, requestID)
+```
+
+The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
+`TENKI_CLOUD_API_URL` to override the cloud API endpoint independently of sandbox
+configuration. Set `WorkspaceID` once in the client options. Leave it empty to use the authenticated workspace key's
+scope; other callers must specify one.
+
+`Create`, `Update`, `Get`, `List`, `ListVersions`, `Revoke`, and `Delete` return
+metadata only. Secret values are `[]byte`; on update, `nil` retains the value while
+`[]byte{}` creates an empty value. Updates, revocations, and deletions require
+`ExpectedRevision`. `ActiveVersion` selects an existing version; omit the value
+when selecting one. A nil revoke version revokes the entire secret irreversibly.
+
+Mutations generate a request ID when none is supplied. For retries after an
+uncertain result, supply and reuse the same request ID and identical arguments.
+The SDK does not retry mutations automatically. `WorkspaceSecretError.Code`
+preserves the RPC status, including revision conflicts.
+
+Managed runtimes reference workspace secret names, without accepting their values:
+
+```go
+runtime := sandbox.NewTemplateSpec().Start("npm start", sandbox.StartOptions{
+    SecretEnv: map[string]string{"API_TOKEN": "app-token"},
+})
+session, err := client.Create(ctx,
+    sandbox.WithImage("team/base:v1"),
+    sandbox.WithDirectRuntime(runtime),
+    sandbox.WithSecretOverrides(map[string]string{"app-token": "development-token"}),
+)
+```
+
+`StartArgs` and `ProcessCompose` also support `SecretEnv` in stored templates.
+Names resolve in the launching workspace. `WithDirectRuntime` accepts a
+runtime-only spec and starts at boot; use Create options for image and resources.
+Secret targets cannot also appear in ordinary runtime/session env. Session and
+snapshot metadata expose the read-only `HasRuntimeSecrets` marker.

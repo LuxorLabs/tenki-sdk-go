@@ -73,6 +73,7 @@ type Snapshot struct {
 	// RawImageAvailable is true when the snapshot has a standalone compressed
 	// rootfs disk image artifact.
 	RawImageAvailable bool
+	HasRuntimeSecrets bool
 }
 
 // SnapshotDownloadURL is a short-lived object-store URL for one snapshot file.
@@ -332,6 +333,7 @@ func snapshotFromProto(protoSnapshot *sandboxv1.Snapshot) *Snapshot {
 		DurabilityState:   snapshotDurabilityStateFromProto(protoSnapshot.GetDurabilityState()),
 		PropagationError:  protoSnapshot.GetPropagationError(),
 		RawImageAvailable: protoSnapshot.GetRawImageAvailable(),
+		HasRuntimeSecrets: protoSnapshot.GetHasRuntimeSecrets(),
 	}
 	if protoSnapshot.WorkspaceId != nil {
 		snapshot.WorkspaceID = *protoSnapshot.WorkspaceId

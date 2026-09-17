@@ -325,11 +325,20 @@ type SandboxServiceClient interface {
 	ExtendSession(context.Context, *connect.Request[v1.ExtendSessionRequest]) (*connect.Response[v1.ExtendSessionResponse], error)
 	GetArtifactUploadUrl(context.Context, *connect.Request[v1.GetArtifactUploadUrlRequest]) (*connect.Response[v1.GetArtifactUploadUrlResponse], error)
 	GetArtifactDownloadUrl(context.Context, *connect.Request[v1.GetArtifactDownloadUrlRequest]) (*connect.Response[v1.GetArtifactDownloadUrlResponse], error)
+	// Deprecated: creates a preview URL; use CreatePreviewUrl instead.
+	//
+	// Deprecated: do not use.
 	ExposePort(context.Context, *connect.Request[v1.ExposePortRequest]) (*connect.Response[v1.ExposePortResponse], error)
 	OpenPreview(context.Context, *connect.Request[v1.OpenPreviewRequest]) (*connect.Response[v1.OpenPreviewResponse], error)
 	TouchPreview(context.Context, *connect.Request[v1.TouchPreviewRequest]) (*connect.Response[v1.TouchPreviewResponse], error)
 	ReportSessionActivity(context.Context, *connect.Request[v1.ReportSessionActivityRequest]) (*connect.Response[v1.ReportSessionActivityResponse], error)
+	// Deprecated: unbinds every preview URL on the port; use UnbindPreviewUrl.
+	//
+	// Deprecated: do not use.
 	UnexposePort(context.Context, *connect.Request[v1.UnexposePortRequest]) (*connect.Response[v1.UnexposePortResponse], error)
+	// Deprecated: use ListPreviewUrls.
+	//
+	// Deprecated: do not use.
 	ListExposedPorts(context.Context, *connect.Request[v1.ListExposedPortsRequest]) (*connect.Response[v1.ListExposedPortsResponse], error)
 	CreatePreviewUrl(context.Context, *connect.Request[v1.CreatePreviewUrlRequest]) (*connect.Response[v1.CreatePreviewUrlResponse], error)
 	DeletePreviewUrl(context.Context, *connect.Request[v1.DeletePreviewUrlRequest]) (*connect.Response[v1.DeletePreviewUrlResponse], error)
@@ -1045,6 +1054,8 @@ func (c *sandboxServiceClient) GetArtifactDownloadUrl(ctx context.Context, req *
 }
 
 // ExposePort calls tenki.sandbox.v1.SandboxService.ExposePort.
+//
+// Deprecated: do not use.
 func (c *sandboxServiceClient) ExposePort(ctx context.Context, req *connect.Request[v1.ExposePortRequest]) (*connect.Response[v1.ExposePortResponse], error) {
 	return c.exposePort.CallUnary(ctx, req)
 }
@@ -1065,11 +1076,15 @@ func (c *sandboxServiceClient) ReportSessionActivity(ctx context.Context, req *c
 }
 
 // UnexposePort calls tenki.sandbox.v1.SandboxService.UnexposePort.
+//
+// Deprecated: do not use.
 func (c *sandboxServiceClient) UnexposePort(ctx context.Context, req *connect.Request[v1.UnexposePortRequest]) (*connect.Response[v1.UnexposePortResponse], error) {
 	return c.unexposePort.CallUnary(ctx, req)
 }
 
 // ListExposedPorts calls tenki.sandbox.v1.SandboxService.ListExposedPorts.
+//
+// Deprecated: do not use.
 func (c *sandboxServiceClient) ListExposedPorts(ctx context.Context, req *connect.Request[v1.ListExposedPortsRequest]) (*connect.Response[v1.ListExposedPortsResponse], error) {
 	return c.listExposedPorts.CallUnary(ctx, req)
 }
@@ -1313,11 +1328,20 @@ type SandboxServiceHandler interface {
 	ExtendSession(context.Context, *connect.Request[v1.ExtendSessionRequest]) (*connect.Response[v1.ExtendSessionResponse], error)
 	GetArtifactUploadUrl(context.Context, *connect.Request[v1.GetArtifactUploadUrlRequest]) (*connect.Response[v1.GetArtifactUploadUrlResponse], error)
 	GetArtifactDownloadUrl(context.Context, *connect.Request[v1.GetArtifactDownloadUrlRequest]) (*connect.Response[v1.GetArtifactDownloadUrlResponse], error)
+	// Deprecated: creates a preview URL; use CreatePreviewUrl instead.
+	//
+	// Deprecated: do not use.
 	ExposePort(context.Context, *connect.Request[v1.ExposePortRequest]) (*connect.Response[v1.ExposePortResponse], error)
 	OpenPreview(context.Context, *connect.Request[v1.OpenPreviewRequest]) (*connect.Response[v1.OpenPreviewResponse], error)
 	TouchPreview(context.Context, *connect.Request[v1.TouchPreviewRequest]) (*connect.Response[v1.TouchPreviewResponse], error)
 	ReportSessionActivity(context.Context, *connect.Request[v1.ReportSessionActivityRequest]) (*connect.Response[v1.ReportSessionActivityResponse], error)
+	// Deprecated: unbinds every preview URL on the port; use UnbindPreviewUrl.
+	//
+	// Deprecated: do not use.
 	UnexposePort(context.Context, *connect.Request[v1.UnexposePortRequest]) (*connect.Response[v1.UnexposePortResponse], error)
+	// Deprecated: use ListPreviewUrls.
+	//
+	// Deprecated: do not use.
 	ListExposedPorts(context.Context, *connect.Request[v1.ListExposedPortsRequest]) (*connect.Response[v1.ListExposedPortsResponse], error)
 	CreatePreviewUrl(context.Context, *connect.Request[v1.CreatePreviewUrlRequest]) (*connect.Response[v1.CreatePreviewUrlResponse], error)
 	DeletePreviewUrl(context.Context, *connect.Request[v1.DeletePreviewUrlRequest]) (*connect.Response[v1.DeletePreviewUrlResponse], error)

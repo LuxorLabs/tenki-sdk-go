@@ -79,6 +79,8 @@ type Session struct {
 	// dataPlaneWarmOnce opens the connection once the endpoint is known so the first real op skips the handshake.
 	dataPlaneWarmOnce sync.Once
 
+	egress SessionEgressPolicy
+
 	ID                        string
 	Name                      string
 	State                     SessionState
@@ -106,12 +108,29 @@ type Session struct {
 	TerminalError             string
 	RuntimeState              RuntimeState
 	RuntimeError              string
+	HasRuntimeSecrets         bool
 	SourceRegistryImageID     string
 	SourceSnapshotID          string
 	SourceRegistryWorkspaceID string
 	SourceRegistryRef         string
 	SourceTemplateID          string
 	Warnings                  []SandboxWarning
+}
+
+// SessionEgressPolicy is the outbound allowlist echoed back on a session. Both lists empty means unrestricted.
+type SessionEgressPolicy struct {
+	AllowDomains []string
+	AllowCIDRs   []string
+}
+
+func egressPolicyFromProto(p *sandboxv1.SessionEgressPolicy) SessionEgressPolicy {
+	if p == nil {
+		return SessionEgressPolicy{}
+	}
+	return SessionEgressPolicy{
+		AllowDomains: append([]string(nil), p.GetAllowDomains()...),
+		AllowCIDRs:   append([]string(nil), p.GetAllowCidrs()...),
+	}
 }
 
 type ExposedPort struct {
@@ -208,6 +227,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.TerminalError = protoSession.TerminalError
 	s.RuntimeState = runtimeStateFromProto(protoSession.RuntimeState)
 	s.RuntimeError = protoSession.GetRuntimeError()
+	s.HasRuntimeSecrets = protoSession.GetHasRuntimeSecrets()
 	s.SourceRegistryImageID = protoSession.GetSourceRegistryImageId()
 	s.SourceSnapshotID = protoSession.GetSourceSnapshotId()
 	s.SourceRegistryWorkspaceID = protoSession.GetSourceRegistryWorkspaceId()
@@ -216,6 +236,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.Metadata = cloneStringMap(protoSession.Metadata)
 	s.Tags = append(s.Tags[:0], protoSession.Tags...)
 	s.PauseSnapshot = snapshotFromProto(protoSession.PauseSnapshot)
+	s.egress = egressPolicyFromProto(protoSession.GetEgress())
 	s.VolumeMounts = s.VolumeMounts[:0]
 	for _, attachment := range protoSession.VolumeAttachments {
 		if attachment == nil {
@@ -319,11 +340,21 @@ func (s *Session) copyFrom(other *Session) {
 	s.TerminalError = other.TerminalError
 	s.RuntimeState = other.RuntimeState
 	s.RuntimeError = other.RuntimeError
+	s.HasRuntimeSecrets = other.HasRuntimeSecrets
 	s.SourceRegistryImageID = other.SourceRegistryImageID
 	s.SourceSnapshotID = other.SourceSnapshotID
 	s.SourceRegistryWorkspaceID = other.SourceRegistryWorkspaceID
 	s.SourceRegistryRef = other.SourceRegistryRef
 	s.SourceTemplateID = other.SourceTemplateID
+	s.egress = other.egress
+}
+
+// Egress returns the session's outbound allowlist. Both lists are empty when the session is unrestricted.
+func (s *Session) Egress() SessionEgressPolicy {
+	if s == nil {
+		return SessionEgressPolicy{}
+	}
+	return s.egress
 }
 
 func (s *Session) configureDataPlane(endpoint string, credential *sandboxv1.SessionCredential, fromHint bool) {

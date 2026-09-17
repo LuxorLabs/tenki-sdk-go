@@ -213,6 +213,28 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		CloneRepoUrl:      cfg.cloneRepoURL,
 		SetupEnv:          cloneStringMap(cfg.setupEnv),
 		SetupSecrets:      cloneStringMap(cfg.setupSecrets),
+		SecretOverrides:   cloneStringMap(cfg.secretOverrides),
+	}
+	if cfg.directRuntime != nil {
+		if cfg.templateSpecID != "" {
+			return nil, errors.New("sandbox: direct runtime conflicts with template spec source")
+		}
+		runtime, err := directRuntimeProto(*cfg.directRuntime)
+		if err != nil {
+			return nil, err
+		}
+		req.Runtime = runtime
+		for target := range runtime.SecretEnv {
+			if _, ok := req.Env[target]; ok {
+				return nil, errors.New("sandbox: secret target conflicts with session environment")
+			}
+		}
+	}
+	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 {
+		req.Egress = &sandboxv1.SessionEgressPolicy{
+			AllowDomains: append([]string(nil), cfg.allowDomains...),
+			AllowCidrs:   append([]string(nil), cfg.allowCIDRs...),
+		}
 	}
 	if len(cfg.volumes) > 0 {
 		req.Volumes = make([]*sandboxv1.VolumeMount, 0, len(cfg.volumes))
@@ -230,13 +252,6 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 
 	if cfg.maxDuration != nil {
 		req.MaxDuration = durationpb.New(*cfg.maxDuration)
-	}
-	if cfg.idleTimeout != nil {
-		minutes := int32(cfg.idleTimeout.Round(time.Minute) / time.Minute)
-		if *cfg.idleTimeout <= 0 {
-			minutes = 0
-		}
-		req.IdleTimeoutMinutes = &minutes
 	}
 	if cfg.pauseRetention != nil && *cfg.pauseRetention > 0 {
 		req.PauseRetention = durationpb.New(*cfg.pauseRetention)

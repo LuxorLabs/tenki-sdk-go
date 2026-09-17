@@ -30,6 +30,7 @@ type tunnelTestHandler struct {
 }
 
 type tunnelServerScript struct {
+	address   string
 	port      uint32
 	responses chan *sandboxv1.HostPortTunnelResponse
 	err       error
@@ -65,7 +66,9 @@ func (h *dataPlaneTunnelTestHandler) HostPortTunnel(
 	if script.err != nil && script.port == 0 {
 		return script.err
 	}
-	if err := stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceHostPortTunnelResponse{Frame: openedTunnel(script.port)}); err != nil {
+	opened := openedTunnel(script.port)
+	opened.GetOpened().SandboxAddress = script.address
+	if err := stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceHostPortTunnelResponse{Frame: opened}); err != nil {
 		return err
 	}
 	for response := range script.responses {
@@ -97,7 +100,9 @@ func (h *tunnelTestHandler) HostPortTunnel(_ context.Context, stream *connect.Bi
 	h.mu.Lock()
 	h.hostAddrs = append(h.hostAddrs, first.GetOpen().GetHostDialTargetLabel())
 	h.mu.Unlock()
-	if err := stream.Send(openedTunnel(script.port)); err != nil {
+	opened := openedTunnel(script.port)
+	opened.GetOpened().SandboxAddress = script.address
+	if err := stream.Send(opened); err != nil {
 		return err
 	}
 	for response := range script.responses {
@@ -156,7 +161,7 @@ func newTunnelTestSession(t *testing.T, scripts ...*tunnelServerScript) (*Sessio
 }
 
 func newTunnelScript(port uint32) *tunnelServerScript {
-	return &tunnelServerScript{port: port, responses: make(chan *sandboxv1.HostPortTunnelResponse, 1)}
+	return &tunnelServerScript{address: "127.0.0.1", port: port, responses: make(chan *sandboxv1.HostPortTunnelResponse, 1)}
 }
 
 func (s *tunnelServerScript) closeResponses() {
@@ -373,7 +378,10 @@ func TestResilientHostPortTunnelReconnectsAfterTransportError(t *testing.T) {
 	})
 	first.err = connect.NewError(connect.CodeUnavailable, errors.New("boom"))
 	first.closeResponses()
-	waitForTunnelTest(t, func() bool { return tunnel.SandboxPort == 9101 && tunnel.State() == ResilientHostPortTunnelStateOpen })
+	waitForTunnelTest(t, func() bool {
+		address, port := tunnel.Endpoint()
+		return address == "127.0.0.1" && port == 9101 && tunnel.State() == ResilientHostPortTunnelStateOpen
+	})
 	got := drainStateEvents(events)
 	if !slices.Contains(got, "reconnecting") || !slices.Contains(got, "open") {
 		t.Fatalf("missing reconnect state events: %#v", got)
@@ -405,7 +413,10 @@ func TestResilientHostPortTunnelRetriesImmediatelyAfterEngineDraining(t *testing
 		}
 	})
 	first.responses <- terminatedTunnel(sandboxv1.HostPortTunnelTerminated_REASON_ENGINE_DRAINING, "drain")
-	waitForTunnelTest(t, func() bool { return tunnel.SandboxPort == 9151 && tunnel.State() == ResilientHostPortTunnelStateOpen })
+	waitForTunnelTest(t, func() bool {
+		address, port := tunnel.Endpoint()
+		return address == "127.0.0.1" && port == 9151 && tunnel.State() == ResilientHostPortTunnelStateOpen
+	})
 
 	select {
 	case delay := <-delays:
@@ -422,6 +433,7 @@ func TestResilientHostPortTunnelRepeatedReconnectsNoGoroutineLeak(t *testing.T) 
 	scripts := make([]*tunnelServerScript, 101)
 	for i := range scripts {
 		scripts[i] = newTunnelScript(uint32(9200 + i))
+		scripts[i].address = fmt.Sprintf("endpoint-%d", 9200+i)
 		if i < 100 {
 			scripts[i].err = connect.NewError(connect.CodeUnavailable, fmt.Errorf("boom-%d", i))
 			scripts[i].closeResponses()
@@ -435,11 +447,36 @@ func TestResilientHostPortTunnelRepeatedReconnectsNoGoroutineLeak(t *testing.T) 
 	if err != nil {
 		t.Fatalf("ExposeHostPortResilient: %v", err)
 	}
-	waitForTunnelTest(t, func() bool { return tunnel.SandboxPort == 9300 && tunnel.State() == ResilientHostPortTunnelStateOpen })
+	stopReaders := make(chan struct{})
+	var readers sync.WaitGroup
+	for range 8 {
+		readers.Go(func() {
+			for {
+				select {
+				case <-stopReaders:
+					return
+				default:
+					address, port := tunnel.Endpoint()
+					if address != fmt.Sprintf("endpoint-%d", port) {
+						t.Errorf("inconsistent endpoint: %s:%d", address, port)
+						return
+					}
+					runtime.Gosched()
+				}
+			}
+		})
+	}
+	stopReading := sync.OnceFunc(func() { close(stopReaders); readers.Wait() })
+	defer stopReading()
+	waitForTunnelTest(t, func() bool {
+		address, port := tunnel.Endpoint()
+		return address == "endpoint-9300" && port == 9300 && tunnel.State() == ResilientHostPortTunnelStateOpen
+	})
 	if err := tunnel.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
 	_ = receiveTermination(t, tunnel.Terminated())
+	stopReading()
 	waitForTunnelTest(t, func() bool {
 		runtime.GC()
 		return runtime.NumGoroutine() <= before+16

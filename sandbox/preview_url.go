@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type PreviewURL struct {
@@ -29,6 +30,9 @@ type PreviewURL struct {
 	// WildcardStatusReason carries an actionable reason when WildcardStatus is
 	// WildcardStatusFailed; empty otherwise.
 	WildcardStatusReason string
+	// ExpiresAt is the deadline after which the URL stops serving; nil means it
+	// does not expire.
+	ExpiresAt *time.Time
 }
 
 func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
@@ -58,10 +62,12 @@ func previewURLFromProto(protoPreviewURL *sandboxv1.PreviewUrl) *PreviewURL {
 	result.Wildcard = protoPreviewURL.GetWildcard()
 	result.WildcardStatus = wildcardStatusFromProto(protoPreviewURL.GetWildcardStatus())
 	result.WildcardStatusReason = protoPreviewURL.GetWildcardStatusReason()
+	result.ExpiresAt = protoTimestampPtr(protoPreviewURL.ExpiresAt)
 	return result
 }
 
 // CreatePreviewURL creates a sticky preview URL owned by the Workspace API key.
+// The slug is required; use Session.ExposePort for a server-generated one.
 func (c *Client) CreatePreviewURL(ctx context.Context, slug string, sessionID *string, port *int32, opts ...PreviewURLOption) (*PreviewURL, error) {
 	cfg := previewURLConfig{}
 	for _, opt := range opts {
@@ -71,6 +77,9 @@ func (c *Client) CreatePreviewURL(ctx context.Context, slug string, sessionID *s
 	}
 	req := &sandboxv1.CreatePreviewUrlRequest{
 		Slug: strings.TrimSpace(slug),
+	}
+	if cfg.expiresAt != nil {
+		req.ExpiresAt = timestamppb.New(*cfg.expiresAt)
 	}
 	if cfg.workspaceID != "" {
 		req.WorkspaceId = &cfg.workspaceID
@@ -95,12 +104,22 @@ func (c *Client) DeletePreviewURL(ctx context.Context, previewURLID string) erro
 	return mapError(err)
 }
 
-func (c *Client) BindPreviewURL(ctx context.Context, previewURLID string, sessionID string, port int32) (*PreviewURL, error) {
-	resp, err := c.sandbox.BindPreviewUrl(ctx, connect.NewRequest(&sandboxv1.BindPreviewUrlRequest{
+func (c *Client) BindPreviewURL(ctx context.Context, previewURLID string, sessionID string, port int32, opts ...PreviewURLOption) (*PreviewURL, error) {
+	cfg := previewURLConfig{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt.applyPreviewURL(&cfg)
+		}
+	}
+	req := &sandboxv1.BindPreviewUrlRequest{
 		PreviewUrlId: strings.TrimSpace(previewURLID),
 		SessionId:    strings.TrimSpace(sessionID),
 		Port:         port,
-	}))
+	}
+	if cfg.expiresAt != nil {
+		req.ExpiresAt = timestamppb.New(*cfg.expiresAt)
+	}
+	resp, err := c.sandbox.BindPreviewUrl(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -134,6 +153,9 @@ func (c *Client) ListPreviewURLs(ctx context.Context, opts ...PreviewURLOption) 
 		}
 		if cfg.workspaceID != "" {
 			req.WorkspaceId = &cfg.workspaceID
+		}
+		if cfg.sessionID != "" {
+			req.SessionId = &cfg.sessionID
 		}
 		resp, err := c.sandbox.ListPreviewUrls(ctx, connect.NewRequest(req))
 		if err != nil {

@@ -1,8 +1,11 @@
 package sandbox
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -163,36 +166,39 @@ func WithDetachWaitTimeout(timeout time.Duration) DetachVolumeOption {
 }
 
 type createConfig struct {
-	allowInbound   bool
-	allowOutbound  bool
-	maxDuration    *time.Duration
-	idleTimeout    *time.Duration
-	pauseRetention *time.Duration
-	cpuCores       *int32
-	cpuCoresSet    bool
-	memoryMB       *int32
-	memoryMBSet    bool
-	diskSizeGB     *int32
-	diskSizeGBSet  bool
-	name           string
-	snapshotID     string
-	image          string
-	templateSpecID string
-	setupEnv       map[string]string
-	setupSecrets   map[string]string
-	workspaceID    string
-	metadata       map[string]string
-	tags           []string
-	env            map[string]string
-	sshKeys        []string
-	enableOpenCode bool
-	cloneRepoURL   string
-	volumes        []*VolumeMount
-	sticky         bool
-	waitReady      bool
-	waitForRuntime bool
-	waitTimeout    time.Duration
-	waitTimeoutSet bool
+	directRuntime   *TemplateSpec
+	secretOverrides map[string]string
+	allowInbound    bool
+	allowOutbound   bool
+	allowDomains    []string
+	allowCIDRs      []string
+	maxDuration     *time.Duration
+	pauseRetention  *time.Duration
+	cpuCores        *int32
+	cpuCoresSet     bool
+	memoryMB        *int32
+	memoryMBSet     bool
+	diskSizeGB      *int32
+	diskSizeGBSet   bool
+	name            string
+	snapshotID      string
+	image           string
+	templateSpecID  string
+	setupEnv        map[string]string
+	setupSecrets    map[string]string
+	workspaceID     string
+	metadata        map[string]string
+	tags            []string
+	env             map[string]string
+	sshKeys         []string
+	enableOpenCode  bool
+	cloneRepoURL    string
+	volumes         []*VolumeMount
+	sticky          bool
+	waitReady       bool
+	waitForRuntime  bool
+	waitTimeout     time.Duration
+	waitTimeoutSet  bool
 }
 
 type createVolumeConfig struct {
@@ -231,6 +237,8 @@ type listConfig struct {
 
 type previewURLConfig struct {
 	workspaceID string
+	sessionID   string
+	expiresAt   *time.Time
 }
 
 type volumeConfig struct {
@@ -367,6 +375,17 @@ func WithSetupEnvs(env map[string]string) CreateOption {
 // WithSetupSecrets sets secret environment variables used only by template setup.
 func WithSetupSecrets(secrets map[string]string) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) { cfg.setupSecrets = cloneStringMap(secrets) })
+}
+
+// WithDirectRuntime sets a managed boot runtime using a runtime-only TemplateSpec.
+func WithDirectRuntime(spec TemplateSpec) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cloned := TemplateSpec{spec: spec.toProto()}; cfg.directRuntime = &cloned })
+}
+
+// WithSecretOverrides maps declared names to replacements in the launching workspace.
+func WithSecretOverrides(overrides map[string]string) CreateOption {
+	cloned := cloneStringMap(overrides)
+	return createOptionFunc(func(cfg *createConfig) { cfg.secretOverrides = cloneStringMap(cloned) })
 }
 
 func defaultCreateConfig(client *Client) createConfig {
@@ -562,6 +581,26 @@ type PreviewURLOption interface {
 	applyPreviewURL(*previewURLConfig)
 }
 
+type previewURLOptionFunc func(*previewURLConfig)
+
+func (f previewURLOptionFunc) applyPreviewURL(cfg *previewURLConfig) { f(cfg) }
+
+// WithPreviewURLExpiry sets an absolute deadline after which the URL stops
+// serving and is swept.
+func WithPreviewURLExpiry(expiresAt time.Time) PreviewURLOption {
+	return previewURLOptionFunc(func(cfg *previewURLConfig) {
+		cfg.expiresAt = &expiresAt
+	})
+}
+
+// WithPreviewURLSession restricts a list to the preview URLs bound to one
+// session.
+func WithPreviewURLSession(sessionID string) PreviewURLOption {
+	return previewURLOptionFunc(func(cfg *previewURLConfig) {
+		cfg.sessionID = sessionID
+	})
+}
+
 // UpdateSessionOption configures Session.Update behavior.
 type UpdateSessionOption interface {
 	applyUpdateSession(*updateSessionConfig)
@@ -735,6 +774,21 @@ func WithAllowOutbound(allowOutbound bool) CreateOption {
 	})
 }
 
+// WithAllowDomains restricts outbound network access to these domains (exact host or a single leading "*." wildcard).
+// Has no effect if allow_outbound is false.
+func WithAllowDomains(domains ...string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.allowDomains = append([]string(nil), domains...)
+	})
+}
+
+// WithAllowCIDRs restricts outbound network access to these IPv4 CIDRs. Has no effect if allow_outbound is false.
+func WithAllowCIDRs(cidrs ...string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.allowCIDRs = append([]string(nil), cidrs...)
+	})
+}
+
 // WithMaxDuration sets max session duration on Create requests.
 func WithMaxDuration(maxDuration time.Duration) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
@@ -742,11 +796,18 @@ func WithMaxDuration(maxDuration time.Duration) CreateOption {
 	})
 }
 
-// WithIdleTimeout sets the inactivity window after which a session is auto-paused.
-func WithIdleTimeout(idleTimeout time.Duration) CreateOption {
-	return createOptionFunc(func(cfg *createConfig) {
-		cfg.idleTimeout = &idleTimeout
+var idleTimeoutDeprecationOnce sync.Once
+
+// WithIdleTimeout is a no-op.
+//
+// Deprecated: sandboxes do not auto-pause on idle. The value is ignored and the
+// option will be removed in the next major release; use WithMaxDuration to bound
+// a session's lifetime.
+func WithIdleTimeout(time.Duration) CreateOption {
+	idleTimeoutDeprecationOnce.Do(func() {
+		_, _ = fmt.Fprintln(os.Stderr, "tenki sandbox: WithIdleTimeout is deprecated and ignored; sandboxes do not auto-pause on idle. Use WithMaxDuration to bound a session's lifetime.")
 	})
+	return createOptionFunc(func(*createConfig) {})
 }
 
 // WithPauseRetention sets how long paused state is retained for the session.

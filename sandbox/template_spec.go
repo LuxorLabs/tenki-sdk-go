@@ -24,6 +24,9 @@ const defaultReadyWhenTimeout = 60 * time.Second
 
 const maxTemplatePathLength = 4096
 
+var templateSecretTargetPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+var templateSecretNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]{0,127}$`)
+
 var templateUUIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // ErrTemplateSpecInvalid is the sentinel wrapped by TemplateSpecValidationError.
@@ -140,6 +143,7 @@ type RemoveOptions struct {
 
 // StartOptions configures a single-command runtime entrypoint.
 type StartOptions struct {
+	SecretEnv     map[string]string
 	Workdir       string
 	RunAt         RunAt
 	RestartPolicy TemplateRestartPolicy
@@ -150,6 +154,7 @@ type StartOptions struct {
 
 // ProcessComposeOptions configures a process-compose runtime entrypoint.
 type ProcessComposeOptions struct {
+	SecretEnv     map[string]string
 	Workdir       string
 	EnvFiles      []string
 	RunAt         RunAt
@@ -461,6 +466,9 @@ func (s TemplateSpec) Start(command string, opts ...StartOptions) TemplateSpec {
 			Workdir: options.Workdir,
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretEnv != nil {
+			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
+		}
 		if len(options.ReadyWhen) > 0 {
 			runtime.ReadyWhen = readyWhenToProto(ReadyWhen{Checks: options.ReadyWhen})
 		}
@@ -477,6 +485,9 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 			Workdir: options.Workdir,
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretEnv != nil {
+			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
+		}
 		if len(options.ReadyWhen) > 0 {
 			runtime.ReadyWhen = readyWhenToProto(ReadyWhen{Checks: options.ReadyWhen})
 		}
@@ -495,6 +506,9 @@ func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOp
 			EnvFiles:   append([]string(nil), options.EnvFiles...),
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretEnv != nil {
+			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
+		}
 	})
 }
 
@@ -726,6 +740,26 @@ func (s TemplateSpec) protoSpec() *sandboxv1.TemplateBuildSpec {
 
 func (s TemplateSpec) toProto() *sandboxv1.TemplateBuildSpec {
 	return s.clone()
+}
+
+func directRuntimeProto(spec TemplateSpec) (*sandboxv1.TemplateRuntime, error) {
+	p := spec.toProto()
+	if p.GetBase().GetImage() != "sandbox" || p.Context != nil || p.Build != nil || len(p.Steps) > 0 || p.Resources != nil {
+		return nil, errors.New("sandbox: direct runtime accepts runtime settings only; configure the launch image and resources on Create")
+	}
+	if err := spec.Validate(); err != nil {
+		return nil, err
+	}
+	if p.Runtime == nil || (p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_UNSPECIFIED && p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_BOOT) {
+		return nil, errors.New("sandbox: direct runtime requires a boot runtime entrypoint")
+	}
+	if start := p.Runtime.GetStart(); start != nil && start.Workdir == "" {
+		start.Workdir = p.Workdir
+	}
+	if pc := p.Runtime.GetProcessCompose(); pc != nil && pc.Workdir == "" {
+		pc.Workdir = p.Workdir
+	}
+	return p.Runtime, nil
 }
 
 func templateSpecFromProto(spec *sandboxv1.TemplateBuildSpec) *TemplateSpec {
@@ -1046,6 +1080,20 @@ var readyHTTPURLPattern = regexp.MustCompile(`^https?://(localhost|127\.0\.0\.1|
 func validateTemplateSpecRuntime(runtime *sandboxv1.TemplateRuntime, add func(field, rule, message string)) {
 	if runtime == nil {
 		return
+	}
+	if len(runtime.SecretEnv) > 64 {
+		add("runtime.secretEnv", "max_pairs", "at most 64 secret references are supported")
+	}
+	for target, name := range runtime.SecretEnv {
+		if !templateSecretTargetPattern.MatchString(target) {
+			add("runtime.secretEnv", "target", "invalid environment target")
+		}
+		if !templateSecretNamePattern.MatchString(name) {
+			add("runtime.secretEnv", "name", "invalid workspace secret name")
+		}
+		if _, ok := runtime.Env[target]; ok {
+			add("runtime.secretEnv", "env_conflict", "secret target conflicts with runtime environment")
+		}
 	}
 	if len(runtime.Env) > 256 {
 		add("runtime.env", "max_pairs", "runtime env supports at most 256 variables")
