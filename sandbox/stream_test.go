@@ -499,10 +499,10 @@ func TestSessionPauseResume(t *testing.T) {
 		}
 		pauseCalls++
 		if pauseCalls == 1 && req.Msg.GetAsync() {
-			t.Fatal("Pause sent async=true")
+			t.Error("Pause unexpectedly changed its compatibility contract")
 		}
 		if pauseCalls == 2 && !req.Msg.GetAsync() {
-			t.Fatal("PauseAsync did not send async=true")
+			t.Error("PauseAsync did not request durable asynchronous acceptance")
 		}
 		state := sandboxv1.SessionState_SESSION_STATE_PAUSED
 		if req.Msg.GetAsync() {

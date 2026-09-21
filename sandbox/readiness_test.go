@@ -70,14 +70,14 @@ func (h *readinessDataPlaneHandler) Run(
 	stream *connect.BidiStream[sandboxv1.SandboxSessionDataPlaneServiceRunRequest, sandboxv1.SandboxSessionDataPlaneServiceRunResponse],
 ) error {
 	h.runCalls.Add(1)
+	if _, err := stream.Receive(); err != nil {
+		return err
+	}
 	if h.runFailures.Add(-1) >= 0 {
 		if h.runFailure != nil {
 			return h.runFailure
 		}
 		return connect.NewError(connect.CodeUnimplemented, errors.New("HTTP status 404 Not Found"))
-	}
-	if _, err := stream.Receive(); err != nil {
-		return err
 	}
 	return stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceRunResponse{Frame: &sandboxv1.RunResponse{
 		Payload: &sandboxv1.RunResponse_Started{Started: &sandboxv1.RunStarted{Pid: 1}},

@@ -140,9 +140,10 @@ Workspace API keys determine Sandbox scope automatically; ordinary calls do not 
 
 ### Durable pause
 
-`Pause` preserves legacy completion semantics and returns only after the pause completes.
-`PauseAsync` returns after the service accepts the request and moves the session to `PAUSING`.
-Call `WaitPaused` after `PauseAsync` when the caller needs a durable checkpoint before continuing.
+`PauseAsync` returns after the service durably accepts the request and moves the session to `PAUSING` on a node that supports asynchronous pause.
+Snapshot capture and persistence continue in the background; acceptance does not mean the VM has stopped or the snapshot is durable.
+`Pause` retains its existing completion behavior for compatibility.
+Call `WaitPaused` before resuming or relying on a durable checkpoint.
 It returns when the session reaches `PAUSED`, returns `ErrPauseFailed` if a verified rollback restores `RUNNING`, and respects context cancellation.
 
 ```go
@@ -434,6 +435,13 @@ This is standard POSIX behavior, the same as Go's own `exec.Cmd` with piped outp
 To keep hold of a service instead, use `session.Command(...).Stream(ctx)` and read
 from the handle; for services you always want running, start them from a template
 start command.
+
+That last option is the durable one. Every exec child runs inside the
+guest-agent's own systemd cgroup, so a guest-agent restart kills it, and `nohup`
+does not change that. Pause and resume restore VM memory, so a backgrounded
+process does survive a pause with the same PID — which makes an ad-hoc service
+look more durable than it is. Anything load-bearing belongs in a template start
+command with a readiness probe.
 
 ## Error handling
 
