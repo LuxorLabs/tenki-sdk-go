@@ -119,7 +119,12 @@ type IssueSandboxSSHCertResponse struct {
 	// Hint to client: re-fetch a fresh cert if connection is older than this.
 	RenewalAfter *durationpb.Duration `protobuf:"bytes,5,opt,name=renewal_after,json=renewalAfter,proto3" json:"renewal_after,omitempty"`
 	// Resolved permissions for this cert (echo of policy at time of issuance).
-	Permissions   *SSHCertPermissions `protobuf:"bytes,6,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	Permissions *SSHCertPermissions `protobuf:"bytes,6,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	// Whether the client should verify the gateway's host certificate against
+	// ca_pub. False while the rollout flag is off, and absent (so false) on
+	// engines that predate it, which keeps a backend rollback safe: the client
+	// simply falls back to its previous behaviour.
+	PinHostKey    bool `protobuf:"varint,7,opt,name=pin_host_key,json=pinHostKey,proto3" json:"pin_host_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,6 +199,13 @@ func (x *IssueSandboxSSHCertResponse) GetPermissions() *SSHCertPermissions {
 		return x.Permissions
 	}
 	return nil
+}
+
+func (x *IssueSandboxSSHCertResponse) GetPinHostKey() bool {
+	if x != nil {
+		return x.PinHostKey
+	}
+	return false
 }
 
 type SSHCertPermissions struct {
@@ -478,7 +490,7 @@ const file_tenki_sandbox_v1_ssh_gateway_client_proto_rawDesc = "" +
 	"public_key\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10 \x18\x80@R\tpublicKey\x12>\n" +
 	"\rrequested_ttl\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\frequestedTtl\x123\n" +
-	"\x10source_addresses\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x10R\x0fsourceAddresses\"\xb3\x02\n" +
+	"\x10source_addresses\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x10R\x0fsourceAddresses\"\xd5\x02\n" +
 	"\x1bIssueSandboxSSHCertResponse\x12\x19\n" +
 	"\bssh_cert\x18\x01 \x01(\tR\asshCert\x12\x15\n" +
 	"\x06ca_pub\x18\x02 \x01(\tR\x05caPub\x129\n" +
@@ -487,7 +499,9 @@ const file_tenki_sandbox_v1_ssh_gateway_client_proto_rawDesc = "" +
 	"\vcert_serial\x18\x04 \x01(\tR\n" +
 	"certSerial\x12>\n" +
 	"\rrenewal_after\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\frenewalAfter\x12F\n" +
-	"\vpermissions\x18\x06 \x01(\v2$.tenki.sandbox.v1.SSHCertPermissionsR\vpermissions\"\x99\x02\n" +
+	"\vpermissions\x18\x06 \x01(\v2$.tenki.sandbox.v1.SSHCertPermissionsR\vpermissions\x12 \n" +
+	"\fpin_host_key\x18\a \x01(\bR\n" +
+	"pinHostKey\"\x99\x02\n" +
 	"\x12SSHCertPermissions\x12\x1b\n" +
 	"\tallow_pty\x18\x01 \x01(\bR\ballowPty\x124\n" +
 	"\x16allow_agent_forwarding\x18\x02 \x01(\bR\x14allowAgentForwarding\x12=\n" +

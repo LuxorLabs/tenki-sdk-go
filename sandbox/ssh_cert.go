@@ -20,6 +20,9 @@ type SSHCert struct {
 	CAPub      string
 	ExpiresAt  time.Time
 	CertSerial string
+	// PinHostKey reports whether the client should verify the gateway's host
+	// certificate against CAPub. False on engines that predate the field.
+	PinHostKey bool
 }
 
 // IssueSandboxSSHCert asks the engine to sign an SSH user cert for the
@@ -57,6 +60,7 @@ func (c *Client) IssueSandboxSSHCert(ctx context.Context, sessionID, publicKey s
 	out := &SSHCert{
 		SSHCert:    resp.Msg.GetSshCert(),
 		CAPub:      resp.Msg.GetCaPub(),
+		PinHostKey: resp.Msg.GetPinHostKey(),
 		CertSerial: resp.Msg.GetCertSerial(),
 	}
 	if t := resp.Msg.GetExpiresAt(); t != nil {

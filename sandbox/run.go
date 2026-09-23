@@ -41,6 +41,7 @@ type RunHandle struct {
 	waitCh    chan *Result
 	errCh     chan error
 	closeOnce sync.Once
+	cancel    context.CancelFunc
 
 	settleMu      sync.Mutex
 	settled       bool
@@ -177,8 +178,10 @@ func (c *Command) Stream(ctx context.Context) (*RunHandle, error) {
 	if len(c.argv) == 0 || c.argv[0] == "" {
 		return nil, errors.New("sandbox: empty command")
 	}
-	stream, started, err := c.openRunStream(ctx)
+	runCtx, cancel := context.WithCancel(ctx)
+	stream, started, err := c.openRunStream(runCtx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -191,6 +194,7 @@ func (c *Command) Stream(ctx context.Context) (*RunHandle, error) {
 		Stdout: stdoutReader,
 		Stderr: stderrReader,
 		stream: stream,
+		cancel: cancel,
 		waitCh: make(chan *Result, 1),
 		errCh:  make(chan error, 1),
 	}
@@ -487,6 +491,9 @@ func copyRunOutput(s *Stream, r io.Reader, stderr bool) {
 func (h *RunHandle) closeRequest() {
 	h.closeOnce.Do(func() {
 		_ = h.stream.CloseRequest()
+		if h.cancel != nil {
+			h.cancel()
+		}
 	})
 }
 
