@@ -482,7 +482,7 @@ tenkisandbox.MiB  // 1,048,576
   must hold.
 - Create/list ownership is derived from auth context.
 - Volume size: 1 MiB - 100 GiB.
-- Session CPU: 1-16 cores. Memory: 128-65536 MB, aligned to 2 MiB.
+- Session CPU: 1-128 cores. Memory: 128-524288 MB, aligned to 2 MiB. Workspace limits may be lower.
 
 ## Workspace secrets
 
@@ -535,3 +535,35 @@ Names resolve in the launching workspace. `WithDirectRuntime` accepts a
 runtime-only spec and starts at boot; use Create options for image and resources.
 Secret targets cannot also appear in ordinary runtime/session env. Session and
 snapshot metadata expose the read-only `HasRuntimeSecrets` marker.
+
+## Runtime secret files
+
+Put `secrets://API_TOKEN` in any text file, regardless of filename or extension. Built templates capture unresolved source text from the guest image; direct launches supply content read on the caller. Values resolve from the launching workspace before managed startup.
+
+```go
+// Built template: source is already inside the image.
+spec := sandbox.NewTemplateSpec().Start("python3 /app/server.py", sandbox.StartOptions{
+    SecretFiles: []*sandbox.RuntimeSecretFile{{
+        Path: "/app/.env",
+        Format: &sandbox.RuntimeSecretFileSource{Source: "/app/env.tpl-sandbox"},
+    }},
+})
+
+// Direct launch: read on the caller and upload unresolved text.
+content, err := os.ReadFile("env.tpl-sandbox")
+if err != nil { return err }
+session, err := client.Create(ctx,
+    sandbox.WithImage("my-template:latest"),
+    sandbox.WithSecretFiles(&sandbox.RuntimeSecretFile{
+        Path: "/app/.env",
+        Format: &sandbox.RuntimeSecretFileContent{Content: string(content)},
+    }),
+    sandbox.WithSecretOverrides(map[string]string{"API_TOKEN": "STAGING_API_TOKEN"}),
+)
+```
+
+Rendering performs one literal pass, without YAML/JSON/dotenv escaping, environment expansion, or recursive substitution. A backslash before a marker escapes it. Authors must ensure the actual consumer accepts the result; do not shell-source rendered secret text. Use a raw reference for exact-byte credentials, including binary values.
+
+Allowed destinations are under `/home/tenki/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, missing references, and injection-only plaintext delivery fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
+
+Guest values remain frozen across retries, restart, and ordinary resume; replacement Sessions adopt updates. Escape a file marker as `\secrets://NAME` to preserve `secrets://NAME` for separately authorized outbound injection; the marker grants no authority by itself. See [the file delivery contract](../../../docs/sandbox-secret-files.md) for lifecycle and path details.

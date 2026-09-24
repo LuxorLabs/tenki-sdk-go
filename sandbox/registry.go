@@ -101,6 +101,8 @@ type RegistryImageSummary struct {
 }
 
 type RegistryImageDetail struct {
+	RuntimeSecretEnv   map[string]string
+	RuntimeSecretFiles []*RuntimeSecretFile
 	Image              *RegistryImage
 	ResolvedSnapshotID string
 	ResolvedRef        string
@@ -610,6 +612,8 @@ func registryDetailFromProto(in *sandboxv1.RegistryImageDetail) *RegistryImageDe
 		return nil
 	}
 	return &RegistryImageDetail{
+		RuntimeSecretEnv:   cloneMap(in.RuntimeSecretEnv),
+		RuntimeSecretFiles: cloneSecretFiles(in.RuntimeSecretFiles),
 		Image:              registryImageFromProto(in.Image),
 		ResolvedSnapshotID: in.GetResolvedSnapshotId(),
 		ResolvedRef:        in.GetResolvedRef(),

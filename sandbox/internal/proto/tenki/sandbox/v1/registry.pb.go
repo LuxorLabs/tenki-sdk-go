@@ -648,9 +648,10 @@ type RegistryImageDetail struct {
 	// Deprecated: Marked as deprecated in tenki/sandbox/v1/registry.proto.
 	LegacyRef *string `protobuf:"bytes,11,opt,name=legacy_ref,json=legacyRef,proto3,oneof" json:"legacy_ref,omitempty"`
 	// Environment targets and secret names from the resolved published version; never values.
-	RuntimeSecretEnv map[string]string `protobuf:"bytes,12,rep,name=runtime_secret_env,json=runtimeSecretEnv,proto3" json:"runtime_secret_env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	RuntimeSecretEnv   map[string]string    `protobuf:"bytes,12,rep,name=runtime_secret_env,json=runtimeSecretEnv,proto3" json:"runtime_secret_env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RuntimeSecretFiles []*RuntimeSecretFile `protobuf:"bytes,13,rep,name=runtime_secret_files,json=runtimeSecretFiles,proto3" json:"runtime_secret_files,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RegistryImageDetail) Reset() {
@@ -764,6 +765,13 @@ func (x *RegistryImageDetail) GetLegacyRef() string {
 func (x *RegistryImageDetail) GetRuntimeSecretEnv() map[string]string {
 	if x != nil {
 		return x.RuntimeSecretEnv
+	}
+	return nil
+}
+
+func (x *RegistryImageDetail) GetRuntimeSecretFiles() []*RuntimeSecretFile {
+	if x != nil {
+		return x.RuntimeSecretFiles
 	}
 	return nil
 }
@@ -2377,7 +2385,7 @@ var File_tenki_sandbox_v1_registry_proto protoreflect.FileDescriptor
 
 const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\n" +
-	"\x1ftenki/sandbox/v1/registry.proto\x12\x10tenki.sandbox.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd6\a\n" +
+	"\x1ftenki/sandbox/v1/registry.proto\x12\x10tenki.sandbox.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"tenki/sandbox/v1/secret_file.proto\"\xd6\a\n" +
 	"\rRegistryImage\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x120\n" +
 	"\fworkspace_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\vworkspaceId\x88\x01\x01\x12%\n" +
@@ -2456,7 +2464,7 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\x13_source_snapshot_idB\x10\n" +
 	"\x0e_latest_digestB\x14\n" +
 	"\x12_latest_digest_refB\x14\n" +
-	"\x12_latest_legacy_ref\"\xec\a\n" +
+	"\x12_latest_legacy_ref\"\xc3\b\n" +
 	"\x13RegistryImageDetail\x125\n" +
 	"\x05image\x18\x01 \x01(\v2\x1f.tenki.sandbox.v1.RegistryImageR\x05image\x12?\n" +
 	"\x14resolved_snapshot_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\x12resolvedSnapshotId\x88\x01\x01\x12&\n" +
@@ -2474,7 +2482,8 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	" \x01(\tH\x03R\tdigestRef\x88\x01\x01\x12&\n" +
 	"\n" +
 	"legacy_ref\x18\v \x01(\tB\x02\x18\x01H\x04R\tlegacyRef\x88\x01\x01\x12i\n" +
-	"\x12runtime_secret_env\x18\f \x03(\v2;.tenki.sandbox.v1.RegistryImageDetail.RuntimeSecretEnvEntryR\x10runtimeSecretEnv\x1a;\n" +
+	"\x12runtime_secret_env\x18\f \x03(\v2;.tenki.sandbox.v1.RegistryImageDetail.RuntimeSecretEnvEntryR\x10runtimeSecretEnv\x12U\n" +
+	"\x14runtime_secret_files\x18\r \x03(\v2#.tenki.sandbox.v1.RuntimeSecretFileR\x12runtimeSecretFiles\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
@@ -2749,6 +2758,7 @@ var file_tenki_sandbox_v1_registry_proto_goTypes = []any{
 	nil,                                        // 32: tenki.sandbox.v1.RegistryImageDetail.EnvVarsEntry
 	nil,                                        // 33: tenki.sandbox.v1.RegistryImageDetail.RuntimeSecretEnvEntry
 	(*timestamppb.Timestamp)(nil),              // 34: google.protobuf.Timestamp
+	(*RuntimeSecretFile)(nil),                  // 35: tenki.sandbox.v1.RuntimeSecretFile
 }
 var file_tenki_sandbox_v1_registry_proto_depIdxs = []int32{
 	0,  // 0: tenki.sandbox.v1.RegistryImage.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
@@ -2765,32 +2775,33 @@ var file_tenki_sandbox_v1_registry_proto_depIdxs = []int32{
 	31, // 11: tenki.sandbox.v1.RegistryImageDetail.metadata:type_name -> tenki.sandbox.v1.RegistryImageDetail.MetadataEntry
 	32, // 12: tenki.sandbox.v1.RegistryImageDetail.env_vars:type_name -> tenki.sandbox.v1.RegistryImageDetail.EnvVarsEntry
 	33, // 13: tenki.sandbox.v1.RegistryImageDetail.runtime_secret_env:type_name -> tenki.sandbox.v1.RegistryImageDetail.RuntimeSecretEnvEntry
-	0,  // 14: tenki.sandbox.v1.ResolvedRegistryRef.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
-	1,  // 15: tenki.sandbox.v1.ResolvedRegistryRef.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
-	34, // 16: tenki.sandbox.v1.RegistryShareGrant.accepted_at:type_name -> google.protobuf.Timestamp
-	34, // 17: tenki.sandbox.v1.RegistryShareGrant.revoked_at:type_name -> google.protobuf.Timestamp
-	0,  // 18: tenki.sandbox.v1.PublishRegistryImageRequest.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
-	1,  // 19: tenki.sandbox.v1.PublishRegistryImageRequest.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
-	3,  // 20: tenki.sandbox.v1.PublishRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
-	4,  // 21: tenki.sandbox.v1.PublishRegistryImageResponse.tag:type_name -> tenki.sandbox.v1.RegistryTag
-	1,  // 22: tenki.sandbox.v1.SetRegistryImageVisibilityRequest.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
-	3,  // 23: tenki.sandbox.v1.SetRegistryImageVisibilityResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
-	3,  // 24: tenki.sandbox.v1.DeleteRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
-	0,  // 25: tenki.sandbox.v1.ListRegistryImagesRequest.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
-	2,  // 26: tenki.sandbox.v1.ListRegistryImagesRequest.sort_by:type_name -> tenki.sandbox.v1.RegistrySortBy
-	5,  // 27: tenki.sandbox.v1.ListRegistryImagesResponse.images:type_name -> tenki.sandbox.v1.RegistryImageSummary
-	6,  // 28: tenki.sandbox.v1.GetRegistryImageResponse.detail:type_name -> tenki.sandbox.v1.RegistryImageDetail
-	7,  // 29: tenki.sandbox.v1.ResolveRegistryRefResponse.resolved:type_name -> tenki.sandbox.v1.ResolvedRegistryRef
-	3,  // 30: tenki.sandbox.v1.ShareImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
-	8,  // 31: tenki.sandbox.v1.ShareImageResponse.grant:type_name -> tenki.sandbox.v1.RegistryShareGrant
-	8,  // 32: tenki.sandbox.v1.RevokeRegistryShareGrantResponse.grant:type_name -> tenki.sandbox.v1.RegistryShareGrant
-	8,  // 33: tenki.sandbox.v1.ListRegistryShareGrantsResponse.grants:type_name -> tenki.sandbox.v1.RegistryShareGrant
-	3,  // 34: tenki.sandbox.v1.UnshareRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
-	35, // [35:35] is the sub-list for method output_type
-	35, // [35:35] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	35, // 14: tenki.sandbox.v1.RegistryImageDetail.runtime_secret_files:type_name -> tenki.sandbox.v1.RuntimeSecretFile
+	0,  // 15: tenki.sandbox.v1.ResolvedRegistryRef.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
+	1,  // 16: tenki.sandbox.v1.ResolvedRegistryRef.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
+	34, // 17: tenki.sandbox.v1.RegistryShareGrant.accepted_at:type_name -> google.protobuf.Timestamp
+	34, // 18: tenki.sandbox.v1.RegistryShareGrant.revoked_at:type_name -> google.protobuf.Timestamp
+	0,  // 19: tenki.sandbox.v1.PublishRegistryImageRequest.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
+	1,  // 20: tenki.sandbox.v1.PublishRegistryImageRequest.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
+	3,  // 21: tenki.sandbox.v1.PublishRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
+	4,  // 22: tenki.sandbox.v1.PublishRegistryImageResponse.tag:type_name -> tenki.sandbox.v1.RegistryTag
+	1,  // 23: tenki.sandbox.v1.SetRegistryImageVisibilityRequest.visibility:type_name -> tenki.sandbox.v1.RegistryVisibility
+	3,  // 24: tenki.sandbox.v1.SetRegistryImageVisibilityResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
+	3,  // 25: tenki.sandbox.v1.DeleteRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
+	0,  // 26: tenki.sandbox.v1.ListRegistryImagesRequest.kind:type_name -> tenki.sandbox.v1.RegistryImageKind
+	2,  // 27: tenki.sandbox.v1.ListRegistryImagesRequest.sort_by:type_name -> tenki.sandbox.v1.RegistrySortBy
+	5,  // 28: tenki.sandbox.v1.ListRegistryImagesResponse.images:type_name -> tenki.sandbox.v1.RegistryImageSummary
+	6,  // 29: tenki.sandbox.v1.GetRegistryImageResponse.detail:type_name -> tenki.sandbox.v1.RegistryImageDetail
+	7,  // 30: tenki.sandbox.v1.ResolveRegistryRefResponse.resolved:type_name -> tenki.sandbox.v1.ResolvedRegistryRef
+	3,  // 31: tenki.sandbox.v1.ShareImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
+	8,  // 32: tenki.sandbox.v1.ShareImageResponse.grant:type_name -> tenki.sandbox.v1.RegistryShareGrant
+	8,  // 33: tenki.sandbox.v1.RevokeRegistryShareGrantResponse.grant:type_name -> tenki.sandbox.v1.RegistryShareGrant
+	8,  // 34: tenki.sandbox.v1.ListRegistryShareGrantsResponse.grants:type_name -> tenki.sandbox.v1.RegistryShareGrant
+	3,  // 35: tenki.sandbox.v1.UnshareRegistryImageResponse.image:type_name -> tenki.sandbox.v1.RegistryImage
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_tenki_sandbox_v1_registry_proto_init() }
@@ -2798,6 +2809,7 @@ func file_tenki_sandbox_v1_registry_proto_init() {
 	if File_tenki_sandbox_v1_registry_proto != nil {
 		return
 	}
+	file_tenki_sandbox_v1_secret_file_proto_init()
 	file_tenki_sandbox_v1_registry_proto_msgTypes[0].OneofWrappers = []any{}
 	file_tenki_sandbox_v1_registry_proto_msgTypes[1].OneofWrappers = []any{}
 	file_tenki_sandbox_v1_registry_proto_msgTypes[2].OneofWrappers = []any{}

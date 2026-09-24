@@ -108,7 +108,7 @@ type Session struct {
 	TerminalError             string
 	RuntimeState              RuntimeState
 	RuntimeError              string
-	HasRuntimeSecrets         bool
+	HasRuntimeSecrets         bool // Includes environment secrets and guest secret files.
 	SourceRegistryImageID     string
 	SourceSnapshotID          string
 	SourceRegistryWorkspaceID string

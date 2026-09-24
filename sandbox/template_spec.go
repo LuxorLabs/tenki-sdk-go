@@ -144,6 +144,7 @@ type RemoveOptions struct {
 // StartOptions configures a single-command runtime entrypoint.
 type StartOptions struct {
 	SecretEnv     map[string]string
+	SecretFiles   []*RuntimeSecretFile
 	Workdir       string
 	RunAt         RunAt
 	RestartPolicy TemplateRestartPolicy
@@ -155,6 +156,7 @@ type StartOptions struct {
 // ProcessComposeOptions configures a process-compose runtime entrypoint.
 type ProcessComposeOptions struct {
 	SecretEnv     map[string]string
+	SecretFiles   []*RuntimeSecretFile
 	Workdir       string
 	EnvFiles      []string
 	RunAt         RunAt
@@ -466,6 +468,9 @@ func (s TemplateSpec) Start(command string, opts ...StartOptions) TemplateSpec {
 			Workdir: options.Workdir,
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretFiles != nil {
+			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
+		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
 		}
@@ -485,6 +490,9 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 			Workdir: options.Workdir,
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretFiles != nil {
+			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
+		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
 		}
@@ -506,6 +514,9 @@ func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOp
 			EnvFiles:   append([]string(nil), options.EnvFiles...),
 		}}
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
+		if options.SecretFiles != nil {
+			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
+		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
 		}
@@ -1081,6 +1092,9 @@ func validateTemplateSpecRuntime(runtime *sandboxv1.TemplateRuntime, add func(fi
 	if runtime == nil {
 		return
 	}
+	if !validateSecretFiles(runtime.SecretFiles, len(runtime.SecretEnv)) {
+		add("runtime.secretFiles", "invalid", "invalid secret file declaration")
+	}
 	if len(runtime.SecretEnv) > 64 {
 		add("runtime.secretEnv", "max_pairs", "at most 64 secret references are supported")
 	}
@@ -1207,11 +1221,11 @@ func validateTemplateSpecResources(resources *sandboxv1.TemplateResources, add f
 	if resources == nil {
 		return
 	}
-	if resources.CpuCores < 0 || resources.CpuCores > 16 {
-		add("resources.cpuCores", "range", "cpuCores must be between 0 and 16")
+	if resources.CpuCores < 0 || resources.CpuCores > 128 {
+		add("resources.cpuCores", "range", "cpuCores must be between 0 and 128")
 	}
-	if resources.MemoryMb != 0 && (resources.MemoryMb < 512 || resources.MemoryMb > 65536 || resources.MemoryMb%2 != 0) {
-		add("resources.memoryMb", "range", "memoryMb must be 0 or an even value between 512 and 65536")
+	if resources.MemoryMb != 0 && (resources.MemoryMb < 512 || resources.MemoryMb > 524288 || resources.MemoryMb%2 != 0) {
+		add("resources.memoryMb", "range", "memoryMb must be 0 or an even value between 512 and 524288")
 	}
 	if resources.DiskSizeGb != 0 && (resources.DiskSizeGb < 5 || resources.DiskSizeGb > 100) {
 		add("resources.diskSizeGb", "range", "diskSizeGb must be 0 or between 5 and 100")

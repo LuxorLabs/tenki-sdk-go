@@ -95,3 +95,65 @@ func TestRuntimeSecretCreateContract(t *testing.T) {
 		t.Fatal("template override fields lost")
 	}
 }
+
+func TestRuntimeSecretFilesRoundtrip(t *testing.T) {
+	files := []*RuntimeSecretFile{
+		{Path: "/app/raw", Format: &RuntimeSecretFileRaw{Raw: &RuntimeSecretReference{Name: "RAW"}}},
+		{Path: "/app/.env", Format: &RuntimeSecretFileContent{Content: "TOKEN=secrets://TOKEN"}},
+		{Path: "/app/config.yaml", Format: &RuntimeSecretFileSource{Source: "/app/config.tpl.yaml"}},
+	}
+	for _, spec := range []TemplateSpec{NewTemplateSpec().Start("app", StartOptions{SecretFiles: files}), NewTemplateSpec().StartArgs([]string{"app"}, StartOptions{SecretFiles: files}), NewTemplateSpec().ProcessCompose("compose.yaml", ProcessComposeOptions{SecretFiles: files})} {
+		encoded, err := spec.ToJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := TemplateSpecFromJSON(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime, err := directRuntimeProto(decoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(runtime.SecretFiles) != 3 || runtime.SecretFiles[1].GetContent() != "TOKEN=secrets://TOKEN" {
+			t.Fatal("file contract lost")
+		}
+	}
+	spec := NewTemplateSpec().Start("app", StartOptions{SecretFiles: files})
+	files[0].Path = "/etc/unsafe"
+	if spec.Validate() != nil {
+		t.Fatal("builder retained caller-owned file declarations")
+	}
+	if NewTemplateSpec().Start("app", StartOptions{SecretFiles: files}).Validate() == nil {
+		t.Fatal("unsafe destination accepted")
+	}
+}
+
+func TestDirectFileLaunchCarriesUnresolvedContents(t *testing.T) {
+	h := &runtimeSecretHandler{}
+	mux := http.NewServeMux()
+	path, handler := rpc.NewSandboxServiceHandler(h)
+	mux.Handle(path, handler)
+	server := httptest.NewUnstartedServer(mux)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	file := &RuntimeSecretFile{Path: "/app/env.tpl-sandbox", Format: &RuntimeSecretFileContent{Content: "TOKEN=secrets://TOKEN"}}
+	option := WithSecretFiles(file)
+	file.Path = "/etc/unsafe"
+	if _, err := client.Create(context.Background(), option, WithWaitReady(false)); err != nil {
+		t.Fatal(err)
+	}
+	if h.requests[0].SecretFiles[0].GetContent() != "TOKEN=secrets://TOKEN" || h.requests[0].SecretFiles[0].Path != "/app/env.tpl-sandbox" {
+		t.Fatal("file input lost or caller mutation retained")
+	}
+	names, ok := SecretFileNames(`a=secrets://TOKEN,b=secrets://TOKEN,literal=\secrets://IGNORE,header=\secrets://API`)
+	if !ok || len(names) != 1 || names[0] != "TOKEN" {
+		t.Fatal("incorrect reference discovery")
+	}
+}

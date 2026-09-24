@@ -175,6 +175,7 @@ func (c *Client) Close() error {
 }
 
 // Create creates a sandbox session and returns an SDK Session wrapper.
+// CPU is 1-128 cores and memory 128-524288 MB (even); the workspace's size limit may be lower.
 //
 // If readiness fails after admission, the returned *WaitReadyFailedError carries
 // the live session so callers can close it or continue waiting.
@@ -214,6 +215,15 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		SetupEnv:          cloneStringMap(cfg.setupEnv),
 		SetupSecrets:      cloneStringMap(cfg.setupSecrets),
 		SecretOverrides:   cloneStringMap(cfg.secretOverrides),
+		SecretFiles:       cloneSecretFiles(cfg.secretFiles),
+	}
+	if !validateSecretFiles(cfg.secretFiles, 0) {
+		return nil, errors.New("sandbox: invalid direct secret files")
+	}
+	for _, file := range cfg.secretFiles {
+		if _, ok := file.Format.(*RuntimeSecretFileSource); ok {
+			return nil, errors.New("sandbox: source paths require a template build; direct files supply content")
+		}
 	}
 	if cfg.directRuntime != nil {
 		if cfg.templateSpecID != "" {

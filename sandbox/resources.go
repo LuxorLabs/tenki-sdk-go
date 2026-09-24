@@ -4,10 +4,10 @@ import "fmt"
 
 const (
 	minCPUCores          = int32(1)
-	maxCPUCores          = int32(16)
+	maxCPUCores          = int32(128)
 	minCreateMemoryMB    = int32(128)
 	minProvisionMemoryMB = int32(512)
-	maxMemoryMB          = int32(65536)
+	maxMemoryMB          = int32(524288)
 	minDiskSizeGB        = int32(5)
 	maxDiskSizeGB        = int32(100)
 )

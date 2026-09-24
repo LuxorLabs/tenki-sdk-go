@@ -20,7 +20,7 @@ func TestCreateRejectsInvalidResources(t *testing.T) {
 		opt  CreateOption
 		want string
 	}{
-		{name: "cpu", opt: WithCPUCores(17), want: "cpu_cores must be between 1 and 16"},
+		{name: "cpu", opt: WithCPUCores(129), want: "cpu_cores must be between 1 and 128"},
 		{name: "memory", opt: WithMemoryMB(8089), want: "memory_mb must be aligned to 2 MiB"},
 		{name: "disk", opt: WithDiskSizeGB(3), want: "disk_size_gb must be between 5 and 100"},
 	} {
