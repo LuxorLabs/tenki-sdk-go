@@ -46,9 +46,14 @@ type runtimeSecretHandler struct {
 	requests []*pb.CreateSessionRequest
 }
 
-func (h *runtimeSecretHandler) CreateSession(_ context.Context, req *connect.Request[pb.CreateSessionRequest]) (*connect.Response[pb.CreateSessionResponse], error) {
+func (h *runtimeSecretHandler) CreateSession(
+	_ context.Context,
+	req *connect.Request[pb.CreateSessionRequest],
+) (*connect.Response[pb.CreateSessionResponse], error) {
 	h.requests = append(h.requests, req.Msg)
-	return connect.NewResponse(&pb.CreateSessionResponse{Session: &pb.SandboxSession{Id: "session", State: pb.SessionState_SESSION_STATE_RUNNING, HasRuntimeSecrets: true}}), nil
+	return connect.NewResponse(
+		&pb.CreateSessionResponse{Session: &pb.SandboxSession{Id: "session", State: pb.SessionState_SESSION_STATE_RUNNING, HasRuntimeSecrets: true}},
+	), nil
 }
 func TestRuntimeSecretCreateContract(t *testing.T) {
 	h := &runtimeSecretHandler{}
@@ -73,7 +78,8 @@ func TestRuntimeSecretCreateContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := h.requests[0]
-	if req.GetRegistryRef() != "team/base:v1" || req.Runtime.GetStart().Workdir != "/app" || req.Runtime.SecretEnv["API_TOKEN"] != "shared-token" || req.SecretOverrides["shared-token"] != "local-token" {
+	if req.GetRegistryRef() != "team/base:v1" || req.Runtime.GetStart().Workdir != "/app" || req.Runtime.SecretEnv["API_TOKEN"] != "shared-token" ||
+		req.SecretOverrides["shared-token"] != "local-token" {
 		t.Fatal("runtime launch fields lost")
 	}
 	if !session.HasRuntimeSecrets || !snapshotFromProto(&pb.Snapshot{HasRuntimeSecrets: true}).HasRuntimeSecrets {
@@ -155,5 +161,67 @@ func TestDirectFileLaunchCarriesUnresolvedContents(t *testing.T) {
 	names, ok := SecretFileNames(`a=secrets://TOKEN,b=secrets://TOKEN,literal=\secrets://IGNORE,header=\secrets://API`)
 	if !ok || len(names) != 1 || names[0] != "TOKEN" {
 		t.Fatal("incorrect reference discovery")
+	}
+}
+
+func TestSecretRequestBindingsRoundtripAndCreate(t *testing.T) {
+	for _, location := range []string{"header", "query", "json"} {
+		t.Run(location, func(t *testing.T) {
+			rule := &SecretRequestBinding{
+				Name:       "token",
+				SecretName: "API_TOKEN",
+				Origin:     "https://api.example.com",
+				Methods:    []string{"POST"},
+				PathPrefix: "/v1/",
+				Header:     "Authorization",
+			}
+			if location == "query" {
+				rule.Header = ""
+				rule.QueryParameter = "token"
+			}
+			if location == "json" {
+				rule.Header = ""
+				rule.JsonPointer = "/auth/token"
+			}
+			for _, spec := range []TemplateSpec{NewTemplateSpec().Start("app", StartOptions{SecretRequests: []*SecretRequestBinding{rule}}), NewTemplateSpec().StartArgs([]string{"app"}, StartOptions{SecretRequests: []*SecretRequestBinding{rule}}), NewTemplateSpec().ProcessCompose("compose.yaml", ProcessComposeOptions{SecretRequests: []*SecretRequestBinding{rule}})} {
+				raw, err := spec.ToJSON()
+				if err != nil {
+					t.Fatal(err)
+				}
+				decoded, err := TemplateSpecFromJSON(raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				runtime, err := directRuntimeProto(decoded)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(runtime.SecretRequests) != 1 || runtime.SecretRequests[0].SecretName != "API_TOKEN" || runtime.SecretRequests[0].Header != rule.Header || runtime.SecretRequests[0].QueryParameter != rule.QueryParameter || runtime.SecretRequests[0].JsonPointer != rule.JsonPointer {
+					t.Fatal("request binding lost")
+				}
+			}
+			h := &runtimeSecretHandler{}
+			mux := http.NewServeMux()
+			path, handler := rpc.NewSandboxServiceHandler(h)
+			mux.Handle(path, handler)
+			server := httptest.NewUnstartedServer(mux)
+			server.EnableHTTP2 = true
+			server.StartTLS()
+			defer server.Close()
+			client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer client.Close()
+			option := WithSecretRequests(rule)
+			rule.Methods[0] = "DELETE"
+			if _, err := client.Create(context.Background(), option, WithWaitReady(false)); err != nil {
+				t.Fatal(err)
+			}
+			req := h.requests[0]
+			if req.Runtime != nil || len(req.SecretRequests) != 1 || req.SecretRequests[0].Methods[0] != "POST" {
+				t.Fatal("direct binding lost or caller mutation retained")
+			}
+		})
 	}
 }

@@ -143,6 +143,7 @@ type RemoveOptions struct {
 
 // StartOptions configures a single-command runtime entrypoint.
 type StartOptions struct {
+	SecretRequests []*SecretRequestBinding
 	SecretEnv     map[string]string
 	SecretFiles   []*RuntimeSecretFile
 	Workdir       string
@@ -155,6 +156,7 @@ type StartOptions struct {
 
 // ProcessComposeOptions configures a process-compose runtime entrypoint.
 type ProcessComposeOptions struct {
+	SecretRequests []*SecretRequestBinding
 	SecretEnv     map[string]string
 	SecretFiles   []*RuntimeSecretFile
 	Workdir       string
@@ -424,22 +426,42 @@ func (s TemplateSpec) Symlink(target, path string, opts ...StepOptions) Template
 
 // Apt appends an apt package install step.
 func (s TemplateSpec) Apt(packages ...string) TemplateSpec {
-	return s.appendStep("", &sandboxv1.TemplateStep{Operation: &sandboxv1.TemplateStep_Apt{Apt: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}}})
+	return s.appendStep(
+		"",
+		&sandboxv1.TemplateStep{
+			Operation: &sandboxv1.TemplateStep_Apt{Apt: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}},
+		},
+	)
 }
 
 // Pip appends a pip package install step.
 func (s TemplateSpec) Pip(packages ...string) TemplateSpec {
-	return s.appendStep("", &sandboxv1.TemplateStep{Operation: &sandboxv1.TemplateStep_Pip{Pip: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}}})
+	return s.appendStep(
+		"",
+		&sandboxv1.TemplateStep{
+			Operation: &sandboxv1.TemplateStep_Pip{Pip: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}},
+		},
+	)
 }
 
 // Npm appends an npm package install step.
 func (s TemplateSpec) Npm(packages ...string) TemplateSpec {
-	return s.appendStep("", &sandboxv1.TemplateStep{Operation: &sandboxv1.TemplateStep_Npm{Npm: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}}})
+	return s.appendStep(
+		"",
+		&sandboxv1.TemplateStep{
+			Operation: &sandboxv1.TemplateStep_Npm{Npm: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}},
+		},
+	)
 }
 
 // Bun appends a bun package install step.
 func (s TemplateSpec) Bun(packages ...string) TemplateSpec {
-	return s.appendStep("", &sandboxv1.TemplateStep{Operation: &sandboxv1.TemplateStep_Bun{Bun: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}}})
+	return s.appendStep(
+		"",
+		&sandboxv1.TemplateStep{
+			Operation: &sandboxv1.TemplateStep_Bun{Bun: &sandboxv1.TemplatePackageStep{Packages: append([]string(nil), packages...)}},
+		},
+	)
 }
 
 func ensureRuntime(spec *sandboxv1.TemplateBuildSpec) *sandboxv1.TemplateRuntime {
@@ -471,6 +493,9 @@ func (s TemplateSpec) Start(command string, opts ...StartOptions) TemplateSpec {
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
 		}
+		if options.SecretRequests != nil {
+			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
+		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
 		}
@@ -492,6 +517,9 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
+		}
+		if options.SecretRequests != nil {
+			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
@@ -516,6 +544,9 @@ func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOp
 		applyRuntimeOptions(runtime, options.RunAt, options.RestartPolicy)
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
+		}
+		if options.SecretRequests != nil {
+			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
@@ -761,7 +792,8 @@ func directRuntimeProto(spec TemplateSpec) (*sandboxv1.TemplateRuntime, error) {
 	if err := spec.Validate(); err != nil {
 		return nil, err
 	}
-	if p.Runtime == nil || (p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_UNSPECIFIED && p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_BOOT) {
+	if p.Runtime == nil ||
+		(p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_UNSPECIFIED && p.Runtime.RunAt != sandboxv1.TemplateRuntimeRunAt_TEMPLATE_RUNTIME_RUN_AT_BOOT) {
 		return nil, errors.New("sandbox: direct runtime requires a boot runtime entrypoint")
 	}
 	if start := p.Runtime.GetStart(); start != nil && start.Workdir == "" {

@@ -56,7 +56,8 @@ type sandboxv1connectRunStream interface {
 }
 
 type dataPlaneRunStream struct {
-	stream interface {
+	pending *sandboxv1.RunResponse
+	stream  interface {
 		Send(*sandboxv1.SandboxSessionDataPlaneServiceRunRequest) error
 		Receive() (*sandboxv1.SandboxSessionDataPlaneServiceRunResponse, error)
 		CloseRequest() error
@@ -121,6 +122,11 @@ func (s *dataPlaneRunStream) Send(req *sandboxv1.RunRequest) error {
 }
 
 func (s *dataPlaneRunStream) Receive() (*sandboxv1.RunResponse, error) {
+	if s.pending != nil {
+		first := s.pending
+		s.pending = nil
+		return first, nil
+	}
 	resp, err := s.stream.Receive()
 	if err != nil {
 		return nil, err
@@ -130,6 +136,22 @@ func (s *dataPlaneRunStream) Receive() (*sandboxv1.RunResponse, error) {
 
 func (s *dataPlaneRunStream) CloseRequest() error {
 	return s.stream.CloseRequest()
+}
+
+// A send-side EOF carries no RPC status; Connect exposes the server rejection through Receive.
+func runStreamSendError(stream *dataPlaneRunStream, sendErr error) error {
+	if !errors.Is(sendErr, io.EOF) {
+		return sendErr
+	}
+	first, receiveErr := stream.Receive()
+	if receiveErr != nil {
+		return receiveErr
+	}
+	if first == nil {
+		return sendErr
+	}
+	stream.pending = first
+	return nil
 }
 
 func (s *Session) Command(argv []string, opts ...RunOptions) *Command {
@@ -225,28 +247,31 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 		}
 		start.TimeoutMs = runTimeoutMs(c.opts.Timeout)
 		if err := stream.Send(&sandboxv1.RunRequest{Payload: &sandboxv1.RunRequest_Start{Start: start}}); err != nil {
-			if !reauthAttempted && c.session.reauthOnUnauthenticated(ctx, err) {
-				reauthAttempted = true
-				_ = stream.CloseRequest()
-				continue
-			}
-			provisioningPending := c.session.dataPlaneProvisioningPending(dp)
-			if isRetryableRunStreamEstablishmentError(err, provisioningPending) {
-				_ = stream.CloseRequest()
-				if isProvisioningSessionNotFound(err, provisioningPending) {
-					if refreshErr := c.session.refreshHintedDataPlane(ctx, dp); refreshErr != nil {
-						return nil, nil, refreshErr
+			err = runStreamSendError(stream, err)
+			if err != nil {
+				if !reauthAttempted && c.session.reauthOnUnauthenticated(ctx, err) {
+					reauthAttempted = true
+					_ = stream.CloseRequest()
+					continue
+				}
+				provisioningPending := c.session.dataPlaneProvisioningPending(dp)
+				if isRetryableRunStreamEstablishmentError(err, provisioningPending) {
+					_ = stream.CloseRequest()
+					if isProvisioningSessionNotFound(err, provisioningPending) {
+						if refreshErr := c.session.refreshHintedDataPlane(ctx, dp); refreshErr != nil {
+							return nil, nil, refreshErr
+						}
 					}
+					if waitErr := waitRunStreamEstablishmentRetry(readyCtx, ctx, attempt, err); waitErr != nil {
+						return nil, nil, waitErr
+					}
+					continue
 				}
-				if waitErr := waitRunStreamEstablishmentRetry(readyCtx, ctx, attempt, err); waitErr != nil {
-					return nil, nil, waitErr
+				if isRunUnimplemented(err) {
+					return nil, nil, &CapabilityUnavailableError{Primitive: "run", Message: err.Error()}
 				}
-				continue
+				return nil, nil, mapError(err)
 			}
-			if isRunUnimplemented(err) {
-				return nil, nil, &CapabilityUnavailableError{Primitive: "run", Message: err.Error()}
-			}
-			return nil, nil, err
 		}
 		first, err := stream.Receive()
 		if err != nil {

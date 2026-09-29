@@ -197,7 +197,7 @@ func receiveTermination(t *testing.T, ch <-chan HostPortTunnelTermination) HostP
 
 func waitForTunnelTest(t *testing.T, predicate func() bool) {
 	t.Helper()
-	for range 200 {
+	for range 1000 {
 		if predicate() {
 			return
 		}

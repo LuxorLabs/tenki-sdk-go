@@ -101,16 +101,17 @@ type RegistryImageSummary struct {
 }
 
 type RegistryImageDetail struct {
-	RuntimeSecretEnv   map[string]string
-	RuntimeSecretFiles []*RuntimeSecretFile
-	Image              *RegistryImage
-	ResolvedSnapshotID string
-	ResolvedRef        string
-	WorkspaceActive    bool
-	Tombstoned         bool
-	MaskedEnvVarKeys   []string
-	Metadata           map[string]string
-	EnvVars            map[string]string
+	RuntimeSecretRequests []*SecretRequestBinding
+	RuntimeSecretEnv     map[string]string
+	RuntimeSecretFiles   []*RuntimeSecretFile
+	Image                *RegistryImage
+	ResolvedSnapshotID   string
+	ResolvedRef          string
+	WorkspaceActive      bool
+	Tombstoned           bool
+	MaskedEnvVarKeys     []string
+	Metadata             map[string]string
+	EnvVars              map[string]string
 }
 
 type RegistryShareGrant struct {
@@ -452,7 +453,12 @@ func (c *Client) UnpublishRegistryImage(ctx context.Context, imageOrID string) (
 	return registryImageFromProto(resp.Msg.Image), nil
 }
 
-func (c *Client) ShareImage(ctx context.Context, imageOrID string, targetWorkspaceID string, opts ...RegistryShareOption) (*RegistryShareResult, error) {
+func (c *Client) ShareImage(
+	ctx context.Context,
+	imageOrID string,
+	targetWorkspaceID string,
+	opts ...RegistryShareOption,
+) (*RegistryShareResult, error) {
 	req := &sandboxv1.ShareImageRequest{TargetWorkspaceId: strings.TrimSpace(targetWorkspaceID)}
 	if value := strings.TrimSpace(imageOrID); looksLikeUUID(value) {
 		req.ImageId = &value
@@ -612,16 +618,17 @@ func registryDetailFromProto(in *sandboxv1.RegistryImageDetail) *RegistryImageDe
 		return nil
 	}
 	return &RegistryImageDetail{
-		RuntimeSecretEnv:   cloneMap(in.RuntimeSecretEnv),
-		RuntimeSecretFiles: cloneSecretFiles(in.RuntimeSecretFiles),
-		Image:              registryImageFromProto(in.Image),
-		ResolvedSnapshotID: in.GetResolvedSnapshotId(),
-		ResolvedRef:        in.GetResolvedRef(),
-		WorkspaceActive:    in.WorkspaceActive,
-		Tombstoned:         in.Tombstoned,
-		MaskedEnvVarKeys:   append([]string{}, in.MaskedEnvVarKeys...),
-		Metadata:           cloneMap(in.Metadata),
-		EnvVars:            cloneMap(in.EnvVars),
+		RuntimeSecretEnv:     cloneMap(in.RuntimeSecretEnv),
+		RuntimeSecretRequests: cloneSecretRequests(in.RuntimeSecretRequests),
+		RuntimeSecretFiles:   cloneSecretFiles(in.RuntimeSecretFiles),
+		Image:                registryImageFromProto(in.Image),
+		ResolvedSnapshotID:   in.GetResolvedSnapshotId(),
+		ResolvedRef:          in.GetResolvedRef(),
+		WorkspaceActive:      in.WorkspaceActive,
+		Tombstoned:           in.Tombstoned,
+		MaskedEnvVarKeys:     append([]string{}, in.MaskedEnvVarKeys...),
+		Metadata:             cloneMap(in.Metadata),
+		EnvVars:              cloneMap(in.EnvVars),
 	}
 }
 

@@ -215,6 +215,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		SetupEnv:          cloneStringMap(cfg.setupEnv),
 		SetupSecrets:      cloneStringMap(cfg.setupSecrets),
 		SecretOverrides:   cloneStringMap(cfg.secretOverrides),
+		SecretRequests:     cloneSecretRequests(cfg.secretRequests),
 		SecretFiles:       cloneSecretFiles(cfg.secretFiles),
 	}
 	if !validateSecretFiles(cfg.secretFiles, 0) {

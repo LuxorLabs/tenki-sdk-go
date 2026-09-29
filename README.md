@@ -567,3 +567,32 @@ Rendering performs one literal pass, without YAML/JSON/dotenv escaping, environm
 Allowed destinations are under `/home/tenki/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, missing references, and injection-only plaintext delivery fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
 
 Guest values remain frozen across retries, restart, and ordinary resume; replacement Sessions adopt updates. Escape a file marker as `\secrets://NAME` to preserve `secrets://NAME` for separately authorized outbound injection; the marker grants no authority by itself. See [the file delivery contract](../../../docs/sandbox-secret-files.md) for lifecycle and path details.
+
+## HTTPS header secrets
+
+```go
+session, err := client.Create(ctx, sandbox.WithSecretRequests(&sandbox.SecretRequestBinding{
+    Name: "token", SecretName: "API_TOKEN",
+    Origin: "https://api.example.com", Methods: []string{"POST"},
+    PathPrefix: "/v1/", Header: "Authorization",
+}))
+```
+
+Send `Authorization: Bearer secrets://token` from the sandbox. The host
+substitutes the value outside the guest. `StartOptions.SecretRequests` and
+`ProcessComposeOptions.SecretRequests` declare the same bindings on templates;
+`WithSecretOverrides` selects different workspace secret names at launch.
+
+Every request uses the active version and
+checks the current destination policy and revocation state, including reused
+connections. Unset destinations, missing bindings, revoked versions, and resolver
+outages deny the affected request before it reaches the upstream. Injection-only
+secrets work; existing egress rules remain in force. Explicit values and absent
+headers are preserved. Query strings and request bodies are not substituted.
+
+Requires an injection-capable node, HTTPS interception, and application trust in
+the interception CA. Use an exact HTTPS DNS origin without a port, explicit
+methods/header, and a canonical unescaped path prefix. Limits: 64 bindings, 8 KiB
+per value; routing, framing, and hop-by-hop headers are forbidden. A destination
+that reflects request headers can return the secret to the guest. Restrict bindings
+to trusted origins and paths.
