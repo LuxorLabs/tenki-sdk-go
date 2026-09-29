@@ -34,30 +34,9 @@ func workspaceSecretError(err error) error {
 	return &WorkspaceSecretError{Code: rpcError.Code(), cause: err}
 }
 
-type SecretDeliveryMode string
-
-const (
-	SecretGuestAndInjection SecretDeliveryMode = "guest_and_injection"
-	SecretInjectionOnly     SecretDeliveryMode = "injection_only"
-)
-
-type SecretDestinationMode string
-
-const (
-	SecretDestinationUnset     SecretDestinationMode = "unset"
-	SecretDestinationAllowlist SecretDestinationMode = "allowlist"
-	SecretDestinationAllowAny  SecretDestinationMode = "allow_any"
-)
-
-type SecretPolicy struct {
-	DeliveryMode    SecretDeliveryMode
-	DestinationMode SecretDestinationMode
-	AllowedHosts    []string
-}
 type WorkspaceSecret struct {
 	ID, WorkspaceID, Name                      string
 	ActiveVersion, Revision                    uint32
-	Policy                                     SecretPolicy
 	CreatedAt, UpdatedAt, RevokedAt, DeletedAt *time.Time
 }
 type WorkspaceSecretVersion struct {
@@ -72,7 +51,6 @@ type UpdateSecretOptions struct {
 	SecretMutationOptions
 	// Nil retains the value; a non-nil empty slice creates an empty value.
 	Value         []byte
-	Policy        *SecretPolicy
 	ActiveVersion *uint32
 }
 type SecretPageOptions struct {
@@ -106,20 +84,6 @@ func secretRequestID(id string) (string, error) {
 	b[8] = (b[8] & 0x3f) | 0x80
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
 }
-func secretPolicyProto(policy *SecretPolicy) (*pb.SecretPolicy, error) {
-	if policy == nil {
-		return nil, nil
-	}
-	delivery, ok := map[SecretDeliveryMode]pb.SecretDeliveryMode{SecretGuestAndInjection: pb.SecretDeliveryMode_SECRET_DELIVERY_MODE_GUEST_AND_INJECTION, SecretInjectionOnly: pb.SecretDeliveryMode_SECRET_DELIVERY_MODE_INJECTION_ONLY}[policy.DeliveryMode]
-	if !ok {
-		return nil, fmt.Errorf("invalid secret delivery mode")
-	}
-	destination, ok := map[SecretDestinationMode]pb.SecretDestinationMode{SecretDestinationUnset: pb.SecretDestinationMode_SECRET_DESTINATION_MODE_UNSET, SecretDestinationAllowlist: pb.SecretDestinationMode_SECRET_DESTINATION_MODE_ALLOWLIST, SecretDestinationAllowAny: pb.SecretDestinationMode_SECRET_DESTINATION_MODE_ALLOW_ANY}[policy.DestinationMode]
-	if !ok {
-		return nil, fmt.Errorf("invalid secret destination mode")
-	}
-	return &pb.SecretPolicy{DeliveryMode: delivery, DestinationMode: destination, AllowedHosts: append([]string(nil), policy.AllowedHosts...)}, nil
-}
 func secretTime(ts *timestamppb.Timestamp) *time.Time {
 	if ts == nil {
 		return nil
@@ -128,44 +92,30 @@ func secretTime(ts *timestamppb.Timestamp) *time.Time {
 	return &value
 }
 func secretMetadata(secret *pb.Secret) (WorkspaceSecret, error) {
-	if secret == nil || secret.Policy == nil {
-		return WorkspaceSecret{}, fmt.Errorf("missing secret metadata")
-	}
-	delivery := map[pb.SecretDeliveryMode]SecretDeliveryMode{pb.SecretDeliveryMode_SECRET_DELIVERY_MODE_GUEST_AND_INJECTION: SecretGuestAndInjection, pb.SecretDeliveryMode_SECRET_DELIVERY_MODE_INJECTION_ONLY: SecretInjectionOnly}[secret.Policy.DeliveryMode]
-	destination := map[pb.SecretDestinationMode]SecretDestinationMode{pb.SecretDestinationMode_SECRET_DESTINATION_MODE_UNSET: SecretDestinationUnset, pb.SecretDestinationMode_SECRET_DESTINATION_MODE_ALLOWLIST: SecretDestinationAllowlist, pb.SecretDestinationMode_SECRET_DESTINATION_MODE_ALLOW_ANY: SecretDestinationAllowAny}[secret.Policy.DestinationMode]
-	if delivery == "" || destination == "" {
-		return WorkspaceSecret{}, fmt.Errorf("unknown secret policy mode")
-	}
-	return WorkspaceSecret{ID: secret.Id, WorkspaceID: secret.WorkspaceId, Name: secret.Name, ActiveVersion: secret.ActiveVersion, Revision: secret.Revision, Policy: SecretPolicy{DeliveryMode: delivery, DestinationMode: destination, AllowedHosts: append([]string(nil), secret.Policy.AllowedHosts...)}, CreatedAt: secretTime(secret.CreatedAt), UpdatedAt: secretTime(secret.UpdatedAt), RevokedAt: secretTime(secret.RevokedAt), DeletedAt: secretTime(secret.DeletedAt)}, nil
+ if secret == nil { return WorkspaceSecret{},errors.New("missing secret metadata") }
+ return WorkspaceSecret{ID:secret.Id,WorkspaceID:secret.WorkspaceId,Name:secret.Name,ActiveVersion:secret.ActiveVersion,Revision:secret.Revision,
+ CreatedAt:secretTime(secret.CreatedAt),UpdatedAt:secretTime(secret.UpdatedAt),RevokedAt:secretTime(secret.RevokedAt),DeletedAt:secretTime(secret.DeletedAt)},nil
 }
-func (c *Secrets) Create(ctx context.Context, name string, value []byte, policy SecretPolicy, requestID string) (WorkspaceSecret, error) {
+func (c *Secrets) Create(ctx context.Context, name string, value []byte, requestID string) (WorkspaceSecret, error) {
 	if value == nil {
 		return WorkspaceSecret{}, fmt.Errorf("secret value required; use a non-nil empty slice for an empty value")
 	}
-	policyPB, err := secretPolicyProto(&policy)
+	requestID, err := secretRequestID(requestID)
 	if err != nil {
 		return WorkspaceSecret{}, err
 	}
-	requestID, err = secretRequestID(requestID)
-	if err != nil {
-		return WorkspaceSecret{}, err
-	}
-	response, err := c.rpc.CreateSecret(ctx, connect.NewRequest(&pb.CreateSecretRequest{WorkspaceId: c.workspaceID, Name: name, Value: value, Policy: policyPB, RequestId: requestID}))
+	response, err := c.rpc.CreateSecret(ctx, connect.NewRequest(&pb.CreateSecretRequest{WorkspaceId: c.workspaceID, Name: name, Value: value, RequestId: requestID}))
 	if err != nil {
 		return WorkspaceSecret{}, workspaceSecretError(err)
 	}
 	return secretMetadata(response.Msg.Secret)
 }
 func (c *Secrets) Update(ctx context.Context, secretID string, options UpdateSecretOptions) (WorkspaceSecret, error) {
-	policy, err := secretPolicyProto(options.Policy)
-	if err != nil {
-		return WorkspaceSecret{}, err
-	}
 	requestID, err := secretRequestID(options.RequestID)
 	if err != nil {
 		return WorkspaceSecret{}, err
 	}
-	response, err := c.rpc.UpdateSecret(ctx, connect.NewRequest(&pb.UpdateSecretRequest{WorkspaceId: c.workspaceID, SecretId: secretID, Value: options.Value, Policy: policy, ExpectedRevision: options.ExpectedRevision, RequestId: requestID, ActiveVersion: options.ActiveVersion}))
+	response, err := c.rpc.UpdateSecret(ctx, connect.NewRequest(&pb.UpdateSecretRequest{WorkspaceId: c.workspaceID, SecretId: secretID, Value: options.Value, ExpectedRevision: options.ExpectedRevision, RequestId: requestID, ActiveVersion: options.ActiveVersion}))
 	if err != nil {
 		return WorkspaceSecret{}, workspaceSecretError(err)
 	}

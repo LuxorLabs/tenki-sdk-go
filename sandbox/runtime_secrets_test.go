@@ -164,64 +164,49 @@ func TestDirectFileLaunchCarriesUnresolvedContents(t *testing.T) {
 	}
 }
 
-func TestSecretRequestBindingsRoundtripAndCreate(t *testing.T) {
-	for _, location := range []string{"header", "query", "json"} {
-		t.Run(location, func(t *testing.T) {
-			rule := &SecretRequestBinding{
-				Name:       "token",
-				SecretName: "API_TOKEN",
-				Origin:     "https://api.example.com",
-				Methods:    []string{"POST"},
-				PathPrefix: "/v1/",
-				Header:     "Authorization",
-			}
-			if location == "query" {
-				rule.Header = ""
-				rule.QueryParameter = "token"
-			}
-			if location == "json" {
-				rule.Header = ""
-				rule.JsonPointer = "/auth/token"
-			}
-			for _, spec := range []TemplateSpec{NewTemplateSpec().Start("app", StartOptions{SecretRequests: []*SecretRequestBinding{rule}}), NewTemplateSpec().StartArgs([]string{"app"}, StartOptions{SecretRequests: []*SecretRequestBinding{rule}}), NewTemplateSpec().ProcessCompose("compose.yaml", ProcessComposeOptions{SecretRequests: []*SecretRequestBinding{rule}})} {
-				raw, err := spec.ToJSON()
-				if err != nil {
-					t.Fatal(err)
-				}
-				decoded, err := TemplateSpecFromJSON(raw)
-				if err != nil {
-					t.Fatal(err)
-				}
-				runtime, err := directRuntimeProto(decoded)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if len(runtime.SecretRequests) != 1 || runtime.SecretRequests[0].SecretName != "API_TOKEN" || runtime.SecretRequests[0].Header != rule.Header || runtime.SecretRequests[0].QueryParameter != rule.QueryParameter || runtime.SecretRequests[0].JsonPointer != rule.JsonPointer {
-					t.Fatal("request binding lost")
-				}
-			}
-			h := &runtimeSecretHandler{}
-			mux := http.NewServeMux()
-			path, handler := rpc.NewSandboxServiceHandler(h)
-			mux.Handle(path, handler)
-			server := httptest.NewUnstartedServer(mux)
-			server.EnableHTTP2 = true
-			server.StartTLS()
-			defer server.Close()
-			client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL), WithHTTPClient(server.Client()))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer client.Close()
-			option := WithSecretRequests(rule)
-			rule.Methods[0] = "DELETE"
-			if _, err := client.Create(context.Background(), option, WithWaitReady(false)); err != nil {
-				t.Fatal(err)
-			}
-			req := h.requests[0]
-			if req.Runtime != nil || len(req.SecretRequests) != 1 || req.SecretRequests[0].Methods[0] != "POST" {
-				t.Fatal("direct binding lost or caller mutation retained")
-			}
-		})
+func TestSecretPoliciesRoundtripAndCreate(t *testing.T) {
+	names := []string{"claude", "github"}
+	for _, spec := range []TemplateSpec{
+		NewTemplateSpec().Start("app", StartOptions{SecretPolicies: names}),
+		NewTemplateSpec().StartArgs([]string{"app"}, StartOptions{SecretPolicies: names}),
+		NewTemplateSpec().ProcessCompose("compose.yaml", ProcessComposeOptions{SecretPolicies: names}),
+	} {
+		raw, err := spec.ToJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := TemplateSpecFromJSON(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime, err := directRuntimeProto(decoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(runtime.SecretPolicies) != 2 || runtime.SecretPolicies[0] != "claude" {
+			t.Fatal("policy selection lost")
+		}
+	}
+	h := &runtimeSecretHandler{}
+	mux := http.NewServeMux()
+	path, handler := rpc.NewSandboxServiceHandler(h)
+	mux.Handle(path, handler)
+	server := httptest.NewUnstartedServer(mux)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	option := WithSecretPolicies(names...)
+	names[0] = "mutated"
+	if _, err := client.Create(context.Background(), option, WithWaitReady(false)); err != nil {
+		t.Fatal(err)
+	}
+	req := h.requests[0]
+	if req.Runtime != nil || len(req.SecretPolicies) != 2 || req.SecretPolicies[0] != "claude" {
+		t.Fatal("selection lost or caller mutation retained")
 	}
 }

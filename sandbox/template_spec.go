@@ -143,12 +143,12 @@ type RemoveOptions struct {
 
 // StartOptions configures a single-command runtime entrypoint.
 type StartOptions struct {
-	SecretRequests []*SecretRequestBinding
-	SecretEnv     map[string]string
-	SecretFiles   []*RuntimeSecretFile
-	Workdir       string
-	RunAt         RunAt
-	RestartPolicy TemplateRestartPolicy
+	SecretPolicies []string
+	SecretEnv      map[string]string
+	SecretFiles    []*RuntimeSecretFile
+	Workdir        string
+	RunAt          RunAt
+	RestartPolicy  TemplateRestartPolicy
 	// ReadyWhen sets readiness checks with a default 60s timeout; use the
 	// ReadyWhen builder method for full control.
 	ReadyWhen []ReadyCheck
@@ -156,13 +156,13 @@ type StartOptions struct {
 
 // ProcessComposeOptions configures a process-compose runtime entrypoint.
 type ProcessComposeOptions struct {
-	SecretRequests []*SecretRequestBinding
-	SecretEnv     map[string]string
-	SecretFiles   []*RuntimeSecretFile
-	Workdir       string
-	EnvFiles      []string
-	RunAt         RunAt
-	RestartPolicy TemplateRestartPolicy
+	SecretPolicies []string
+	SecretEnv      map[string]string
+	SecretFiles    []*RuntimeSecretFile
+	Workdir        string
+	EnvFiles       []string
+	RunAt          RunAt
+	RestartPolicy  TemplateRestartPolicy
 }
 
 // ExecCheckOptions configures one exec readiness check.
@@ -493,8 +493,8 @@ func (s TemplateSpec) Start(command string, opts ...StartOptions) TemplateSpec {
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
 		}
-		if options.SecretRequests != nil {
-			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
+		if options.SecretPolicies != nil {
+			runtime.SecretPolicies = append([]string(nil), options.SecretPolicies...)
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
@@ -518,8 +518,8 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
 		}
-		if options.SecretRequests != nil {
-			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
+		if options.SecretPolicies != nil {
+			runtime.SecretPolicies = append([]string(nil), options.SecretPolicies...)
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
@@ -545,8 +545,8 @@ func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOp
 		if options.SecretFiles != nil {
 			runtime.SecretFiles = cloneSecretFiles(options.SecretFiles)
 		}
-		if options.SecretRequests != nil {
-			runtime.SecretRequests = cloneSecretRequests(options.SecretRequests)
+		if options.SecretPolicies != nil {
+			runtime.SecretPolicies = append([]string(nil), options.SecretPolicies...)
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)

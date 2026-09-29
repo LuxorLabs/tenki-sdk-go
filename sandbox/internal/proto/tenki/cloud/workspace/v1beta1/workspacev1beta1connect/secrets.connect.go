@@ -33,6 +33,21 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// WorkspaceSecretsServiceCreateSecretPolicyProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's CreateSecretPolicy RPC.
+	WorkspaceSecretsServiceCreateSecretPolicyProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/CreateSecretPolicy"
+	// WorkspaceSecretsServiceUpdateSecretPolicyProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's UpdateSecretPolicy RPC.
+	WorkspaceSecretsServiceUpdateSecretPolicyProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/UpdateSecretPolicy"
+	// WorkspaceSecretsServiceGetSecretPolicyProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's GetSecretPolicy RPC.
+	WorkspaceSecretsServiceGetSecretPolicyProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/GetSecretPolicy"
+	// WorkspaceSecretsServiceListSecretPoliciesProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's ListSecretPolicies RPC.
+	WorkspaceSecretsServiceListSecretPoliciesProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/ListSecretPolicies"
+	// WorkspaceSecretsServiceDeleteSecretPolicyProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's DeleteSecretPolicy RPC.
+	WorkspaceSecretsServiceDeleteSecretPolicyProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/DeleteSecretPolicy"
 	// WorkspaceSecretsServiceCreateSecretProcedure is the fully-qualified name of the
 	// WorkspaceSecretsService's CreateSecret RPC.
 	WorkspaceSecretsServiceCreateSecretProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/CreateSecret"
@@ -59,6 +74,11 @@ const (
 // WorkspaceSecretsServiceClient is a client for the
 // tenki.cloud.workspace.v1beta1.WorkspaceSecretsService service.
 type WorkspaceSecretsServiceClient interface {
+	CreateSecretPolicy(context.Context, *connect.Request[v1beta1.CreateSecretPolicyRequest]) (*connect.Response[v1beta1.CreateSecretPolicyResponse], error)
+	UpdateSecretPolicy(context.Context, *connect.Request[v1beta1.UpdateSecretPolicyRequest]) (*connect.Response[v1beta1.UpdateSecretPolicyResponse], error)
+	GetSecretPolicy(context.Context, *connect.Request[v1beta1.GetSecretPolicyRequest]) (*connect.Response[v1beta1.GetSecretPolicyResponse], error)
+	ListSecretPolicies(context.Context, *connect.Request[v1beta1.ListSecretPoliciesRequest]) (*connect.Response[v1beta1.ListSecretPoliciesResponse], error)
+	DeleteSecretPolicy(context.Context, *connect.Request[v1beta1.DeleteSecretPolicyRequest]) (*connect.Response[v1beta1.DeleteSecretPolicyResponse], error)
 	CreateSecret(context.Context, *connect.Request[v1beta1.CreateSecretRequest]) (*connect.Response[v1beta1.CreateSecretResponse], error)
 	UpdateSecret(context.Context, *connect.Request[v1beta1.UpdateSecretRequest]) (*connect.Response[v1beta1.UpdateSecretResponse], error)
 	GetSecret(context.Context, *connect.Request[v1beta1.GetSecretRequest]) (*connect.Response[v1beta1.GetSecretResponse], error)
@@ -80,6 +100,36 @@ func NewWorkspaceSecretsServiceClient(httpClient connect.HTTPClient, baseURL str
 	baseURL = strings.TrimRight(baseURL, "/")
 	workspaceSecretsServiceMethods := v1beta1.File_tenki_cloud_workspace_v1beta1_secrets_proto.Services().ByName("WorkspaceSecretsService").Methods()
 	return &workspaceSecretsServiceClient{
+		createSecretPolicy: connect.NewClient[v1beta1.CreateSecretPolicyRequest, v1beta1.CreateSecretPolicyResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceCreateSecretPolicyProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("CreateSecretPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSecretPolicy: connect.NewClient[v1beta1.UpdateSecretPolicyRequest, v1beta1.UpdateSecretPolicyResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceUpdateSecretPolicyProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("UpdateSecretPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		getSecretPolicy: connect.NewClient[v1beta1.GetSecretPolicyRequest, v1beta1.GetSecretPolicyResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceGetSecretPolicyProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("GetSecretPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		listSecretPolicies: connect.NewClient[v1beta1.ListSecretPoliciesRequest, v1beta1.ListSecretPoliciesResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceListSecretPoliciesProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("ListSecretPolicies")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSecretPolicy: connect.NewClient[v1beta1.DeleteSecretPolicyRequest, v1beta1.DeleteSecretPolicyResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceDeleteSecretPolicyProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("DeleteSecretPolicy")),
+			connect.WithClientOptions(opts...),
+		),
 		createSecret: connect.NewClient[v1beta1.CreateSecretRequest, v1beta1.CreateSecretResponse](
 			httpClient,
 			baseURL+WorkspaceSecretsServiceCreateSecretProcedure,
@@ -127,6 +177,11 @@ func NewWorkspaceSecretsServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // workspaceSecretsServiceClient implements WorkspaceSecretsServiceClient.
 type workspaceSecretsServiceClient struct {
+	createSecretPolicy *connect.Client[v1beta1.CreateSecretPolicyRequest, v1beta1.CreateSecretPolicyResponse]
+	updateSecretPolicy *connect.Client[v1beta1.UpdateSecretPolicyRequest, v1beta1.UpdateSecretPolicyResponse]
+	getSecretPolicy    *connect.Client[v1beta1.GetSecretPolicyRequest, v1beta1.GetSecretPolicyResponse]
+	listSecretPolicies *connect.Client[v1beta1.ListSecretPoliciesRequest, v1beta1.ListSecretPoliciesResponse]
+	deleteSecretPolicy *connect.Client[v1beta1.DeleteSecretPolicyRequest, v1beta1.DeleteSecretPolicyResponse]
 	createSecret       *connect.Client[v1beta1.CreateSecretRequest, v1beta1.CreateSecretResponse]
 	updateSecret       *connect.Client[v1beta1.UpdateSecretRequest, v1beta1.UpdateSecretResponse]
 	getSecret          *connect.Client[v1beta1.GetSecretRequest, v1beta1.GetSecretResponse]
@@ -134,6 +189,35 @@ type workspaceSecretsServiceClient struct {
 	listSecretVersions *connect.Client[v1beta1.ListSecretVersionsRequest, v1beta1.ListSecretVersionsResponse]
 	revokeSecret       *connect.Client[v1beta1.RevokeSecretRequest, v1beta1.RevokeSecretResponse]
 	deleteSecret       *connect.Client[v1beta1.DeleteSecretRequest, v1beta1.DeleteSecretResponse]
+}
+
+// CreateSecretPolicy calls
+// tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy.
+func (c *workspaceSecretsServiceClient) CreateSecretPolicy(ctx context.Context, req *connect.Request[v1beta1.CreateSecretPolicyRequest]) (*connect.Response[v1beta1.CreateSecretPolicyResponse], error) {
+	return c.createSecretPolicy.CallUnary(ctx, req)
+}
+
+// UpdateSecretPolicy calls
+// tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy.
+func (c *workspaceSecretsServiceClient) UpdateSecretPolicy(ctx context.Context, req *connect.Request[v1beta1.UpdateSecretPolicyRequest]) (*connect.Response[v1beta1.UpdateSecretPolicyResponse], error) {
+	return c.updateSecretPolicy.CallUnary(ctx, req)
+}
+
+// GetSecretPolicy calls tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy.
+func (c *workspaceSecretsServiceClient) GetSecretPolicy(ctx context.Context, req *connect.Request[v1beta1.GetSecretPolicyRequest]) (*connect.Response[v1beta1.GetSecretPolicyResponse], error) {
+	return c.getSecretPolicy.CallUnary(ctx, req)
+}
+
+// ListSecretPolicies calls
+// tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies.
+func (c *workspaceSecretsServiceClient) ListSecretPolicies(ctx context.Context, req *connect.Request[v1beta1.ListSecretPoliciesRequest]) (*connect.Response[v1beta1.ListSecretPoliciesResponse], error) {
+	return c.listSecretPolicies.CallUnary(ctx, req)
+}
+
+// DeleteSecretPolicy calls
+// tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy.
+func (c *workspaceSecretsServiceClient) DeleteSecretPolicy(ctx context.Context, req *connect.Request[v1beta1.DeleteSecretPolicyRequest]) (*connect.Response[v1beta1.DeleteSecretPolicyResponse], error) {
+	return c.deleteSecretPolicy.CallUnary(ctx, req)
 }
 
 // CreateSecret calls tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret.
@@ -175,6 +259,11 @@ func (c *workspaceSecretsServiceClient) DeleteSecret(ctx context.Context, req *c
 // WorkspaceSecretsServiceHandler is an implementation of the
 // tenki.cloud.workspace.v1beta1.WorkspaceSecretsService service.
 type WorkspaceSecretsServiceHandler interface {
+	CreateSecretPolicy(context.Context, *connect.Request[v1beta1.CreateSecretPolicyRequest]) (*connect.Response[v1beta1.CreateSecretPolicyResponse], error)
+	UpdateSecretPolicy(context.Context, *connect.Request[v1beta1.UpdateSecretPolicyRequest]) (*connect.Response[v1beta1.UpdateSecretPolicyResponse], error)
+	GetSecretPolicy(context.Context, *connect.Request[v1beta1.GetSecretPolicyRequest]) (*connect.Response[v1beta1.GetSecretPolicyResponse], error)
+	ListSecretPolicies(context.Context, *connect.Request[v1beta1.ListSecretPoliciesRequest]) (*connect.Response[v1beta1.ListSecretPoliciesResponse], error)
+	DeleteSecretPolicy(context.Context, *connect.Request[v1beta1.DeleteSecretPolicyRequest]) (*connect.Response[v1beta1.DeleteSecretPolicyResponse], error)
 	CreateSecret(context.Context, *connect.Request[v1beta1.CreateSecretRequest]) (*connect.Response[v1beta1.CreateSecretResponse], error)
 	UpdateSecret(context.Context, *connect.Request[v1beta1.UpdateSecretRequest]) (*connect.Response[v1beta1.UpdateSecretResponse], error)
 	GetSecret(context.Context, *connect.Request[v1beta1.GetSecretRequest]) (*connect.Response[v1beta1.GetSecretResponse], error)
@@ -191,6 +280,36 @@ type WorkspaceSecretsServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewWorkspaceSecretsServiceHandler(svc WorkspaceSecretsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	workspaceSecretsServiceMethods := v1beta1.File_tenki_cloud_workspace_v1beta1_secrets_proto.Services().ByName("WorkspaceSecretsService").Methods()
+	workspaceSecretsServiceCreateSecretPolicyHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceCreateSecretPolicyProcedure,
+		svc.CreateSecretPolicy,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("CreateSecretPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceSecretsServiceUpdateSecretPolicyHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceUpdateSecretPolicyProcedure,
+		svc.UpdateSecretPolicy,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("UpdateSecretPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceSecretsServiceGetSecretPolicyHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceGetSecretPolicyProcedure,
+		svc.GetSecretPolicy,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("GetSecretPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceSecretsServiceListSecretPoliciesHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceListSecretPoliciesProcedure,
+		svc.ListSecretPolicies,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("ListSecretPolicies")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceSecretsServiceDeleteSecretPolicyHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceDeleteSecretPolicyProcedure,
+		svc.DeleteSecretPolicy,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("DeleteSecretPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
 	workspaceSecretsServiceCreateSecretHandler := connect.NewUnaryHandler(
 		WorkspaceSecretsServiceCreateSecretProcedure,
 		svc.CreateSecret,
@@ -235,6 +354,16 @@ func NewWorkspaceSecretsServiceHandler(svc WorkspaceSecretsServiceHandler, opts 
 	)
 	return "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case WorkspaceSecretsServiceCreateSecretPolicyProcedure:
+			workspaceSecretsServiceCreateSecretPolicyHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceUpdateSecretPolicyProcedure:
+			workspaceSecretsServiceUpdateSecretPolicyHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceGetSecretPolicyProcedure:
+			workspaceSecretsServiceGetSecretPolicyHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceListSecretPoliciesProcedure:
+			workspaceSecretsServiceListSecretPoliciesHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceDeleteSecretPolicyProcedure:
+			workspaceSecretsServiceDeleteSecretPolicyHandler.ServeHTTP(w, r)
 		case WorkspaceSecretsServiceCreateSecretProcedure:
 			workspaceSecretsServiceCreateSecretHandler.ServeHTTP(w, r)
 		case WorkspaceSecretsServiceUpdateSecretProcedure:
@@ -257,6 +386,26 @@ func NewWorkspaceSecretsServiceHandler(svc WorkspaceSecretsServiceHandler, opts 
 
 // UnimplementedWorkspaceSecretsServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedWorkspaceSecretsServiceHandler struct{}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) CreateSecretPolicy(context.Context, *connect.Request[v1beta1.CreateSecretPolicyRequest]) (*connect.Response[v1beta1.CreateSecretPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) UpdateSecretPolicy(context.Context, *connect.Request[v1beta1.UpdateSecretPolicyRequest]) (*connect.Response[v1beta1.UpdateSecretPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) GetSecretPolicy(context.Context, *connect.Request[v1beta1.GetSecretPolicyRequest]) (*connect.Response[v1beta1.GetSecretPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) ListSecretPolicies(context.Context, *connect.Request[v1beta1.ListSecretPoliciesRequest]) (*connect.Response[v1beta1.ListSecretPoliciesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) DeleteSecretPolicy(context.Context, *connect.Request[v1beta1.DeleteSecretPolicyRequest]) (*connect.Response[v1beta1.DeleteSecretPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy is not implemented"))
+}
 
 func (UnimplementedWorkspaceSecretsServiceHandler) CreateSecret(context.Context, *connect.Request[v1beta1.CreateSecretRequest]) (*connect.Response[v1beta1.CreateSecretResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret is not implemented"))

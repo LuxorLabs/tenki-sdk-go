@@ -516,11 +516,7 @@ import "github.com/LuxorLabs/tenki-sdk-go/sandbox/workspace"
 client, err := workspace.NewWorkspaceClient(workspace.WorkspaceOptions{WorkspaceID: workspaceID})
 if err != nil { return err }
 defer client.Close()
-secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes,
-    workspace.SecretPolicy{
-        DeliveryMode: workspace.SecretGuestAndInjection,
-        DestinationMode: workspace.SecretDestinationUnset,
-    }, requestID)
+secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes, requestID)
 ```
 
 The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
@@ -586,35 +582,29 @@ session, err := client.Create(ctx,
 
 Rendering performs one literal pass, without YAML/JSON/dotenv escaping, environment expansion, or recursive substitution. A backslash before a marker escapes it. Authors must ensure the actual consumer accepts the result; do not shell-source rendered secret text. Use a raw reference for exact-byte credentials, including binary values.
 
-Allowed destinations are under `/home/tenki/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, missing references, and injection-only plaintext delivery fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
+Allowed destinations are under `/home/tenki/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, and missing references fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
 
 Guest values remain frozen across retries, restart, and ordinary resume; replacement Sessions adopt updates. Escape a file marker as `\secrets://NAME` to preserve `secrets://NAME` for separately authorized outbound injection; the marker grants no authority by itself. See [the file delivery contract](../../../docs/sandbox-secret-files.md) for lifecycle and path details.
 
-## HTTPS header secrets
+## Transparent HTTPS secrets
+
+Create `API_TOKEN` through the workspace Secrets client, then save and select a request policy:
 
 ```go
-session, err := client.Create(ctx, sandbox.WithSecretRequests(&sandbox.SecretRequestBinding{
-    Name: "token", SecretName: "API_TOKEN",
+_, err := workspaceClient.Secrets.Policies().Create(ctx, "example", []*workspace.SecretRequestRule{{
     Origin: "https://api.example.com", Methods: []string{"POST"},
-    PathPrefix: "/v1/", Header: "Authorization",
-}))
+    PathPrefix: "/v1/", Header: "Authorization", Secrets: []string{"API_TOKEN"},
+}}, "")
+if err != nil { return err }
+session, err := client.Create(ctx, sandbox.WithSecretPolicies("example"))
 ```
 
-Send `Authorization: Bearer secrets://token` from the sandbox. The host
-substitutes the value outside the guest. `StartOptions.SecretRequests` and
-`ProcessComposeOptions.SecretRequests` declare the same bindings on templates;
-`WithSecretOverrides` selects different workspace secret names at launch.
+Use `StartOptions.SecretPolicies` or `ProcessComposeOptions.SecretPolicies` for template requirements.
 
-Every request uses the active version and
-checks the current destination policy and revocation state, including reused
-connections. Unset destinations, missing bindings, revoked versions, and resolver
-outages deny the affected request before it reaches the upstream. Injection-only
-secrets work; existing egress rules remain in force. Explicit values and absent
-headers are preserved. Query strings and request bodies are not substituted.
+Send `Authorization: Bearer secrets://API_TOKEN` from the sandbox. The reference uses the actual secret name. No alias or injection override is required. Rules can instead select a `queryParameter` or `jsonPointer`, with one location per rule and one or more names in `secrets`.
 
-Requires an injection-capable node, HTTPS interception, and application trust in
-the interception CA. Use an exact HTTPS DNS origin without a port, explicit
-methods/header, and a canonical unescaped path prefix. Limits: 64 bindings, 8 KiB
-per value; routing, framing, and hop-by-hop headers are forbidden. A destination
-that reflects request headers can return the secret to the guest. Restrict bindings
-to trusted origins and paths.
+Policies belong to a workspace and apply only to sessions that select them. Template-required names resolve in the launching workspace; explicit selections add to them. Policy edits and deletion affect subsequent requests on attached sessions. Rotation uses the active value, and revoked or deleted secrets are denied. Deleting and recreating a name does not retarget existing bindings.
+
+Every referenced location must match a selected policy before the request is forwarded. Existing egress rules still apply. An unavailable resolver fails closed. Ordinary values and absent fields remain unchanged.
+
+HTTPS interception requires a capable node and guest trust in the managed CA. Permit only trusted origins and paths: an upstream that echoes credentials can expose a value to the guest. See the [workspace secrets guide](../../../docs/src/product/workspace-secrets.md) for location limits and lifecycle behavior.

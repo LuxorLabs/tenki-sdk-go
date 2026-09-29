@@ -22,7 +22,7 @@ type secretsHandler struct {
 }
 
 func metadataFixture() *pb.Secret {
-	return &pb.Secret{Id: "secret", WorkspaceId: "workspace", Name: "TOKEN", ActiveVersion: 1, Revision: 2, Policy: &pb.SecretPolicy{DeliveryMode: pb.SecretDeliveryMode_SECRET_DELIVERY_MODE_GUEST_AND_INJECTION, DestinationMode: pb.SecretDestinationMode_SECRET_DESTINATION_MODE_UNSET}}
+	return &pb.Secret{Id: "secret", WorkspaceId: "workspace", Name: "TOKEN", ActiveVersion: 1, Revision: 2}
 }
 func (h *secretsHandler) CreateSecret(_ context.Context, request *connect.Request[pb.CreateSecretRequest]) (*connect.Response[pb.CreateSecretResponse], error) {
 	h.requests = append(h.requests, proto.Clone(request.Msg))
@@ -97,13 +97,12 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 	h := &secretsHandler{}
 	c := testClient(t, h, "workspace")
 	ctx := context.Background()
-	policy := SecretPolicy{DeliveryMode: SecretGuestAndInjection, DestinationMode: SecretDestinationUnset}
 	value := []byte{0, 255, 10, 128}
-	secret, err := c.Secrets.Create(ctx, "TOKEN", value, policy, "00000000-0000-4000-8000-000000000001")
+	secret, err := c.Secrets.Create(ctx, "TOKEN", value, "00000000-0000-4000-8000-000000000001")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = c.Secrets.Create(ctx, "EMPTY", []byte{}, policy, ""); err != nil {
+	if _, err = c.Secrets.Create(ctx, "EMPTY", []byte{}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: SecretMutationOptions{ExpectedRevision: 2}}); err != nil {
@@ -175,8 +174,8 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 	if _, ok := reflect.TypeOf(secret).FieldByName("Value"); ok {
 		t.Fatal("metadata exposes value")
 	}
-	if secret.Policy.DeliveryMode != SecretGuestAndInjection || secret.Policy.DestinationMode != SecretDestinationUnset {
-		t.Fatal("policy metadata")
+	if _, ok := reflect.TypeOf(secret).FieldByName("Policy"); ok {
+		t.Fatal("retired access policy exposed")
 	}
 }
 func TestWorkspaceSecretsConflictReplay(t *testing.T) {
@@ -211,9 +210,7 @@ func TestWorkspaceSecretsValidation(t *testing.T) {
 	if _, err := NewWorkspaceClient(WorkspaceOptions{AuthToken: "invalid"}); !errors.Is(err, ErrInvalidAuthToken) {
 		t.Fatal(err)
 	}
-	if _, err := secretPolicyProto(&SecretPolicy{DeliveryMode: "invalid", DestinationMode: SecretDestinationUnset}); err == nil {
-		t.Fatal("invalid mode accepted")
-	}
+
 }
 
 func TestWorkspaceClientInferredScope(t *testing.T) {

@@ -101,17 +101,17 @@ type RegistryImageSummary struct {
 }
 
 type RegistryImageDetail struct {
-	RuntimeSecretRequests []*SecretRequestBinding
-	RuntimeSecretEnv     map[string]string
-	RuntimeSecretFiles   []*RuntimeSecretFile
-	Image                *RegistryImage
-	ResolvedSnapshotID   string
-	ResolvedRef          string
-	WorkspaceActive      bool
-	Tombstoned           bool
-	MaskedEnvVarKeys     []string
-	Metadata             map[string]string
-	EnvVars              map[string]string
+	RuntimeSecretPolicies []string
+	RuntimeSecretEnv      map[string]string
+	RuntimeSecretFiles    []*RuntimeSecretFile
+	Image                 *RegistryImage
+	ResolvedSnapshotID    string
+	ResolvedRef           string
+	WorkspaceActive       bool
+	Tombstoned            bool
+	MaskedEnvVarKeys      []string
+	Metadata              map[string]string
+	EnvVars               map[string]string
 }
 
 type RegistryShareGrant struct {
@@ -618,17 +618,17 @@ func registryDetailFromProto(in *sandboxv1.RegistryImageDetail) *RegistryImageDe
 		return nil
 	}
 	return &RegistryImageDetail{
-		RuntimeSecretEnv:     cloneMap(in.RuntimeSecretEnv),
-		RuntimeSecretRequests: cloneSecretRequests(in.RuntimeSecretRequests),
-		RuntimeSecretFiles:   cloneSecretFiles(in.RuntimeSecretFiles),
-		Image:                registryImageFromProto(in.Image),
-		ResolvedSnapshotID:   in.GetResolvedSnapshotId(),
-		ResolvedRef:          in.GetResolvedRef(),
-		WorkspaceActive:      in.WorkspaceActive,
-		Tombstoned:           in.Tombstoned,
-		MaskedEnvVarKeys:     append([]string{}, in.MaskedEnvVarKeys...),
-		Metadata:             cloneMap(in.Metadata),
-		EnvVars:              cloneMap(in.EnvVars),
+		RuntimeSecretEnv:      cloneMap(in.RuntimeSecretEnv),
+		RuntimeSecretPolicies: append([]string(nil), in.RuntimeSecretPolicies...),
+		RuntimeSecretFiles:    cloneSecretFiles(in.RuntimeSecretFiles),
+		Image:                 registryImageFromProto(in.Image),
+		ResolvedSnapshotID:    in.GetResolvedSnapshotId(),
+		ResolvedRef:           in.GetResolvedRef(),
+		WorkspaceActive:       in.WorkspaceActive,
+		Tombstoned:            in.Tombstoned,
+		MaskedEnvVarKeys:      append([]string{}, in.MaskedEnvVarKeys...),
+		Metadata:              cloneMap(in.Metadata),
+		EnvVars:               cloneMap(in.EnvVars),
 	}
 }
 

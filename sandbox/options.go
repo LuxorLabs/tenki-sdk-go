@@ -167,7 +167,7 @@ func WithDetachWaitTimeout(timeout time.Duration) DetachVolumeOption {
 
 type createConfig struct {
 	secretFiles     []*RuntimeSecretFile
-	secretRequests   []*SecretRequestBinding
+	secretPolicies  []string
 	directRuntime   *TemplateSpec
 	secretOverrides map[string]string
 	allowInbound    bool
