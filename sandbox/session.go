@@ -115,9 +115,10 @@ type Session struct {
 	SourceRegistryRef         string
 	SourceTemplateID          string
 	Warnings                  []SandboxWarning
+	TailnetStatus             *TailnetStatus
 }
 
-// SessionEgressPolicy is the outbound allowlist echoed back on a session. Both lists empty means unrestricted.
+// SessionEgressPolicy uses tailnet policy for empty allowlists when attached; otherwise they are unrestricted.
 type SessionEgressPolicy struct {
 	AllowDomains []string
 	AllowCIDRs   []string
@@ -237,6 +238,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.Tags = append(s.Tags[:0], protoSession.Tags...)
 	s.PauseSnapshot = snapshotFromProto(protoSession.PauseSnapshot)
 	s.egress = egressPolicyFromProto(protoSession.GetEgress())
+	s.TailnetStatus = tailnetStatusFromProto(protoSession.GetTailnetStatus())
 	s.VolumeMounts = s.VolumeMounts[:0]
 	for _, attachment := range protoSession.VolumeAttachments {
 		if attachment == nil {

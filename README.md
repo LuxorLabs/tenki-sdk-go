@@ -87,6 +87,28 @@ When `WithSticky()` and `WithMaxDuration(...)` are both supplied, sticky takes p
 The returned session contains `STICKY_OVERRIDES_MAX_DURATION`.
 Sticky disables automatic idle pause and remains enabled across manual pause and resume.
 
+### Tailnet attachment
+
+Wrap a direct auth key so normal string and debug formatting redact it.
+`WaitForOnline` keeps the session in creation until Tenki verifies the registered node.
+
+```go
+session, err := client.Create(ctx, tenkisandbox.WithTailnet(tenkisandbox.TailnetAttachment{
+	AuthKey:       tenkisandbox.NewTailnetAuthKey(os.Getenv("TAILNET_AUTH_KEY")),
+	Tags:          []string{"tag:sandbox"},
+	ExposePorts:   []uint32{3000},
+	AcceptRoutes:  true,
+	WaitForOnline: true,
+}))
+if err != nil {
+	return err
+}
+fmt.Println(session.TailnetStatus.State, session.TailnetStatus.FQDN)
+```
+
+The direct key is write-only and never appears in `Session`.
+The server may reject options from later milestones, including wake-on-connect and recreate-on-resume.
+
 ## Configuration
 
 Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.

@@ -13963,6 +13963,7 @@ type TailnetAttachment struct {
 	Credential           isTailnetAttachment_Credential `protobuf_oneof:"credential"`
 	ExitPolicy           TailnetExitPolicy              `protobuf:"varint,13,opt,name=exit_policy,json=exitPolicy,proto3,enum=tenki.sandbox.v1.TailnetExitPolicy" json:"exit_policy,omitempty"`
 	EphemeralPausePolicy TailnetEphemeralPausePolicy    `protobuf:"varint,14,opt,name=ephemeral_pause_policy,json=ephemeralPausePolicy,proto3,enum=tenki.sandbox.v1.TailnetEphemeralPausePolicy" json:"ephemeral_pause_policy,omitempty"`
+	Provider             string                         `protobuf:"bytes,15,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -14108,6 +14109,13 @@ func (x *TailnetAttachment) GetEphemeralPausePolicy() TailnetEphemeralPausePolic
 	return TailnetEphemeralPausePolicy_TAILNET_EPHEMERAL_PAUSE_POLICY_UNSPECIFIED
 }
 
+func (x *TailnetAttachment) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
 type isTailnetAttachment_Credential interface {
 	isTailnetAttachment_Credential()
 }
@@ -14193,6 +14201,7 @@ type TailnetStatus struct {
 	Owner          string   `protobuf:"bytes,6,opt,name=owner,proto3" json:"owner,omitempty"`
 	Error          string   `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
 	DeviceRetained bool     `protobuf:"varint,8,opt,name=device_retained,json=deviceRetained,proto3" json:"device_retained,omitempty"`
+	Provider       string   `protobuf:"bytes,9,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -14281,6 +14290,13 @@ func (x *TailnetStatus) GetDeviceRetained() bool {
 		return x.DeviceRetained
 	}
 	return false
+}
+
+func (x *TailnetStatus) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
 }
 
 var File_tenki_sandbox_v1_sandbox_proto protoreflect.FileDescriptor
@@ -15480,7 +15496,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04nameJ\x04\b\x03\x10\x04R\bprojects\"m\n" +
 	"\x0eSandboxWarning\x128\n" +
 	"\x04code\x18\x01 \x01(\x0e2$.tenki.sandbox.v1.SandboxWarningCodeR\x04code\x12!\n" +
-	"\amessage\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\amessage\"\x8e\x06\n" +
+	"\amessage\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\amessage\"\xaa\x06\n" +
 	"\x11TailnetAttachment\x12G\n" +
 	"\bhostname\x18\x01 \x01(\tB+\xbaH(r&\x18?2\"^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?$R\bhostname\x127\n" +
 	"\x04tags\x18\x02 \x03(\tB#\xbaH \x92\x01\x1d\x10\x10\x18\x01\"\x17r\x15\x18\x80\x012\x10^tag:[a-z0-9-]+$R\x04tags\x12\x1c\n" +
@@ -15500,13 +15516,14 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\tfederated\x18\f \x01(\v2,.tenki.sandbox.v1.TailnetFederatedCredentialH\x00R\tfederated\x12D\n" +
 	"\vexit_policy\x18\r \x01(\x0e2#.tenki.sandbox.v1.TailnetExitPolicyR\n" +
 	"exitPolicy\x12c\n" +
-	"\x16ephemeral_pause_policy\x18\x0e \x01(\x0e2-.tenki.sandbox.v1.TailnetEphemeralPausePolicyR\x14ephemeralPausePolicyB\f\n" +
+	"\x16ephemeral_pause_policy\x18\x0e \x01(\x0e2-.tenki.sandbox.v1.TailnetEphemeralPausePolicyR\x14ephemeralPausePolicy\x12\x1a\n" +
+	"\bprovider\x18\x0f \x01(\tR\bproviderB\f\n" +
 	"\n" +
 	"credential\"k\n" +
 	"\x1aTailnetFederatedCredential\x12'\n" +
 	"\n" +
 	"profile_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tprofileId\x12$\n" +
-	"\bid_token\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x18\x80\x80\x01R\aidToken\"\x88\x02\n" +
+	"\bid_token\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x18\x80\x80\x01R\aidToken\"\xa4\x02\n" +
 	"\rTailnetStatus\x12O\n" +
 	"\x05state\x18\x01 \x01(\tB9\xbaH6r4R\apendingR\ajoiningR\x06onlineR\aofflineR\x05errorR\bdetachedR\x05state\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x12\n" +
@@ -15515,7 +15532,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\x12\x14\n" +
 	"\x05owner\x18\x06 \x01(\tR\x05owner\x12\x14\n" +
 	"\x05error\x18\a \x01(\tR\x05error\x12'\n" +
-	"\x0fdevice_retained\x18\b \x01(\bR\x0edeviceRetained*\x99\x02\n" +
+	"\x0fdevice_retained\x18\b \x01(\bR\x0edeviceRetained\x12\x1a\n" +
+	"\bprovider\x18\t \x01(\tR\bprovider*\x99\x02\n" +
 	"\fSessionState\x12\x1d\n" +
 	"\x19SESSION_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16SESSION_STATE_CREATING\x10\x01\x12\x19\n" +

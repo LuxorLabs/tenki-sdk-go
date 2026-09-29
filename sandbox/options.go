@@ -201,6 +201,7 @@ type createConfig struct {
 	waitForRuntime  bool
 	waitTimeout     time.Duration
 	waitTimeoutSet  bool
+	tailnet         *TailnetAttachment
 }
 
 type createVolumeConfig struct {
@@ -943,6 +944,14 @@ func WithWaitTimeout(timeout time.Duration) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.waitTimeout = timeout
 		cfg.waitTimeoutSet = true
+	})
+}
+
+func WithTailnet(attachment TailnetAttachment) CreateOption {
+	attachment = cloneTailnetAttachment(attachment)
+	return createOptionFunc(func(cfg *createConfig) {
+		cloned := cloneTailnetAttachment(attachment)
+		cfg.tailnet = &cloned
 	})
 }
 

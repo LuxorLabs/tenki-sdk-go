@@ -294,6 +294,13 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if workspaceID := strings.TrimSpace(cfg.workspaceID); workspaceID != "" {
 		req.WorkspaceId = &workspaceID
 	}
+	if cfg.tailnet != nil {
+		tailnet, err := tailnetAttachmentProto(*cfg.tailnet)
+		if err != nil {
+			return nil, err
+		}
+		req.Tailnet = tailnet
+	}
 
 	if !cfg.waitReady && !cfg.waitForRuntime {
 		resp, err := c.sandbox.CreateSession(ctx, connect.NewRequest(req))
