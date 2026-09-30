@@ -348,6 +348,7 @@ func (s *Session) copyFrom(other *Session) {
 	s.SourceRegistryWorkspaceID = other.SourceRegistryWorkspaceID
 	s.SourceRegistryRef = other.SourceRegistryRef
 	s.SourceTemplateID = other.SourceTemplateID
+	s.TailnetStatus = other.TailnetStatus
 	s.egress = other.egress
 }
 

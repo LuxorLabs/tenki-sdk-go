@@ -17,21 +17,24 @@ import (
 
 type waitSessionHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
-	getCalls             atomic.Int32
-	createWaitReady      atomic.Bool
-	createWaitForRuntime atomic.Bool
-	createAllowInbound   *bool
-	createAllowOutbound  *bool
-	terminateCalls       atomic.Int32
-	waitErr              error
-	terminalError        string
-	runtimeFailure       bool
-	stayCreating         bool
+	getCalls                   atomic.Int32
+	createWaitReady            atomic.Bool
+	createWaitForRuntime       atomic.Bool
+	createTailnetWaitForOnline atomic.Bool
+	createAllowInbound         *bool
+	createAllowOutbound        *bool
+	terminateCalls             atomic.Int32
+	waitErr                    error
+	terminalError              string
+	runtimeFailure             bool
+	stayCreating               bool
+	waitTailnetOnline          bool
 }
 
 func (h *waitSessionHandler) CreateSession(_ context.Context, req *connect.Request[sandboxv1.CreateSessionRequest]) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
 	h.createWaitReady.Store(req.Msg.WaitReady)
 	h.createWaitForRuntime.Store(req.Msg.WaitForRuntime)
+	h.createTailnetWaitForOnline.Store(req.Msg.GetTailnet().GetWaitForOnline())
 	if req.Msg.AllowInbound != nil {
 		allowInbound := req.Msg.GetAllowInbound()
 		h.createAllowInbound = &allowInbound
@@ -60,12 +63,16 @@ func (h *waitSessionHandler) CreateSession(_ context.Context, req *connect.Reque
 	if req.Msg.WaitForRuntime {
 		state = sandboxv1.SessionState_SESSION_STATE_RUNNING
 	}
-	return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: &sandboxv1.SandboxSession{
+	session := &sandboxv1.SandboxSession{
 		Id:        "019e84bc-6df8-765f-8507-2734f87156c7",
 		State:     state,
 		OwnerType: "SERVICE",
 		OwnerId:   "self",
-	}}), nil
+	}
+	if h.waitTailnetOnline {
+		session.TailnetStatus = &sandboxv1.TailnetStatus{Provider: "tailscale", State: "pending"}
+	}
+	return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: session}), nil
 }
 
 func TestCreateSendsOutboundPolicyPresence(t *testing.T) {
@@ -250,6 +257,33 @@ func TestCreateDefaultsToClientWaitReady(t *testing.T) {
 	}
 }
 
+func TestCreateWaitForTailnetOnlineReturnsUpdatedStatus(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitSessionHandler{waitTailnetOnline: true}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	session, err := client.Create(context.Background(),
+		WithWorkspaceID("ws-1"),
+		WithTailnet(TailnetAttachment{
+			AuthKey:       NewTailnetAuthKey("tskey-auth-test"),
+			Provider:      TailnetProviderTailscale,
+			WaitForOnline: true,
+		}),
+		WithWaitTimeout(time.Second),
+	)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if !handler.createTailnetWaitForOnline.Load() {
+		t.Fatal("CreateSession tailnet wait_for_online = false")
+	}
+	if session.State != SessionStateRunning || session.TailnetStatus == nil || session.TailnetStatus.State != TailnetStateOnline {
+		t.Fatalf("created state = %s, tailnet = %+v; want RUNNING with tailnet online", session.State, session.TailnetStatus)
+	}
+}
+
 func TestCreateWithWaitReadyFalseReturnsImmediately(t *testing.T) {
 	t.Parallel()
 
@@ -303,13 +337,17 @@ func (h *waitSessionHandler) WaitSession(_ context.Context, req *connect.Request
 			TerminalError: h.terminalError,
 		}})
 	}
+	session := &sandboxv1.SandboxSession{
+		Id:        req.Msg.SessionId,
+		State:     sandboxv1.SessionState_SESSION_STATE_RUNNING,
+		OwnerType: "SERVICE",
+		OwnerId:   "self",
+	}
+	if h.waitTailnetOnline {
+		session.TailnetStatus = &sandboxv1.TailnetStatus{Provider: "tailscale", State: "online", NodeId: "node-1"}
+	}
 	return stream.Send(&sandboxv1.WaitSessionResponse{
-		Session: &sandboxv1.SandboxSession{
-			Id:        req.Msg.SessionId,
-			State:     sandboxv1.SessionState_SESSION_STATE_RUNNING,
-			OwnerType: "SERVICE",
-			OwnerId:   "self",
-		},
+		Session:           session,
 		DataPlaneEndpoint: "http://data-plane.test",
 		Credential: &sandboxv1.SessionCredential{
 			Credential: "wait-session-credential",
