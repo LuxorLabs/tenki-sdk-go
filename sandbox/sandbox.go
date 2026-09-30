@@ -459,6 +459,12 @@ func (c *Client) WaitSnapshotReady(ctx context.Context, snapshotID string, timeo
 		if snap.State.IsReady() {
 			return snap, nil
 		}
+		if snap.State == SnapshotStateFailed {
+			if snap.FailureReason != "" {
+				return nil, fmt.Errorf("%w: %s", ErrSnapshotFailed, snap.FailureReason)
+			}
+			return nil, ErrSnapshotFailed
+		}
 		if snap.State.IsTerminal() {
 			return nil, fmt.Errorf("snapshot entered terminal state: %s", snap.State)
 		}
@@ -469,12 +475,13 @@ func (c *Client) WaitSnapshotReady(ctx context.Context, snapshotID string, timeo
 		}
 		attempt++
 	}
-	return nil, fmt.Errorf("timeout waiting for snapshot %s to become ready", snapshotID)
+	return nil, fmt.Errorf("%w: snapshot %s is still being created, call WaitSnapshotReady with this ID to keep waiting", ErrSnapshotWaitTimeout, snapshotID)
 }
 
 // CreateSnapshotAndWait creates a snapshot and waits for it to reach READY state.
+// It submits asynchronously so a slow capture cannot outlive a gateway timeout.
 func (c *Client) CreateSnapshotAndWait(ctx context.Context, sessionID, name string, expiresAt *time.Time, timeout time.Duration) (*Snapshot, error) {
-	snap, err := c.CreateSnapshot(ctx, sessionID, name, expiresAt)
+	snap, err := c.CreateSnapshotAsync(ctx, sessionID, name, expiresAt)
 	if err != nil {
 		return nil, err
 	}

@@ -212,3 +212,22 @@ func TestRunHandleWaitReportsStreamErrors(t *testing.T) {
 		t.Errorf("result = %+v, want nil alongside a stream error", result)
 	}
 }
+
+func TestKeepaliveFramesDoNotChangeTheResult(t *testing.T) {
+	keepalive := &sandboxv1.RunResponse{Payload: &sandboxv1.RunResponse_Keepalive{Keepalive: true}}
+	result := resultFromFrames(t,
+		keepalive,
+		stdoutFrame("out\n"),
+		keepalive,
+		stderrFrame("err\n"),
+		keepalive,
+		exitFrame(&sandboxv1.RunExit{ExitCode: 0, Reason: "exit"}),
+	)
+
+	if result.Status != CommandStatusSucceeded {
+		t.Errorf("Status = %s, want %s", result.Status, CommandStatusSucceeded)
+	}
+	if string(result.Stdout) != "out\n" || string(result.Stderr) != "err\n" {
+		t.Errorf("output = %q/%q, want out/err only", result.Stdout, result.Stderr)
+	}
+}

@@ -274,6 +274,10 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 			}
 		}
 		first, err := stream.Receive()
+		// Keepalives carry no run state; the first real frame is started or exit.
+		for err == nil && first.GetKeepalive() {
+			first, err = stream.Receive()
+		}
 		if err != nil {
 			if !reauthAttempted && c.session.reauthOnUnauthenticated(ctx, err) {
 				reauthAttempted = true
@@ -367,6 +371,10 @@ func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
 				h.errCh <- err
 			}
 			return
+		}
+		// Keepalives only keep a quiet stream active; they carry no output.
+		if frame.GetKeepalive() {
+			continue
 		}
 		if data := frame.GetStdout(); len(data) > 0 {
 			result.Stdout = append(result.Stdout, data...)

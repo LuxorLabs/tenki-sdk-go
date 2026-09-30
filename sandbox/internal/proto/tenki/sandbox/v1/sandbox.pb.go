@@ -7311,6 +7311,7 @@ type RunResponse struct {
 	//	*RunResponse_Stderr
 	//	*RunResponse_Exit
 	//	*RunResponse_Flow
+	//	*RunResponse_Keepalive
 	Payload       isRunResponse_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7398,6 +7399,15 @@ func (x *RunResponse) GetFlow() *RunFlowControl {
 	return nil
 }
 
+func (x *RunResponse) GetKeepalive() bool {
+	if x != nil {
+		if x, ok := x.Payload.(*RunResponse_Keepalive); ok {
+			return x.Keepalive
+		}
+	}
+	return false
+}
+
 type isRunResponse_Payload interface {
 	isRunResponse_Payload()
 }
@@ -7422,6 +7432,11 @@ type RunResponse_Flow struct {
 	Flow *RunFlowControl `protobuf:"bytes,5,opt,name=flow,proto3,oneof"`
 }
 
+type RunResponse_Keepalive struct {
+	// Sent after started so quiet runs keep their response stream active.
+	Keepalive bool `protobuf:"varint,6,opt,name=keepalive,proto3,oneof"`
+}
+
 func (*RunResponse_Started) isRunResponse_Payload() {}
 
 func (*RunResponse_Stdout) isRunResponse_Payload() {}
@@ -7431,6 +7446,8 @@ func (*RunResponse_Stderr) isRunResponse_Payload() {}
 func (*RunResponse_Exit) isRunResponse_Payload() {}
 
 func (*RunResponse_Flow) isRunResponse_Payload() {}
+
+func (*RunResponse_Keepalive) isRunResponse_Payload() {}
 
 type RunStarted struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -14959,13 +14976,14 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\aSIG_INT\x10\x03\x12\v\n" +
 	"\aSIG_HUP\x10\x04\x12\f\n" +
 	"\bSIG_USR1\x10\x05\x12\f\n" +
-	"\bSIG_USR2\x10\x06\"\xef\x01\n" +
+	"\bSIG_USR2\x10\x06\"\x8f\x02\n" +
 	"\vRunResponse\x128\n" +
 	"\astarted\x18\x01 \x01(\v2\x1c.tenki.sandbox.v1.RunStartedH\x00R\astarted\x12\x18\n" +
 	"\x06stdout\x18\x02 \x01(\fH\x00R\x06stdout\x12\x18\n" +
 	"\x06stderr\x18\x03 \x01(\fH\x00R\x06stderr\x12/\n" +
 	"\x04exit\x18\x04 \x01(\v2\x19.tenki.sandbox.v1.RunExitH\x00R\x04exit\x126\n" +
-	"\x04flow\x18\x05 \x01(\v2 .tenki.sandbox.v1.RunFlowControlH\x00R\x04flowB\t\n" +
+	"\x04flow\x18\x05 \x01(\v2 .tenki.sandbox.v1.RunFlowControlH\x00R\x04flow\x12\x1e\n" +
+	"\tkeepalive\x18\x06 \x01(\bH\x00R\tkeepaliveB\t\n" +
 	"\apayload\"L\n" +
 	"\n" +
 	"RunStarted\x12\x10\n" +
@@ -16446,6 +16464,7 @@ func file_tenki_sandbox_v1_sandbox_proto_init() {
 		(*RunResponse_Stderr)(nil),
 		(*RunResponse_Exit)(nil),
 		(*RunResponse_Flow)(nil),
+		(*RunResponse_Keepalive)(nil),
 	}
 	file_tenki_sandbox_v1_sandbox_proto_msgTypes[90].OneofWrappers = []any{}
 	file_tenki_sandbox_v1_sandbox_proto_msgTypes[91].OneofWrappers = []any{}

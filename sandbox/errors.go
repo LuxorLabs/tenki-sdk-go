@@ -36,6 +36,7 @@ var (
 	ErrInvalidResourceConfig   = errors.New("sandbox: invalid resource configuration")
 	ErrSnapshotNotFound        = errors.New("sandbox: snapshot not found")
 	ErrSnapshotFailed          = errors.New("sandbox: snapshot failed")
+	ErrSnapshotWaitTimeout     = errors.New("sandbox: timed out waiting for snapshot to become ready")
 	ErrResumeFailed            = errors.New("sandbox: resume failed")
 	ErrPauseFailed             = errors.New("sandbox: pause failed")
 	ErrSnapshotNotDurable      = errors.New("sandbox: snapshot upload did not become durable")

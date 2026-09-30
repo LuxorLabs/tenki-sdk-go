@@ -53,6 +53,8 @@ type readinessDataPlaneHandler struct {
 	runCalls    atomic.Int32
 	runFailure  error
 	statCalls   atomic.Int32
+	// keepaliveFirst sends a keepalive frame before anything else on every Run.
+	keepaliveFirst bool
 }
 
 func (h *readinessDataPlaneHandler) Stat(
@@ -72,6 +74,13 @@ func (h *readinessDataPlaneHandler) Run(
 	h.runCalls.Add(1)
 	if _, err := stream.Receive(); err != nil {
 		return err
+	}
+	if h.keepaliveFirst {
+		if err := stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceRunResponse{Frame: &sandboxv1.RunResponse{
+			Payload: &sandboxv1.RunResponse_Keepalive{Keepalive: true},
+		}}); err != nil {
+			return err
+		}
 	}
 	if h.runFailures.Add(-1) >= 0 {
 		if h.runFailure != nil {
@@ -276,6 +285,49 @@ func TestRunStreamOpenRetriesTransientReset(t *testing.T) {
 	engine := &readinessEngineHandler{}
 	dataPlane := &readinessDataPlaneHandler{
 		runFailure: connect.NewError(connect.CodeAborted, errors.New("read ECONNRESET")),
+	}
+	dataPlane.runFailures.Store(1)
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
+
+	handle, err := session.Command([]string{"true"}).Stream(context.Background())
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	if handle.PID != 1 {
+		t.Fatalf("pid got %d, want 1", handle.PID)
+	}
+	if got := dataPlane.runCalls.Load(); got != 2 {
+		t.Fatalf("run calls got %d, want 2", got)
+	}
+	_ = handle.Stdin.Close()
+}
+
+func TestRunStreamOpenSkipsKeepaliveBeforeStarted(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{keepaliveFirst: true}
+	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))
+	session := &Session{client: client, ID: "session-1"}
+	session.configureDataPlane(endpoint, testSessionCredential("ready", time.Now().Add(time.Hour)), false)
+
+	handle, err := session.Command([]string{"true"}).Stream(context.Background())
+	if err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	if handle.PID != 1 {
+		t.Fatalf("pid got %d, want 1", handle.PID)
+	}
+	_ = handle.Stdin.Close()
+}
+
+func TestRunStreamOpenRetriesResetAfterKeepalive(t *testing.T) {
+	t.Parallel()
+	engine := &readinessEngineHandler{}
+	dataPlane := &readinessDataPlaneHandler{
+		runFailure:     connect.NewError(connect.CodeAborted, errors.New("read ECONNRESET")),
+		keepaliveFirst: true,
 	}
 	dataPlane.runFailures.Store(1)
 	client, endpoint := newReadinessHarness(t, engine, dataPlane, WithDataPlaneReadyTimeout(time.Second))

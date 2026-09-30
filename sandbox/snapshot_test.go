@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
@@ -19,6 +21,14 @@ type snapshotHandler struct {
 	listSessionSnapshotsFn   func(*connect.Request[sandboxv1.ListSessionSnapshotsRequest]) (*connect.Response[sandboxv1.ListSessionSnapshotsResponse], error)
 	listDanglingSnapshotsFn  func(*connect.Request[sandboxv1.ListDanglingSnapshotsRequest]) (*connect.Response[sandboxv1.ListDanglingSnapshotsResponse], error)
 	listWorkspaceSnapshotsFn func(*connect.Request[sandboxv1.ListWorkspaceSnapshotsRequest]) (*connect.Response[sandboxv1.ListWorkspaceSnapshotsResponse], error)
+	getSnapshotFn            func(*connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error)
+}
+
+func (h *snapshotHandler) GetSnapshot(_ context.Context, req *connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error) {
+	if h.getSnapshotFn != nil {
+		return h.getSnapshotFn(req)
+	}
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }
 
 func (h *snapshotHandler) CreateSnapshot(_ context.Context, req *connect.Request[sandboxv1.CreateSnapshotRequest]) (*connect.Response[sandboxv1.CreateSnapshotResponse], error) {
@@ -89,6 +99,74 @@ func TestCreateSnapshotAsyncSetsAsyncRequest(t *testing.T) {
 	}
 	if snapshot.ID != "snap-001" || snapshot.SessionID != "sess-001" {
 		t.Fatalf("unexpected snapshot: %#v", snapshot)
+	}
+}
+
+func TestCreateSnapshotAndWaitSubmitsAsync(t *testing.T) {
+	t.Parallel()
+
+	h := &snapshotHandler{}
+	h.createSnapshotFn = func(req *connect.Request[sandboxv1.CreateSnapshotRequest]) (*connect.Response[sandboxv1.CreateSnapshotResponse], error) {
+		if !req.Msg.GetAsync() {
+			t.Error("CreateSnapshotAndWait did not set async")
+		}
+		return connect.NewResponse(&sandboxv1.CreateSnapshotResponse{
+			Snapshot: &sandboxv1.Snapshot{Id: "snap-001", SessionId: req.Msg.GetSessionId(), State: sandboxv1.SnapshotState_SNAPSHOT_STATE_CREATING},
+		}), nil
+	}
+	h.getSnapshotFn = func(req *connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error) {
+		return connect.NewResponse(&sandboxv1.GetSnapshotResponse{
+			Snapshot: &sandboxv1.Snapshot{Id: req.Msg.GetSnapshotId(), SessionId: "sess-001", State: sandboxv1.SnapshotState_SNAPSHOT_STATE_READY},
+		}), nil
+	}
+
+	client := newSnapshotTestClient(t, h)
+	snapshot, err := client.CreateSnapshotAndWait(context.Background(), "sess-001", "", nil, time.Minute)
+	if err != nil {
+		t.Fatalf("CreateSnapshotAndWait: %v", err)
+	}
+	if snapshot.ID != "snap-001" || !snapshot.State.IsReady() {
+		t.Fatalf("unexpected snapshot: %#v", snapshot)
+	}
+}
+
+func TestWaitSnapshotReadyReportsFailureReason(t *testing.T) {
+	t.Parallel()
+
+	h := &snapshotHandler{}
+	h.getSnapshotFn = func(req *connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error) {
+		return connect.NewResponse(&sandboxv1.GetSnapshotResponse{
+			Snapshot: &sandboxv1.Snapshot{Id: req.Msg.GetSnapshotId(), State: sandboxv1.SnapshotState_SNAPSHOT_STATE_FAILED, FailureReason: "rootfs capture failed"},
+		}), nil
+	}
+
+	client := newSnapshotTestClient(t, h)
+	_, err := client.WaitSnapshotReady(context.Background(), "snap-001", time.Minute)
+	if !errors.Is(err, ErrSnapshotFailed) {
+		t.Fatalf("WaitSnapshotReady error = %v, want ErrSnapshotFailed", err)
+	}
+	if !strings.Contains(err.Error(), "rootfs capture failed") {
+		t.Fatalf("WaitSnapshotReady error = %v, want failure reason", err)
+	}
+}
+
+func TestWaitSnapshotReadyTimeoutExplainsHowToKeepWaiting(t *testing.T) {
+	t.Parallel()
+
+	h := &snapshotHandler{}
+	h.getSnapshotFn = func(req *connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error) {
+		return connect.NewResponse(&sandboxv1.GetSnapshotResponse{
+			Snapshot: &sandboxv1.Snapshot{Id: req.Msg.GetSnapshotId(), State: sandboxv1.SnapshotState_SNAPSHOT_STATE_CREATING},
+		}), nil
+	}
+
+	client := newSnapshotTestClient(t, h)
+	_, err := client.WaitSnapshotReady(context.Background(), "snap-001", 10*time.Millisecond)
+	if !errors.Is(err, ErrSnapshotWaitTimeout) {
+		t.Fatalf("WaitSnapshotReady error = %v, want ErrSnapshotWaitTimeout", err)
+	}
+	if !strings.Contains(err.Error(), "snap-001") || !strings.Contains(err.Error(), "WaitSnapshotReady") {
+		t.Fatalf("WaitSnapshotReady error = %v, want a hint to keep waiting on snap-001", err)
 	}
 }
 
