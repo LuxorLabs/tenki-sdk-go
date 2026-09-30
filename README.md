@@ -528,7 +528,8 @@ scope; other callers must specify one.
 metadata only. Secret values are `[]byte`; on update, `nil` retains the value while
 `[]byte{}` creates an empty value. Updates, revocations, and deletions require
 `ExpectedRevision`. `ActiveVersion` selects an existing version; omit the value
-when selecting one. A nil revoke version revokes the entire secret irreversibly.
+when selecting one. A nil revoke version revokes every version. Revoking the active version revokes
+the secret until a new value or an unrevoked version is made active.
 
 Mutations generate a request ID when none is supplied. For retries after an
 uncertain result, supply and reuse the same request ID and identical arguments.

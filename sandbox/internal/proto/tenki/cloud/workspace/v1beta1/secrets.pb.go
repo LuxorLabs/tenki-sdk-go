@@ -860,7 +860,8 @@ func (x *ListSecretVersionsResponse) GetNextCursor() string {
 	return ""
 }
 
-// Omitted version revokes the entire secret. Revocation is irreversible.
+// Omitted version revokes every version. Revoking the active version marks the secret revoked
+// until a new value or an unrevoked version is made active. Revoked versions stay revoked.
 type RevokeSecretRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId      string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
