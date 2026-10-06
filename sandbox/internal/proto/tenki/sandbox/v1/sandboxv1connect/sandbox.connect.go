@@ -224,6 +224,12 @@ const (
 	// SandboxServiceListActiveTemplateBuildsProcedure is the fully-qualified name of the
 	// SandboxService's ListActiveTemplateBuilds RPC.
 	SandboxServiceListActiveTemplateBuildsProcedure = "/tenki.sandbox.v1.SandboxService/ListActiveTemplateBuilds"
+	// SandboxServiceListTemplateBuildsProcedure is the fully-qualified name of the SandboxService's
+	// ListTemplateBuilds RPC.
+	SandboxServiceListTemplateBuildsProcedure = "/tenki.sandbox.v1.SandboxService/ListTemplateBuilds"
+	// SandboxServiceDeleteTemplateBuildProcedure is the fully-qualified name of the SandboxService's
+	// DeleteTemplateBuild RPC.
+	SandboxServiceDeleteTemplateBuildProcedure = "/tenki.sandbox.v1.SandboxService/DeleteTemplateBuild"
 	// SandboxServicePublishRegistryImageProcedure is the fully-qualified name of the SandboxService's
 	// PublishRegistryImage RPC.
 	SandboxServicePublishRegistryImageProcedure = "/tenki.sandbox.v1.SandboxService/PublishRegistryImage"
@@ -373,6 +379,8 @@ type SandboxServiceClient interface {
 	CancelTemplateBuild(context.Context, *connect.Request[v1.CancelTemplateBuildRequest]) (*connect.Response[v1.CancelTemplateBuildResponse], error)
 	GetTemplateBuild(context.Context, *connect.Request[v1.GetTemplateBuildRequest]) (*connect.Response[v1.GetTemplateBuildResponse], error)
 	ListActiveTemplateBuilds(context.Context, *connect.Request[v1.ListActiveTemplateBuildsRequest]) (*connect.Response[v1.ListActiveTemplateBuildsResponse], error)
+	ListTemplateBuilds(context.Context, *connect.Request[v1.ListTemplateBuildsRequest]) (*connect.Response[v1.ListTemplateBuildsResponse], error)
+	DeleteTemplateBuild(context.Context, *connect.Request[v1.DeleteTemplateBuildRequest]) (*connect.Response[v1.DeleteTemplateBuildResponse], error)
 	PublishRegistryImage(context.Context, *connect.Request[v1.PublishRegistryImageRequest]) (*connect.Response[v1.PublishRegistryImageResponse], error)
 	SetRegistryImageVisibility(context.Context, *connect.Request[v1.SetRegistryImageVisibilityRequest]) (*connect.Response[v1.SetRegistryImageVisibilityResponse], error)
 	DeleteRegistryImage(context.Context, *connect.Request[v1.DeleteRegistryImageRequest]) (*connect.Response[v1.DeleteRegistryImageResponse], error)
@@ -765,6 +773,18 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("ListActiveTemplateBuilds")),
 			connect.WithClientOptions(opts...),
 		),
+		listTemplateBuilds: connect.NewClient[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse](
+			httpClient,
+			baseURL+SandboxServiceListTemplateBuildsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListTemplateBuilds")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteTemplateBuild: connect.NewClient[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse](
+			httpClient,
+			baseURL+SandboxServiceDeleteTemplateBuildProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("DeleteTemplateBuild")),
+			connect.WithClientOptions(opts...),
+		),
 		publishRegistryImage: connect.NewClient[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse](
 			httpClient,
 			baseURL+SandboxServicePublishRegistryImageProcedure,
@@ -903,6 +923,8 @@ type sandboxServiceClient struct {
 	cancelTemplateBuild           *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
 	getTemplateBuild              *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
 	listActiveTemplateBuilds      *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
+	listTemplateBuilds            *connect.Client[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse]
+	deleteTemplateBuild           *connect.Client[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse]
 	publishRegistryImage          *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
 	setRegistryImageVisibility    *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
 	deleteRegistryImage           *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
@@ -1237,6 +1259,16 @@ func (c *sandboxServiceClient) ListActiveTemplateBuilds(ctx context.Context, req
 	return c.listActiveTemplateBuilds.CallUnary(ctx, req)
 }
 
+// ListTemplateBuilds calls tenki.sandbox.v1.SandboxService.ListTemplateBuilds.
+func (c *sandboxServiceClient) ListTemplateBuilds(ctx context.Context, req *connect.Request[v1.ListTemplateBuildsRequest]) (*connect.Response[v1.ListTemplateBuildsResponse], error) {
+	return c.listTemplateBuilds.CallUnary(ctx, req)
+}
+
+// DeleteTemplateBuild calls tenki.sandbox.v1.SandboxService.DeleteTemplateBuild.
+func (c *sandboxServiceClient) DeleteTemplateBuild(ctx context.Context, req *connect.Request[v1.DeleteTemplateBuildRequest]) (*connect.Response[v1.DeleteTemplateBuildResponse], error) {
+	return c.deleteTemplateBuild.CallUnary(ctx, req)
+}
+
 // PublishRegistryImage calls tenki.sandbox.v1.SandboxService.PublishRegistryImage.
 func (c *sandboxServiceClient) PublishRegistryImage(ctx context.Context, req *connect.Request[v1.PublishRegistryImageRequest]) (*connect.Response[v1.PublishRegistryImageResponse], error) {
 	return c.publishRegistryImage.CallUnary(ctx, req)
@@ -1376,6 +1408,8 @@ type SandboxServiceHandler interface {
 	CancelTemplateBuild(context.Context, *connect.Request[v1.CancelTemplateBuildRequest]) (*connect.Response[v1.CancelTemplateBuildResponse], error)
 	GetTemplateBuild(context.Context, *connect.Request[v1.GetTemplateBuildRequest]) (*connect.Response[v1.GetTemplateBuildResponse], error)
 	ListActiveTemplateBuilds(context.Context, *connect.Request[v1.ListActiveTemplateBuildsRequest]) (*connect.Response[v1.ListActiveTemplateBuildsResponse], error)
+	ListTemplateBuilds(context.Context, *connect.Request[v1.ListTemplateBuildsRequest]) (*connect.Response[v1.ListTemplateBuildsResponse], error)
+	DeleteTemplateBuild(context.Context, *connect.Request[v1.DeleteTemplateBuildRequest]) (*connect.Response[v1.DeleteTemplateBuildResponse], error)
 	PublishRegistryImage(context.Context, *connect.Request[v1.PublishRegistryImageRequest]) (*connect.Response[v1.PublishRegistryImageResponse], error)
 	SetRegistryImageVisibility(context.Context, *connect.Request[v1.SetRegistryImageVisibilityRequest]) (*connect.Response[v1.SetRegistryImageVisibilityResponse], error)
 	DeleteRegistryImage(context.Context, *connect.Request[v1.DeleteRegistryImageRequest]) (*connect.Response[v1.DeleteRegistryImageResponse], error)
@@ -1764,6 +1798,18 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("ListActiveTemplateBuilds")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sandboxServiceListTemplateBuildsHandler := connect.NewUnaryHandler(
+		SandboxServiceListTemplateBuildsProcedure,
+		svc.ListTemplateBuilds,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListTemplateBuilds")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceDeleteTemplateBuildHandler := connect.NewUnaryHandler(
+		SandboxServiceDeleteTemplateBuildProcedure,
+		svc.DeleteTemplateBuild,
+		connect.WithSchema(sandboxServiceMethods.ByName("DeleteTemplateBuild")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sandboxServicePublishRegistryImageHandler := connect.NewUnaryHandler(
 		SandboxServicePublishRegistryImageProcedure,
 		svc.PublishRegistryImage,
@@ -1960,6 +2006,10 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceGetTemplateBuildHandler.ServeHTTP(w, r)
 		case SandboxServiceListActiveTemplateBuildsProcedure:
 			sandboxServiceListActiveTemplateBuildsHandler.ServeHTTP(w, r)
+		case SandboxServiceListTemplateBuildsProcedure:
+			sandboxServiceListTemplateBuildsHandler.ServeHTTP(w, r)
+		case SandboxServiceDeleteTemplateBuildProcedure:
+			sandboxServiceDeleteTemplateBuildHandler.ServeHTTP(w, r)
 		case SandboxServicePublishRegistryImageProcedure:
 			sandboxServicePublishRegistryImageHandler.ServeHTTP(w, r)
 		case SandboxServiceSetRegistryImageVisibilityProcedure:
@@ -2235,6 +2285,14 @@ func (UnimplementedSandboxServiceHandler) GetTemplateBuild(context.Context, *con
 
 func (UnimplementedSandboxServiceHandler) ListActiveTemplateBuilds(context.Context, *connect.Request[v1.ListActiveTemplateBuildsRequest]) (*connect.Response[v1.ListActiveTemplateBuildsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListTemplateBuilds(context.Context, *connect.Request[v1.ListTemplateBuildsRequest]) (*connect.Response[v1.ListTemplateBuildsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListTemplateBuilds is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) DeleteTemplateBuild(context.Context, *connect.Request[v1.DeleteTemplateBuildRequest]) (*connect.Response[v1.DeleteTemplateBuildResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.DeleteTemplateBuild is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) PublishRegistryImage(context.Context, *connect.Request[v1.PublishRegistryImageRequest]) (*connect.Response[v1.PublishRegistryImageResponse], error) {
