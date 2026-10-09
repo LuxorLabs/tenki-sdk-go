@@ -396,6 +396,11 @@ session, err := client.Create(ctx,
 ```
 
 `WithAllowOutbound(false)` still blocks everything, regardless of `WithAllowDomains`/`WithAllowCIDRs`.
+The allowlist is checked against the names the sandbox resolves, the TLS server name (SNI), and the plaintext HTTP `Host`.
+Connections can only reach addresses that an allowed name resolved to or that fall in an allowed CIDR; traffic to an allowed CIDR is not inspected unless the sandbox uses outbound secret injection.
+UDP port 443 (HTTP/3, QUIC) is blocked for sandboxes with a domain allowlist, so clients fall back to HTTPS over TCP.
+Unless the sandbox uses outbound secret injection, HTTPS is not decrypted, so another site on the same CDN as an allowed name can be reached by sending its name in the encrypted `Host` header.
+Ports other than 80 and 443 are open to any address an allowed name resolved to.
 Read the allowlist back with `session.Egress()`.
 
 ### Exec options
