@@ -174,6 +174,9 @@ type createConfig struct {
 	allowOutbound   bool
 	allowDomains    []string
 	allowCIDRs      []string
+	interceptHTTPS  bool
+	httpRules       []EgressHTTPRule
+	egressPolicies  []string
 	maxDuration     *time.Duration
 	pauseRetention  *time.Duration
 	cpuCores        *int32
@@ -683,6 +686,7 @@ func WithWorkspaceID(workspaceID string) interface {
 	TemplateOption
 	ListOption
 	PreviewURLOption
+	EgressPolicyOption
 } {
 	return workspaceIDOption{workspaceID: strings.TrimSpace(workspaceID)}
 }
@@ -789,6 +793,30 @@ func WithAllowDomains(domains ...string) CreateOption {
 func WithAllowCIDRs(cidrs ...string) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.allowCIDRs = append([]string(nil), cidrs...)
+	})
+}
+
+// WithEgressPolicies pins named workspace egress policies, merged with the other egress options at create.
+// Later edits or deletes of a named policy do not change the session.
+func WithEgressPolicies(names ...string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.egressPolicies = append([]string(nil), names...)
+	})
+}
+
+// WithEgressInterceptHTTPS terminates the session's port-443 TLS at the egress proxy with a managed CA the guest trusts,
+// so each request's Host must match the TLS server name. Requires WithAllowDomains. HTTP/1.1 only; WebSocket upgrades get 501.
+func WithEgressInterceptHTTPS() CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.interceptHTTPS = true
+	})
+}
+
+// WithEgressHTTPRules refuses with 403 every HTTP request on ports 80 and 443 that matches none of the rules.
+// Requires WithEgressInterceptHTTPS.
+func WithEgressHTTPRules(rules ...EgressHTTPRule) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.httpRules = append([]EgressHTTPRule(nil), rules...)
 	})
 }
 

@@ -120,18 +120,71 @@ type Session struct {
 
 // SessionEgressPolicy uses tailnet policy for empty allowlists when attached; otherwise they are unrestricted.
 type SessionEgressPolicy struct {
-	AllowDomains []string
-	AllowCIDRs   []string
+	AllowDomains   []string
+	AllowCIDRs     []string
+	InterceptHTTPS bool
+	HTTPRules      []EgressHTTPRule
+	// PolicyNames are the named workspace egress policies pinned at create; the other fields hold their merged expansion.
+	PolicyNames []string
+}
+
+// EgressHTTPRule admits matching HTTP requests on an intercepting session. Domains take the allow-domain grammar plus "*",
+// empty Methods match any method, and at most one path field may be set; PathRegex is RE2 and must match the whole path.
+type EgressHTTPRule struct {
+	Domains    []string
+	Methods    []string
+	PathExact  string
+	PathPrefix string
+	PathRegex  string
 }
 
 func egressPolicyFromProto(p *sandboxv1.SessionEgressPolicy) SessionEgressPolicy {
 	if p == nil {
 		return SessionEgressPolicy{}
 	}
-	return SessionEgressPolicy{
-		AllowDomains: append([]string(nil), p.GetAllowDomains()...),
-		AllowCIDRs:   append([]string(nil), p.GetAllowCidrs()...),
+	policy := SessionEgressPolicy{
+		AllowDomains:   append([]string(nil), p.GetAllowDomains()...),
+		AllowCIDRs:     append([]string(nil), p.GetAllowCidrs()...),
+		InterceptHTTPS: p.GetInterceptHttps(),
 	}
+	for _, rule := range p.GetHttpRules() {
+		policy.HTTPRules = append(policy.HTTPRules, EgressHTTPRule{
+			Domains:    append([]string(nil), rule.GetDomains()...),
+			Methods:    append([]string(nil), rule.GetMethods()...),
+			PathExact:  rule.GetExact(),
+			PathPrefix: rule.GetPrefix(),
+			PathRegex:  rule.GetRegex(),
+		})
+	}
+	return policy
+}
+
+func egressHTTPRulesToProto(rules []EgressHTTPRule) ([]*sandboxv1.SessionEgressHttpRule, error) {
+	result := make([]*sandboxv1.SessionEgressHttpRule, 0, len(rules))
+	for _, rule := range rules {
+		message := &sandboxv1.SessionEgressHttpRule{
+			Domains: append([]string(nil), rule.Domains...),
+			Methods: append([]string(nil), rule.Methods...),
+		}
+		set := 0
+		for _, path := range []string{rule.PathExact, rule.PathPrefix, rule.PathRegex} {
+			if path != "" {
+				set++
+			}
+		}
+		switch {
+		case set > 1:
+			return nil, errors.New("sandbox: an egress HTTP rule may set only one of PathExact, PathPrefix, PathRegex")
+		case rule.PathExact != "":
+			message.Path = &sandboxv1.SessionEgressHttpRule_Exact{Exact: rule.PathExact}
+		case rule.PathPrefix != "":
+			message.Path = &sandboxv1.SessionEgressHttpRule_Prefix{Prefix: rule.PathPrefix}
+		case rule.PathRegex != "":
+			message.Path = &sandboxv1.SessionEgressHttpRule_Regex{Regex: rule.PathRegex}
+		}
+		result = append(result, message)
+	}
+	return result, nil
 }
 
 type ExposedPort struct {
@@ -238,6 +291,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.Tags = append(s.Tags[:0], protoSession.Tags...)
 	s.PauseSnapshot = snapshotFromProto(protoSession.PauseSnapshot)
 	s.egress = egressPolicyFromProto(protoSession.GetEgress())
+	s.egress.PolicyNames = append([]string(nil), protoSession.GetEgressPolicies()...)
 	s.TailnetStatus = tailnetStatusFromProto(protoSession.GetTailnetStatus())
 	s.VolumeMounts = s.VolumeMounts[:0]
 	for _, attachment := range protoSession.VolumeAttachments {

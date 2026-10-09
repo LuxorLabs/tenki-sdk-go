@@ -41,6 +41,7 @@ var (
 	ErrPauseFailed             = errors.New("sandbox: pause failed")
 	ErrSnapshotNotDurable      = errors.New("sandbox: snapshot upload did not become durable")
 	ErrTemplateNotFound        = errors.New("sandbox: template not found")
+	ErrEgressPolicyNotFound    = errors.New("sandbox: egress policy not found")
 	ErrRegistryImageNotFound   = errors.New("sandbox: registry image not found")
 	ErrTemplateExists          = errors.New("sandbox: template already exists")
 	ErrTemplateBuildNotFound   = errors.New("sandbox: template build not found")
@@ -357,6 +358,9 @@ func mapError(err error) error {
 		return fmt.Errorf("%w: %w", ErrPermissionDenied, err)
 	case connect.CodeNotFound:
 		switch {
+		// Matched as a prefix first: the message ends with caller-chosen policy names.
+		case strings.HasPrefix(msg, "egress polic"):
+			return fmt.Errorf("%w: %w", ErrEgressPolicyNotFound, err)
 		case strings.Contains(msg, "template build"):
 			return fmt.Errorf("%w: %w", ErrTemplateBuildNotFound, err)
 		case strings.Contains(msg, "template"):

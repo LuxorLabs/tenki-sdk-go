@@ -384,6 +384,8 @@ Publish and share sandbox images (templates/snapshots/images).
 - `WithSnapshot(snapshotID)` / `WithImage(image)` (mutually exclusive)
 - `WithCloneRepo(repoURL)` / `WithGitHubToken(token)`
 - `WithAllowDomains(...string)` / `WithAllowCIDRs(...string)` restrict outbound access; no effect when `WithAllowOutbound(false)` is set
+- `WithEgressInterceptHTTPS()` / `WithEgressHTTPRules(...EgressHTTPRule)` inspect HTTPS requests and allow only matching ones; see [Inspecting HTTPS requests](#inspecting-https-requests)
+- `WithEgressPolicies(...string)` pins named workspace egress policies; see [Named egress policies](#named-egress-policies)
 
 ### Restricting outbound access
 
@@ -402,6 +404,70 @@ UDP port 443 (HTTP/3, QUIC) is blocked for sandboxes with a domain allowlist, so
 Unless the sandbox uses outbound secret injection, HTTPS is not decrypted, so another site on the same CDN as an allowed name can be reached by sending its name in the encrypted `Host` header.
 Ports other than 80 and 443 are open to any address an allowed name resolved to.
 Read the allowlist back with `session.Egress()`.
+
+### Inspecting HTTPS requests
+
+With `WithEgressInterceptHTTPS()`, the egress proxy terminates the session's HTTPS with a managed CA the guest trusts, and a request whose `Host` differs from the TLS server name gets 421.
+It requires `WithAllowDomains`.
+Rules passed to `WithEgressHTTPRules` then decide which requests pass: each HTTP request must match one rule's domains, methods and path, or it gets 403 `egress_http_rule_denied`.
+Domains use the allowlist grammar plus `*`, empty methods match any method, and the path is exact, a prefix, or an RE2 regex that must match the whole escaped path (the query is not matched).
+Without rules, every request to an allowed domain passes.
+
+Read-only access to package registries, plus `git clone` (but not `git push`) from GitHub:
+
+```go
+session, err := client.Create(ctx,
+	tenkisandbox.WithAllowDomains("github.com", "codeload.github.com", "pypi.org", "files.pythonhosted.org"),
+	tenkisandbox.WithEgressInterceptHTTPS(),
+	tenkisandbox.WithEgressHTTPRules(
+		tenkisandbox.EgressHTTPRule{
+			Domains: []string{"github.com", "codeload.github.com", "pypi.org", "files.pythonhosted.org"},
+			Methods: []string{"GET", "HEAD"},
+		},
+		tenkisandbox.EgressHTTPRule{
+			Domains:   []string{"github.com"},
+			Methods:   []string{"POST"},
+			PathRegex: `^/[^/]+/[^/]+(\.git)?/git-upload-pack$`,
+		},
+	),
+)
+```
+
+HTTP rules apply only to ports 80 and 443; other ports follow the domain and CIDR allowlist alone.
+Interception speaks HTTP/1.1 only, and WebSocket upgrades get 501.
+Git smart HTTP, pip, npm, cargo, Go modules and Maven all work over HTTP/1.1.
+The CA is installed at `/usr/local/share/ca-certificates/tenki-egress.crt` and added to the system bundle; unless you set them, `NODE_EXTRA_CA_CERTS` points at the CA and `SSL_CERT_FILE` and `REQUESTS_CA_BUNDLE` at the system bundle.
+The JVM reads none of those: for Maven or Gradle, import the CA into the JVM truststore (`keytool -importcert -cacerts -noprompt -alias tenki-egress -file /usr/local/share/ca-certificates/tenki-egress.crt`) or pass a truststore that has it through `JAVA_TOOL_OPTIONS`.
+
+### Named egress policies
+
+Save a policy once per workspace, from the SDK or with `tenki sandbox egress-policies create`:
+
+```go
+policy, err := client.CreateEgressPolicy(ctx, "registries", tenkisandbox.SessionEgressPolicy{
+	AllowDomains:   []string{"github.com", "pypi.org", "files.pythonhosted.org"},
+	InterceptHTTPS: true,
+	HTTPRules: []tenkisandbox.EgressHTTPRule{
+		{Domains: []string{"*"}, Methods: []string{"GET", "HEAD"}},
+	},
+})
+```
+
+`GetEgressPolicy`, `ListEgressPolicies`, `UpdateEgressPolicy` and `DeleteEgressPolicy` take a name or ID; update and delete need the current `Revision` and fail with `Aborted` when another change landed first.
+Then pin policies by name:
+
+```go
+session, err := client.Create(ctx,
+	tenkisandbox.WithEgressPolicies("registries", "github-read"),
+	tenkisandbox.WithAllowDomains("api.example.com"),
+)
+```
+
+The server merges the named policies with the inline options: domains and CIDRs are combined, HTTPS interception is on if any of them asks for it, and the HTTP rules are concatenated.
+The merged policy must pass the same checks and limits as an inline one.
+An unknown name fails the create with `NotFound` naming every missing policy.
+The session keeps the merged copy, so editing or deleting a named policy later does not change it.
+`session.Egress().PolicyNames` reads the pinned names back, and the other fields of `session.Egress()` hold the merged policy.
 
 ### Exec options
 

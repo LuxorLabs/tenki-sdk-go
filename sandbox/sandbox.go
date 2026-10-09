@@ -241,12 +241,19 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			}
 		}
 	}
-	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 {
+	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.httpRules) > 0 {
+		httpRules, err := egressHTTPRulesToProto(cfg.httpRules)
+		if err != nil {
+			return nil, err
+		}
 		req.Egress = &sandboxv1.SessionEgressPolicy{
-			AllowDomains: append([]string(nil), cfg.allowDomains...),
-			AllowCidrs:   append([]string(nil), cfg.allowCIDRs...),
+			AllowDomains:   append([]string(nil), cfg.allowDomains...),
+			AllowCidrs:     append([]string(nil), cfg.allowCIDRs...),
+			InterceptHttps: cfg.interceptHTTPS,
+			HttpRules:      httpRules,
 		}
 	}
+	req.EgressPolicies = append([]string(nil), cfg.egressPolicies...)
 	if len(cfg.volumes) > 0 {
 		req.Volumes = make([]*sandboxv1.VolumeMount, 0, len(cfg.volumes))
 		for _, volume := range cfg.volumes {

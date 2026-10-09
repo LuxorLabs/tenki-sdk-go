@@ -263,6 +263,21 @@ const (
 	// SandboxServiceUnshareRegistryImageProcedure is the fully-qualified name of the SandboxService's
 	// UnshareRegistryImage RPC.
 	SandboxServiceUnshareRegistryImageProcedure = "/tenki.sandbox.v1.SandboxService/UnshareRegistryImage"
+	// SandboxServiceCreateEgressPolicyProcedure is the fully-qualified name of the SandboxService's
+	// CreateEgressPolicy RPC.
+	SandboxServiceCreateEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/CreateEgressPolicy"
+	// SandboxServiceUpdateEgressPolicyProcedure is the fully-qualified name of the SandboxService's
+	// UpdateEgressPolicy RPC.
+	SandboxServiceUpdateEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/UpdateEgressPolicy"
+	// SandboxServiceGetEgressPolicyProcedure is the fully-qualified name of the SandboxService's
+	// GetEgressPolicy RPC.
+	SandboxServiceGetEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/GetEgressPolicy"
+	// SandboxServiceListEgressPoliciesProcedure is the fully-qualified name of the SandboxService's
+	// ListEgressPolicies RPC.
+	SandboxServiceListEgressPoliciesProcedure = "/tenki.sandbox.v1.SandboxService/ListEgressPolicies"
+	// SandboxServiceDeleteEgressPolicyProcedure is the fully-qualified name of the SandboxService's
+	// DeleteEgressPolicy RPC.
+	SandboxServiceDeleteEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/DeleteEgressPolicy"
 	// SandboxServiceWhoAmIProcedure is the fully-qualified name of the SandboxService's WhoAmI RPC.
 	SandboxServiceWhoAmIProcedure = "/tenki.sandbox.v1.SandboxService/WhoAmI"
 	// SandboxSessionDataPlaneServiceRunProcedure is the fully-qualified name of the
@@ -392,6 +407,12 @@ type SandboxServiceClient interface {
 	RevokeRegistryShareGrant(context.Context, *connect.Request[v1.RevokeRegistryShareGrantRequest]) (*connect.Response[v1.RevokeRegistryShareGrantResponse], error)
 	ListRegistryShareGrants(context.Context, *connect.Request[v1.ListRegistryShareGrantsRequest]) (*connect.Response[v1.ListRegistryShareGrantsResponse], error)
 	UnshareRegistryImage(context.Context, *connect.Request[v1.UnshareRegistryImageRequest]) (*connect.Response[v1.UnshareRegistryImageResponse], error)
+	// Named workspace egress policies that sessions pin by name at create.
+	CreateEgressPolicy(context.Context, *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error)
+	UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error)
+	GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error)
+	ListEgressPolicies(context.Context, *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error)
+	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
 	// Returns the authenticated caller's identity (owner type, owner ID).
 	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
 }
@@ -851,6 +872,36 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("UnshareRegistryImage")),
 			connect.WithClientOptions(opts...),
 		),
+		createEgressPolicy: connect.NewClient[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse](
+			httpClient,
+			baseURL+SandboxServiceCreateEgressPolicyProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		updateEgressPolicy: connect.NewClient[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse](
+			httpClient,
+			baseURL+SandboxServiceUpdateEgressPolicyProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		getEgressPolicy: connect.NewClient[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse](
+			httpClient,
+			baseURL+SandboxServiceGetEgressPolicyProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("GetEgressPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		listEgressPolicies: connect.NewClient[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse](
+			httpClient,
+			baseURL+SandboxServiceListEgressPoliciesProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListEgressPolicies")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteEgressPolicy: connect.NewClient[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse](
+			httpClient,
+			baseURL+SandboxServiceDeleteEgressPolicyProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("DeleteEgressPolicy")),
+			connect.WithClientOptions(opts...),
+		),
 		whoAmI: connect.NewClient[v1.WhoAmIRequest, v1.WhoAmIResponse](
 			httpClient,
 			baseURL+SandboxServiceWhoAmIProcedure,
@@ -936,6 +987,11 @@ type sandboxServiceClient struct {
 	revokeRegistryShareGrant      *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
 	listRegistryShareGrants       *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
 	unshareRegistryImage          *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
+	createEgressPolicy            *connect.Client[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse]
+	updateEgressPolicy            *connect.Client[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse]
+	getEgressPolicy               *connect.Client[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse]
+	listEgressPolicies            *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
+	deleteEgressPolicy            *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
 	whoAmI                        *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
 }
 
@@ -1324,6 +1380,31 @@ func (c *sandboxServiceClient) UnshareRegistryImage(ctx context.Context, req *co
 	return c.unshareRegistryImage.CallUnary(ctx, req)
 }
 
+// CreateEgressPolicy calls tenki.sandbox.v1.SandboxService.CreateEgressPolicy.
+func (c *sandboxServiceClient) CreateEgressPolicy(ctx context.Context, req *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error) {
+	return c.createEgressPolicy.CallUnary(ctx, req)
+}
+
+// UpdateEgressPolicy calls tenki.sandbox.v1.SandboxService.UpdateEgressPolicy.
+func (c *sandboxServiceClient) UpdateEgressPolicy(ctx context.Context, req *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error) {
+	return c.updateEgressPolicy.CallUnary(ctx, req)
+}
+
+// GetEgressPolicy calls tenki.sandbox.v1.SandboxService.GetEgressPolicy.
+func (c *sandboxServiceClient) GetEgressPolicy(ctx context.Context, req *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error) {
+	return c.getEgressPolicy.CallUnary(ctx, req)
+}
+
+// ListEgressPolicies calls tenki.sandbox.v1.SandboxService.ListEgressPolicies.
+func (c *sandboxServiceClient) ListEgressPolicies(ctx context.Context, req *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error) {
+	return c.listEgressPolicies.CallUnary(ctx, req)
+}
+
+// DeleteEgressPolicy calls tenki.sandbox.v1.SandboxService.DeleteEgressPolicy.
+func (c *sandboxServiceClient) DeleteEgressPolicy(ctx context.Context, req *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error) {
+	return c.deleteEgressPolicy.CallUnary(ctx, req)
+}
+
 // WhoAmI calls tenki.sandbox.v1.SandboxService.WhoAmI.
 func (c *sandboxServiceClient) WhoAmI(ctx context.Context, req *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error) {
 	return c.whoAmI.CallUnary(ctx, req)
@@ -1421,6 +1502,12 @@ type SandboxServiceHandler interface {
 	RevokeRegistryShareGrant(context.Context, *connect.Request[v1.RevokeRegistryShareGrantRequest]) (*connect.Response[v1.RevokeRegistryShareGrantResponse], error)
 	ListRegistryShareGrants(context.Context, *connect.Request[v1.ListRegistryShareGrantsRequest]) (*connect.Response[v1.ListRegistryShareGrantsResponse], error)
 	UnshareRegistryImage(context.Context, *connect.Request[v1.UnshareRegistryImageRequest]) (*connect.Response[v1.UnshareRegistryImageResponse], error)
+	// Named workspace egress policies that sessions pin by name at create.
+	CreateEgressPolicy(context.Context, *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error)
+	UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error)
+	GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error)
+	ListEgressPolicies(context.Context, *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error)
+	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
 	// Returns the authenticated caller's identity (owner type, owner ID).
 	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
 }
@@ -1876,6 +1963,36 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("UnshareRegistryImage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sandboxServiceCreateEgressPolicyHandler := connect.NewUnaryHandler(
+		SandboxServiceCreateEgressPolicyProcedure,
+		svc.CreateEgressPolicy,
+		connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceUpdateEgressPolicyHandler := connect.NewUnaryHandler(
+		SandboxServiceUpdateEgressPolicyProcedure,
+		svc.UpdateEgressPolicy,
+		connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceGetEgressPolicyHandler := connect.NewUnaryHandler(
+		SandboxServiceGetEgressPolicyProcedure,
+		svc.GetEgressPolicy,
+		connect.WithSchema(sandboxServiceMethods.ByName("GetEgressPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListEgressPoliciesHandler := connect.NewUnaryHandler(
+		SandboxServiceListEgressPoliciesProcedure,
+		svc.ListEgressPolicies,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListEgressPolicies")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceDeleteEgressPolicyHandler := connect.NewUnaryHandler(
+		SandboxServiceDeleteEgressPolicyProcedure,
+		svc.DeleteEgressPolicy,
+		connect.WithSchema(sandboxServiceMethods.ByName("DeleteEgressPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sandboxServiceWhoAmIHandler := connect.NewUnaryHandler(
 		SandboxServiceWhoAmIProcedure,
 		svc.WhoAmI,
@@ -2032,6 +2149,16 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceListRegistryShareGrantsHandler.ServeHTTP(w, r)
 		case SandboxServiceUnshareRegistryImageProcedure:
 			sandboxServiceUnshareRegistryImageHandler.ServeHTTP(w, r)
+		case SandboxServiceCreateEgressPolicyProcedure:
+			sandboxServiceCreateEgressPolicyHandler.ServeHTTP(w, r)
+		case SandboxServiceUpdateEgressPolicyProcedure:
+			sandboxServiceUpdateEgressPolicyHandler.ServeHTTP(w, r)
+		case SandboxServiceGetEgressPolicyProcedure:
+			sandboxServiceGetEgressPolicyHandler.ServeHTTP(w, r)
+		case SandboxServiceListEgressPoliciesProcedure:
+			sandboxServiceListEgressPoliciesHandler.ServeHTTP(w, r)
+		case SandboxServiceDeleteEgressPolicyProcedure:
+			sandboxServiceDeleteEgressPolicyHandler.ServeHTTP(w, r)
 		case SandboxServiceWhoAmIProcedure:
 			sandboxServiceWhoAmIHandler.ServeHTTP(w, r)
 		default:
@@ -2337,6 +2464,26 @@ func (UnimplementedSandboxServiceHandler) ListRegistryShareGrants(context.Contex
 
 func (UnimplementedSandboxServiceHandler) UnshareRegistryImage(context.Context, *connect.Request[v1.UnshareRegistryImageRequest]) (*connect.Response[v1.UnshareRegistryImageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UnshareRegistryImage is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) CreateEgressPolicy(context.Context, *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateEgressPolicy is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateEgressPolicy is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetEgressPolicy is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListEgressPolicies(context.Context, *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListEgressPolicies is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.DeleteEgressPolicy is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error) {
