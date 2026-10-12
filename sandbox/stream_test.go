@@ -559,7 +559,7 @@ func assertSessionDataPlaneReset(t *testing.T, session *Session) {
 	}
 	session.dataPlaneMu.RLock()
 	endpoint := session.dataPlaneEndpoint
-	credential := session.dataPlaneCredential
+	credential := session.dataPlaneCredential.reveal()
 	expiresAt := session.dataPlaneExpiresAt
 	client := session.dataPlaneClient
 	renewalCancel := session.renewalCancel
@@ -567,9 +567,9 @@ func assertSessionDataPlaneReset(t *testing.T, session *Session) {
 	if endpoint != "" || credential != "" || !expiresAt.IsZero() || client != nil || renewalCancel != nil {
 		t.Fatalf("data-plane not reset: endpoint=%q credential=%q expiresAt=%v clientNil=%t renewalNil=%t", endpoint, credential, expiresAt, client == nil, renewalCancel == nil)
 	}
-	session.dataPlaneReadyMu.Lock()
+	session.dataPlaneVerifiedMu.Lock()
 	verified := session.dataPlaneVerifiedClient
-	session.dataPlaneReadyMu.Unlock()
+	session.dataPlaneVerifiedMu.Unlock()
 	if verified != nil {
 		t.Fatal("verified data-plane client was not reset")
 	}

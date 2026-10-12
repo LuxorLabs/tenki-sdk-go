@@ -29,7 +29,7 @@ const (
 
 // Client is an idiomatic wrapper over SandboxService Connect client.
 type Client struct {
-	authToken      string
+	authToken      secret
 	baseURL        string
 	gatewayAddress string
 	// gatewayAddressExplicit is true when the operator pinned the
@@ -115,7 +115,7 @@ func New(opts ...Option) (*Client, error) {
 		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: transport}
 	}
 
-	interceptor := &authInterceptor{authToken: cfg.authToken}
+	interceptor := &authInterceptor{authToken: newSecret(cfg.authToken)}
 
 	connectOpts := append(
 		[]connect.ClientOption{connect.WithInterceptors(interceptor), connect.WithGRPC()},
@@ -126,7 +126,7 @@ func New(opts ...Option) (*Client, error) {
 	sshGatewayClient := sandboxv1connect.NewSSHGatewayClientServiceClient(cfg.httpClient, cfg.baseURL, connectOpts...)
 
 	client := &Client{
-		authToken:              cfg.authToken,
+		authToken:              newSecret(cfg.authToken),
 		baseURL:                cfg.baseURL,
 		gatewayAddress:         cfg.gatewayAddress,
 		gatewayAddressExplicit: gatewayAddressExplicit,
@@ -521,7 +521,7 @@ func (c *Client) WaitVolumeReady(ctx context.Context, volumeID string, timeout t
 }
 
 type authInterceptor struct {
-	authToken string
+	authToken secret
 }
 
 func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -548,7 +548,7 @@ func (i *authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 func (i *authInterceptor) setHeaders(headerSetter interface {
 	Set(string, string)
 }) {
-	setClientAuthHeaders(headerSetter, i.authToken)
+	setClientAuthHeaders(headerSetter, i.authToken.reveal())
 }
 
 func setClientAuthHeaders(headerSetter interface {
@@ -561,7 +561,7 @@ func (c *Client) setAuthHeaders(headers http.Header) {
 	if c == nil {
 		return
 	}
-	setClientAuthHeaders(headers, c.authToken)
+	setClientAuthHeaders(headers, c.authToken.reveal())
 }
 
 func (c *Client) gatewaySSHURL(sessionID string) string {

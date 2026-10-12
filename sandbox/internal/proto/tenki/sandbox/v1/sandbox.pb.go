@@ -6335,10 +6335,12 @@ func (x *AttachVolumeResponse) GetAttachment() *VolumeAttachment {
 }
 
 type DetachVolumeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	VolumeId      string                 `protobuf:"bytes,2,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
-	ForceDetach   bool                   `protobuf:"varint,3,opt,name=force_detach,json=forceDetach,proto3" json:"force_detach,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	VolumeId  string                 `protobuf:"bytes,2,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	// Releases a SYNC_PENDING attachment at once, or unplugs an attached volume
+	// the guest cannot unmount; writes the guest has not flushed are lost.
+	ForceDetach   bool `protobuf:"varint,3,opt,name=force_detach,json=forceDetach,proto3" json:"force_detach,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

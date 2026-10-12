@@ -57,6 +57,11 @@ func TestMapError_TypedMappings(t *testing.T) {
 			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("snapshot not yet durable on a reachable host")),
 			want: ErrSnapshotNotDurable,
 		},
+		{
+			name: "session metrics not configured",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("sandbox session metrics are not configured")),
+			want: ErrInvalidState,
+		},
 	}
 
 	for _, tc := range tests {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -61,20 +62,43 @@ type Session struct {
 	localDataPlaneHints dataPlaneEndpointHints
 	dataPlaneMu         sync.RWMutex
 	dataPlaneEndpoint   string
-	dataPlaneCredential string
-	dataPlaneExpiresAt  time.Time
-	dataPlaneClient     sandboxv1connect.SandboxSessionDataPlaneServiceClient
-	dataPlaneRelease    func()
-	dataPlaneFromHint   bool
-	renewalCancel       context.CancelFunc
+	dataPlaneCredential secret
+	// dataPlaneCredentialEndpoint is the endpoint dataPlaneCredential was minted
+	// for; empty means unbound, and the first endpoint resolved adopts it.
+	dataPlaneCredentialEndpoint string
+	dataPlaneExpiresAt          time.Time
+	dataPlaneClient             sandboxv1connect.SandboxSessionDataPlaneServiceClient
+	dataPlaneRelease            func()
+	dataPlaneFromHint           bool
 
-	// dataPlaneReadyMu guards a one-time readiness probe per data-plane client.
-	// The per-session edge (Edge) route is published by the engine and applied
-	// asynchronously, so the endpoint can be handed back before the route is
-	// serving; early requests hit the edge's default 404. The gate probes until
-	// the route serves so the first real op never races the edge apply.
-	dataPlaneReadyMu        sync.Mutex
+	// renewalDones carries the exit signal of every renewal loop not yet waited
+	// for, so a caller can wait for them to be gone rather than only signalled.
+	renewalCancel context.CancelFunc
+	renewalDones  []chan struct{}
+
+	// dataPlaneClosed is set by Close so a response in flight across it cannot
+	// revive the renewal loop or the transport.
+	dataPlaneClosed bool
+
+	// dataPlaneProbeMu serializes the readiness probe and is held across its
+	// network call.
+	dataPlaneProbeMu sync.Mutex
+
+	// dataPlaneVerifiedMu must stay separate from dataPlaneProbeMu: the probe
+	// re-enters this state through the interceptor's reauth path, so sharing
+	// one mutex self-deadlocks the session.
+	dataPlaneVerifiedMu sync.Mutex
+	// dataPlaneVerifiedClient records the client whose edge route is known to
+	// serve. The per-session edge (Edge) route is published by the engine and
+	// applied asynchronously, so the endpoint can be handed back before the
+	// route is serving; early requests hit the edge's default 404. The gate
+	// probes until the route serves so the first real op never races the apply.
 	dataPlaneVerifiedClient sandboxv1connect.SandboxSessionDataPlaneServiceClient
+
+	// closeMu serializes Close; closeDone short-circuits it once terminated,
+	// while a failed Close stays retryable.
+	closeMu   sync.Mutex
+	closeDone bool
 
 	// dataPlaneWarmOnce opens the connection once the endpoint is known so the first real op skips the handshake.
 	dataPlaneWarmOnce sync.Once
@@ -424,26 +448,33 @@ func (s *Session) configureDataPlane(endpoint string, credential *sandboxv1.Sess
 	}
 	s.dataPlaneMu.Lock()
 	defer s.dataPlaneMu.Unlock()
+	// A terminated session must not acquire a transport or a renewal loop.
+	if s.dataPlaneClosed {
+		return
+	}
 	if endpoint != "" && (s.dataPlaneEndpoint != endpoint || s.dataPlaneClient == nil) {
 		httpClient, release, err := s.client.acquireDataPlaneHTTPClient(endpoint)
 		if err != nil {
 			return
 		}
-		if s.renewalCancel != nil {
-			s.renewalCancel()
-			s.renewalCancel = nil
-		}
+		s.cancelRenewalLocked()
 		if s.dataPlaneRelease != nil {
 			s.dataPlaneRelease()
 			s.dataPlaneRelease = nil
 		}
 		s.dataPlaneEndpoint = endpoint
+		// The interceptor is bound to the endpoint this client targets.
 		s.dataPlaneClient = sandboxv1connect.NewSandboxSessionDataPlaneServiceClient(
 			httpClient,
 			endpoint,
-			s.client.dataPlaneClientOptions(s)...,
+			s.client.dataPlaneClientOptions(s, endpoint)...,
 		)
 		s.dataPlaneRelease = release
+		// An unbound credential is adopted here; one bound elsewhere is left
+		// alone and the interceptor refuses to attach it.
+		if s.dataPlaneCredential.reveal() != "" && s.dataPlaneCredentialEndpoint == "" {
+			s.dataPlaneCredentialEndpoint = endpoint
+		}
 	}
 	if endpoint != "" && s.dataPlaneEndpoint == endpoint {
 		s.dataPlaneFromHint = fromHint
@@ -506,16 +537,18 @@ func (s *Session) markCurrentDataPlaneVerified() {
 	if client == nil {
 		return
 	}
-	s.dataPlaneReadyMu.Lock()
+	s.dataPlaneVerifiedMu.Lock()
 	s.dataPlaneVerifiedClient = client
-	s.dataPlaneReadyMu.Unlock()
+	s.dataPlaneVerifiedMu.Unlock()
 }
 
 func (s *Session) setDataPlaneCredentialLocked(credential *sandboxv1.SessionCredential) {
-	if credential == nil {
+	if credential == nil || s.dataPlaneClosed {
 		return
 	}
-	s.dataPlaneCredential = strings.TrimSpace(credential.GetCredential())
+	s.dataPlaneCredential = newSecret(strings.TrimSpace(credential.GetCredential()))
+	// The engine mints for the node currently serving the session.
+	s.dataPlaneCredentialEndpoint = s.dataPlaneEndpoint
 	if credential.GetExpiresAt() != nil {
 		s.dataPlaneExpiresAt = credential.GetExpiresAt().AsTime()
 	} else {
@@ -525,28 +558,64 @@ func (s *Session) setDataPlaneCredentialLocked(credential *sandboxv1.SessionCred
 }
 
 func (s *Session) restartCredentialRenewalLocked() {
+	s.cancelRenewalLocked()
+	s.renewalDones = slices.DeleteFunc(s.renewalDones, func(done chan struct{}) bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	})
+	if s.dataPlaneClosed || s.dataPlaneCredential.reveal() == "" || s.dataPlaneExpiresAt.IsZero() {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	s.renewalCancel = cancel
+	s.renewalDones = append(s.renewalDones, done)
+	go func() {
+		defer close(done)
+		s.credentialRenewalLoop(ctx)
+	}()
+}
+
+// cancelRenewalLocked signals the running loop to stop. It does not wait: the
+// loop takes dataPlaneMu, which the caller holds.
+func (s *Session) cancelRenewalLocked() {
 	if s.renewalCancel != nil {
 		s.renewalCancel()
 		s.renewalCancel = nil
 	}
-	if s.dataPlaneCredential == "" || s.dataPlaneExpiresAt.IsZero() {
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	s.renewalCancel = cancel
-	go s.credentialRenewalLoop(ctx)
 }
 
-func (s *Session) stopDataPlaneRenewal() {
+// drainRenewalLocked cancels the running loop and hands back the exit signals
+// of every loop not yet waited for. The caller must release dataPlaneMu before
+// waiting on them.
+func (s *Session) drainRenewalLocked() []chan struct{} {
+	s.cancelRenewalLocked()
+	dones := s.renewalDones
+	s.renewalDones = nil
+	return dones
+}
+
+func waitRenewalStopped(dones []chan struct{}) {
+	for _, done := range dones {
+		<-done
+	}
+}
+
+// closeDataPlane stops renewal for good: once it returns, no loop is running
+// and no late response can start another one.
+func (s *Session) closeDataPlane() {
 	if s == nil {
 		return
 	}
 	s.dataPlaneMu.Lock()
-	defer s.dataPlaneMu.Unlock()
-	if s.renewalCancel != nil {
-		s.renewalCancel()
-		s.renewalCancel = nil
-	}
+	s.dataPlaneClosed = true
+	dones := s.drainRenewalLocked()
+	s.dataPlaneMu.Unlock()
+	waitRenewalStopped(dones)
 }
 
 func (s *Session) resetDataPlane() {
@@ -555,12 +624,10 @@ func (s *Session) resetDataPlane() {
 	}
 	s.endpointHints().clear()
 	s.dataPlaneMu.Lock()
-	if s.renewalCancel != nil {
-		s.renewalCancel()
-		s.renewalCancel = nil
-	}
+	dones := s.drainRenewalLocked()
 	s.dataPlaneEndpoint = ""
-	s.dataPlaneCredential = ""
+	s.dataPlaneCredential = secret{}
+	s.dataPlaneCredentialEndpoint = ""
 	s.dataPlaneExpiresAt = time.Time{}
 	s.dataPlaneClient = nil
 	s.dataPlaneFromHint = false
@@ -570,9 +637,11 @@ func (s *Session) resetDataPlane() {
 	}
 	s.dataPlaneMu.Unlock()
 
-	s.dataPlaneReadyMu.Lock()
+	s.dataPlaneVerifiedMu.Lock()
 	s.dataPlaneVerifiedClient = nil
-	s.dataPlaneReadyMu.Unlock()
+	s.dataPlaneVerifiedMu.Unlock()
+
+	waitRenewalStopped(dones)
 }
 
 func (s *Session) dataPlane(ctx context.Context) (sandboxv1connect.SandboxSessionDataPlaneServiceClient, error) {
@@ -591,7 +660,7 @@ func (s *Session) resolveDataPlane(ctx context.Context, verifyServing bool) (san
 	}
 	s.dataPlaneMu.RLock()
 	client := s.dataPlaneClient
-	credential := s.dataPlaneCredential
+	credential := s.dataPlaneCredential.reveal()
 	expiresAt := s.dataPlaneExpiresAt
 	endpoint := s.dataPlaneEndpoint
 	s.dataPlaneMu.RUnlock()
@@ -630,6 +699,7 @@ func (s *Session) resolveDataPlane(ctx context.Context, verifyServing bool) (san
 			if err := s.ensureDataPlaneServing(ctx, client); err != nil {
 				return nil, err
 			}
+			client = s.currentDataPlaneClient(client)
 		}
 		return client, nil
 	}
@@ -645,17 +715,32 @@ func (s *Session) resolveDataPlane(ctx context.Context, verifyServing bool) (san
 		if err := s.ensureDataPlaneServing(ctx, client); err != nil {
 			return nil, err
 		}
+		client = s.currentDataPlaneClient(client)
 	}
 	return client, nil
+}
+
+// currentDataPlaneClient returns the session's client now, falling back to
+// probed. A reauth during the readiness probe can relocate the session, so the
+// caller must use the client for where it actually lives.
+func (s *Session) currentDataPlaneClient(
+	probed sandboxv1connect.SandboxSessionDataPlaneServiceClient,
+) sandboxv1connect.SandboxSessionDataPlaneServiceClient {
+	s.dataPlaneMu.RLock()
+	defer s.dataPlaneMu.RUnlock()
+	if s.dataPlaneClient != nil {
+		return s.dataPlaneClient
+	}
+	return probed
 }
 
 func (s *Session) dataPlaneProvisioningPending(client sandboxv1connect.SandboxSessionDataPlaneServiceClient) bool {
 	s.dataPlaneMu.RLock()
 	current := s.dataPlaneClient
 	s.dataPlaneMu.RUnlock()
-	s.dataPlaneReadyMu.Lock()
+	s.dataPlaneVerifiedMu.Lock()
 	verified := s.dataPlaneVerifiedClient
-	s.dataPlaneReadyMu.Unlock()
+	s.dataPlaneVerifiedMu.Unlock()
 	return current == client && verified != client
 }
 
@@ -666,9 +751,9 @@ func (s *Session) markDataPlaneVerified(client sandboxv1connect.SandboxSessionDa
 	if current != client {
 		return
 	}
-	s.dataPlaneReadyMu.Lock()
+	s.dataPlaneVerifiedMu.Lock()
 	s.dataPlaneVerifiedClient = client
-	s.dataPlaneReadyMu.Unlock()
+	s.dataPlaneVerifiedMu.Unlock()
 }
 
 func (s *Session) refreshHintedDataPlane(ctx context.Context, client sandboxv1connect.SandboxSessionDataPlaneServiceClient) error {
@@ -688,15 +773,17 @@ func (s *Session) refreshHintedDataPlane(ctx context.Context, client sandboxv1co
 // be handed to the SDK before the route serves; without this gate the first
 // (especially concurrent) data-plane ops race the apply and fail with
 // `unimplemented: HTTP status 404`. A 404 means the request never reached the
-// node-agent, so the probe is side-effect-free. Holding the mutex across the
-// probe serializes cold-start callers behind a single probe.
+// node-agent, so the probe is side-effect-free. Holding dataPlaneProbeMu
+// across the probe serializes cold-start callers behind a single probe; the
+// verified client lives under its own mutex because the probe re-enters that
+// state through the interceptor's reauth path.
 func (s *Session) ensureDataPlaneServing(ctx context.Context, client sandboxv1connect.SandboxSessionDataPlaneServiceClient) error {
 	if client == nil {
 		return errDataPlaneEndpointUnavailable
 	}
-	s.dataPlaneReadyMu.Lock()
-	defer s.dataPlaneReadyMu.Unlock()
-	if s.dataPlaneVerifiedClient == client {
+	s.dataPlaneProbeMu.Lock()
+	defer s.dataPlaneProbeMu.Unlock()
+	if s.dataPlaneVerifiedClientIs(client) {
 		return nil
 	}
 	var lastErr error
@@ -709,7 +796,9 @@ func (s *Session) ensureDataPlaneServing(ctx context.Context, client sandboxv1co
 			Request: &sandboxv1.StatRequest{SessionId: s.ID, Path: "/home/tenki"},
 		}))
 		if !isEdgeNotReady(err) {
-			s.dataPlaneVerifiedClient = client
+			// A reauth inside the probe can relocate the session, leaving this
+			// client stale; markDataPlaneVerified drops it in that case.
+			s.markDataPlaneVerified(client)
 			return nil
 		}
 		lastErr = err
@@ -719,13 +808,47 @@ func (s *Session) ensureDataPlaneServing(ctx context.Context, client sandboxv1co
 	}
 }
 
+// dataPlaneClientTargets reports whether the session's current data plane
+// still points at endpoint.
+func (s *Session) dataPlaneClientTargets(endpoint string) bool {
+	if s == nil {
+		return false
+	}
+	s.dataPlaneMu.RLock()
+	defer s.dataPlaneMu.RUnlock()
+	return s.dataPlaneEndpoint == endpoint
+}
+
+func (s *Session) dataPlaneVerifiedClientIs(client sandboxv1connect.SandboxSessionDataPlaneServiceClient) bool {
+	s.dataPlaneVerifiedMu.Lock()
+	defer s.dataPlaneVerifiedMu.Unlock()
+	return s.dataPlaneVerifiedClient == client
+}
+
+// dataPlaneCredentialForEndpoint returns the credential only when it was minted
+// for endpoint; a credential authorizes one session on one node.
+func (s *Session) dataPlaneCredentialForEndpoint(endpoint string) (string, bool) {
+	if s == nil {
+		return "", false
+	}
+	s.dataPlaneMu.RLock()
+	defer s.dataPlaneMu.RUnlock()
+	if s.dataPlaneCredential.reveal() == "" {
+		return "", true
+	}
+	if s.dataPlaneCredentialEndpoint != endpoint {
+		return "", false
+	}
+	return s.dataPlaneCredential.reveal(), true
+}
+
 func (s *Session) currentDataPlaneCredential() string {
 	if s == nil {
 		return ""
 	}
 	s.dataPlaneMu.RLock()
 	defer s.dataPlaneMu.RUnlock()
-	return s.dataPlaneCredential
+	return s.dataPlaneCredential.reveal()
 }
 
 func (s *Session) credentialRenewalLoop(ctx context.Context) {
@@ -1234,16 +1357,29 @@ func (s *Session) Resume(ctx context.Context) error {
 	return nil
 }
 
-// Close terminates this session.
+// Close terminates this session. It is idempotent and safe to call
+// concurrently: the first successful call terminates, and every later one is a
+// no-op. A call that fails leaves the session closeable again, so a caller can
+// retry after a cancelled context or a transport error.
 func (s *Session) Close(ctx context.Context) error {
-	s.stopDataPlaneRenewal()
-	defer s.resetDataPlane()
+	s.closeMu.Lock()
+	defer s.closeMu.Unlock()
+	if s.closeDone {
+		return nil
+	}
+	// Waits for the renewal loop to be gone and latches the data plane shut.
+	s.closeDataPlane()
 	resp, err := s.client.sandbox.TerminateSession(ctx, connect.NewRequest(&sandboxv1.TerminateSessionRequest{
 		SessionId: s.ID,
 	}))
+	s.resetDataPlane()
 	if err != nil {
+		s.dataPlaneMu.Lock()
+		s.dataPlaneClosed = false
+		s.dataPlaneMu.Unlock()
 		return mapError(err)
 	}
+	s.closeDone = true
 	if resp == nil || resp.Msg == nil {
 		return nil
 	}
@@ -1484,7 +1620,8 @@ func (s *Session) AttachVolume(ctx context.Context, volumeID string, mountPath s
 	return nil
 }
 
-// DetachVolume detaches one persistent volume from the session.
+// DetachVolume detaches one persistent volume from the session. With WithForceDetach it does not
+// need the guest's consent to unmount the volume.
 func (s *Session) DetachVolume(ctx context.Context, volumeID string, opts ...DetachVolumeOption) error {
 	cfg := defaultDetachVolumeConfig()
 	for _, opt := range opts {

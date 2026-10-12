@@ -149,7 +149,8 @@ func (f detachVolumeOptionFunc) applyDetachVolume(cfg *detachVolumeConfig) {
 	f(cfg)
 }
 
-// WithForceDetach bypasses stuck SYNC_PENDING cleanup and marks the attachment detached immediately.
+// WithForceDetach detaches without the guest's consent: a SYNC_PENDING attachment is released at once,
+// and an attached volume is unplugged even if the guest cannot unmount it (writes it has not flushed are lost).
 func WithForceDetach() DetachVolumeOption {
 	return detachVolumeOptionFunc(func(cfg *detachVolumeConfig) {
 		cfg.force = true

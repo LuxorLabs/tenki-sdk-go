@@ -14,11 +14,17 @@ import (
 
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const dataPlaneCredentialHeader = "x-tenki-session-cert"
 
 var errDataPlaneEndpointUnavailable = errors.New("sandbox: data-plane endpoint unavailable")
+
+// errDataPlaneCredentialMisrouted is a refusal, not a transport failure: the
+// request never leaves the process.
+var errDataPlaneCredentialMisrouted = errors.New("sandbox: refusing to send a data-plane credential to the wrong destination")
 
 type sharedDataPlaneHTTPClient struct {
 	client     *http.Client
@@ -221,17 +227,26 @@ func (h *dataPlaneEndpointHints) resolve(ctx context.Context, resolve func() err
 	}
 }
 
-func (c *Client) dataPlaneClientOptions(session *Session) []connect.ClientOption {
+func (c *Client) dataPlaneClientOptions(session *Session, endpoint string) []connect.ClientOption {
 	opts := []connect.ClientOption{
-		connect.WithInterceptors(&dataPlaneCredentialInterceptor{session: session}),
+		connect.WithInterceptors(&dataPlaneCredentialInterceptor{
+			session:   session,
+			endpoint:  endpoint,
+			sessionID: session.ID,
+		}),
 		connect.WithGRPC(),
 	}
 	opts = append(opts, c.connectOpts...)
 	return opts
 }
 
+// dataPlaneCredentialInterceptor attaches the session's data-plane credential.
+// It is bound to the session and endpoint its client targets and refuses to
+// attach one anywhere else: a credential authorizes one session on one node.
 type dataPlaneCredentialInterceptor struct {
-	session *Session
+	session   *Session
+	endpoint  string
+	sessionID string
 }
 
 func (i *dataPlaneCredentialInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
@@ -239,13 +254,23 @@ func (i *dataPlaneCredentialInterceptor) WrapUnary(next connect.UnaryFunc) conne
 		if !req.Spec().IsClient {
 			return next(ctx, req)
 		}
-		i.setHeaders(req.Header())
-		resp, err := next(ctx, req)
-		if err != nil && i.session.reauthOnUnauthenticated(ctx, err) {
-			i.setHeaders(req.Header())
-			return next(ctx, req)
+		if err := i.setHeaders(req.Header(), req.Any()); err != nil {
+			return nil, err
 		}
-		return resp, err
+		resp, err := next(ctx, req)
+		if err == nil || !i.session.reauthOnUnauthenticated(ctx, err) {
+			return resp, err
+		}
+		// Replay only when the re-mint kept the session on this node; a reauth
+		// that relocates it would otherwise hand the new node's credential to
+		// the old one. The caller re-resolves on its next op.
+		if !i.session.dataPlaneClientTargets(i.endpoint) {
+			return resp, err
+		}
+		if setErr := i.setHeaders(req.Header(), req.Any()); setErr != nil {
+			return nil, setErr
+		}
+		return next(ctx, req)
 	}
 }
 
@@ -256,14 +281,109 @@ func (i *dataPlaneCredentialInterceptor) WrapStreamingHandler(next connect.Strea
 func (i *dataPlaneCredentialInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
 	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
 		conn := next(ctx, spec)
-		i.setHeaders(conn.RequestHeader())
-		return conn
+		// No message is available at open time, so the endpoint binding is
+		// checked here and each message is checked as it is sent.
+		return &dataPlaneStreamConn{
+			StreamingClientConn: conn,
+			sessionID:           i.sessionID,
+			openErr:             i.setHeaders(conn.RequestHeader(), nil),
+		}
 	}
 }
 
-func (i *dataPlaneCredentialInterceptor) setHeaders(header http.Header) {
-	credential := strings.TrimSpace(i.session.currentDataPlaneCredential())
-	if credential != "" {
+// dataPlaneStreamConn carries the credential binding onto a streaming client:
+// a refusal at open time fails every Send and Receive, and a message naming
+// another session is refused before it is written.
+type dataPlaneStreamConn struct {
+	connect.StreamingClientConn
+	sessionID string
+	openErr   error
+}
+
+func (c *dataPlaneStreamConn) Send(msg any) error {
+	if c.openErr != nil {
+		return c.openErr
+	}
+	if err := misroutedSessionError(msg, c.sessionID); err != nil {
+		return err
+	}
+	return c.StreamingClientConn.Send(msg)
+}
+
+func (c *dataPlaneStreamConn) Receive(msg any) error {
+	if c.openErr != nil {
+		return c.openErr
+	}
+	return c.StreamingClientConn.Receive(msg)
+}
+
+// misroutedSessionError refuses a request that names a session other than the
+// one this client is credentialed for.
+func misroutedSessionError(msg any, sessionID string) error {
+	id, ok := requestSessionID(msg)
+	if !ok || id == "" || id == sessionID {
+		return nil
+	}
+	return connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+		"%w: request targets session %q on a client credentialed for session %q",
+		errDataPlaneCredentialMisrouted, id, sessionID))
+}
+
+func (i *dataPlaneCredentialInterceptor) setHeaders(header http.Header, msg any) error {
+	if err := misroutedSessionError(msg, i.sessionID); err != nil {
+		return err
+	}
+	credential, ok := i.session.dataPlaneCredentialForEndpoint(i.endpoint)
+	if !ok {
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf(
+			"%w: credential was minted for another endpoint, not %s",
+			errDataPlaneCredentialMisrouted, i.endpoint))
+	}
+	if credential = strings.TrimSpace(credential); credential != "" {
 		header.Set(dataPlaneCredentialHeader, credential)
 	}
+	return nil
+}
+
+// sessionIDSearchDepth bounds the walk below. Unary requests carry session_id
+// one level down (`request.session_id`); streaming frames carry it one deeper,
+// inside their payload oneof (`frame.start.session_id`).
+const sessionIDSearchDepth = 3
+
+// requestSessionID reads the session id a data-plane request names, walking the
+// populated singular message fields rather than assuming one envelope shape.
+func requestSessionID(msg any) (string, bool) {
+	message, ok := msg.(proto.Message)
+	if !ok || message == nil {
+		return "", false
+	}
+	reflected := message.ProtoReflect()
+	if !reflected.IsValid() {
+		return "", false
+	}
+	return findSessionID(reflected, sessionIDSearchDepth)
+}
+
+func findSessionID(message protoreflect.Message, depth int) (string, bool) {
+	fields := message.Descriptor().Fields()
+	if field := fields.ByName("session_id"); field != nil &&
+		field.Kind() == protoreflect.StringKind && !field.IsList() {
+		return message.Get(field).String(), true
+	}
+	if depth == 0 {
+		return "", false
+	}
+	for i := range fields.Len() {
+		field := fields.Get(i)
+		if field.Kind() != protoreflect.MessageKind || field.IsList() || field.IsMap() {
+			continue
+		}
+		if !message.Has(field) {
+			continue
+		}
+		if id, ok := findSessionID(message.Get(field).Message(), depth-1); ok {
+			return id, true
+		}
+	}
+	return "", false
 }

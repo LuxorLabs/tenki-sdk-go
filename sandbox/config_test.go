@@ -15,8 +15,8 @@ func TestNewUsesCanonicalEnvFallbacks(t *testing.T) {
 	}
 	defer func() { _ = client.Close() }()
 
-	if client.authToken != "tk_env_auth" {
-		t.Fatalf("unexpected auth token: %q", client.authToken)
+	if got := client.authToken.reveal(); got != "tk_env_auth" {
+		t.Fatalf("unexpected auth token: %q", got)
 	}
 	if client.baseURL != "https://api.example.com" {
 		t.Fatalf("unexpected base url: %q", client.baseURL)

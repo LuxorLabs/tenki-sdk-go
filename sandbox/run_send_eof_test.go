@@ -153,7 +153,7 @@ func TestOpenRunStreamMapsEarlyServerRejection(t *testing.T) {
 	dp := sandboxv1connect.NewSandboxSessionDataPlaneServiceClient(httpClient, server.URL, connect.WithGRPC())
 	session := &Session{
 		client: &Client{}, ID: "session-1", dataPlaneClient: dp,
-		dataPlaneEndpoint: server.URL, dataPlaneCredential: "test",
+		dataPlaneEndpoint: server.URL, dataPlaneCredential: newSecret("test"),
 		dataPlaneExpiresAt: time.Now().Add(time.Hour),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
