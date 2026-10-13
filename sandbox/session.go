@@ -148,6 +148,7 @@ type SessionEgressPolicy struct {
 	AllowDomains   []string
 	AllowCIDRs     []string
 	InterceptHTTPS bool
+	AllowedPorts   []uint32
 	HTTPRules      []EgressHTTPRule
 	// PolicyNames are the named workspace egress policies pinned at create; the other fields hold their merged expansion.
 	PolicyNames []string
@@ -171,6 +172,7 @@ func egressPolicyFromProto(p *sandboxv1.SessionEgressPolicy) SessionEgressPolicy
 		AllowDomains:   append([]string(nil), p.GetAllowDomains()...),
 		AllowCIDRs:     append([]string(nil), p.GetAllowCidrs()...),
 		InterceptHTTPS: p.GetInterceptHttps(),
+		AllowedPorts:   append([]uint32(nil), p.GetAllowedPorts()...),
 	}
 	for _, rule := range p.GetHttpRules() {
 		policy.HTTPRules = append(policy.HTTPRules, EgressHTTPRule{

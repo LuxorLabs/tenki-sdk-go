@@ -59,6 +59,7 @@ func egressPolicyBodyToProto(egress SessionEgressPolicy) (*sandboxv1.SessionEgre
 		AllowDomains:   append([]string(nil), egress.AllowDomains...),
 		AllowCidrs:     append([]string(nil), egress.AllowCIDRs...),
 		InterceptHttps: egress.InterceptHTTPS,
+		AllowedPorts:   append([]uint32(nil), egress.AllowedPorts...),
 		HttpRules:      rules,
 	}, nil
 }

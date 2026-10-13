@@ -176,6 +176,7 @@ type createConfig struct {
 	allowDomains    []string
 	allowCIDRs      []string
 	interceptHTTPS  bool
+	allowedPorts    []uint32
 	httpRules       []EgressHTTPRule
 	egressPolicies  []string
 	maxDuration     *time.Duration
@@ -810,6 +811,14 @@ func WithEgressPolicies(names ...string) CreateOption {
 func WithEgressInterceptHTTPS() CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.interceptHTTPS = true
+	})
+}
+
+// Extra public TCP ports bypass HTTP inspection and still require an allowed destination.
+// Requires WithEgressInterceptHTTPS.
+func WithAllowedPorts(ports ...uint32) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.allowedPorts = append([]uint32(nil), ports...)
 	})
 }
 

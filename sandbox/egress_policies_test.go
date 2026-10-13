@@ -28,7 +28,7 @@ var egressPolicyCreatedAt = time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
 func egressPolicyMessage(name string) *sandboxv1.EgressPolicy {
 	return &sandboxv1.EgressPolicy{
 		Id: "policy-" + name, WorkspaceId: "ws-1", Name: name, Revision: 3, ActiveSessionCount: 2,
-		Egress:    &sandboxv1.SessionEgressPolicy{AllowDomains: []string{"github.com"}, InterceptHttps: true},
+		Egress:    &sandboxv1.SessionEgressPolicy{AllowDomains: []string{"github.com"}, InterceptHttps: true, AllowedPorts: []uint32{22, 8443}},
 		CreatedAt: timestamppb.New(egressPolicyCreatedAt), UpdatedAt: timestamppb.New(egressPolicyCreatedAt),
 	}
 }
@@ -103,6 +103,7 @@ func TestEgressPolicyCRUDWireContract(t *testing.T) {
 		AllowDomains:   []string{"github.com"},
 		AllowCIDRs:     []string{"10.0.0.0/8"},
 		InterceptHTTPS: true,
+		AllowedPorts:   []uint32{22, 8443},
 		HTTPRules:      []EgressHTTPRule{{Domains: []string{"github.com"}, Methods: []string{"GET"}, PathPrefix: "/repos/"}},
 		PolicyNames:    []string{"ignored"},
 	}
@@ -110,6 +111,7 @@ func TestEgressPolicyCRUDWireContract(t *testing.T) {
 		AllowDomains:   []string{"github.com"},
 		AllowCidrs:     []string{"10.0.0.0/8"},
 		InterceptHttps: true,
+		AllowedPorts:   []uint32{22, 8443},
 		HttpRules: []*sandboxv1.SessionEgressHttpRule{{
 			Domains: []string{"github.com"}, Methods: []string{"GET"},
 			Path: &sandboxv1.SessionEgressHttpRule_Prefix{Prefix: "/repos/"},
@@ -122,7 +124,7 @@ func TestEgressPolicyCRUDWireContract(t *testing.T) {
 	}
 	want := &EgressPolicy{
 		ID: "policy-registries", WorkspaceID: "ws-1", Name: "registries", Revision: 3, ActiveSessionCount: 2,
-		Egress:    SessionEgressPolicy{AllowDomains: []string{"github.com"}, InterceptHTTPS: true},
+		Egress:    SessionEgressPolicy{AllowDomains: []string{"github.com"}, InterceptHTTPS: true, AllowedPorts: []uint32{22, 8443}},
 		CreatedAt: egressPolicyCreatedAt, UpdatedAt: egressPolicyCreatedAt,
 	}
 	if !reflect.DeepEqual(created, want) {
@@ -188,7 +190,8 @@ func TestEgressPolicyRuleWithTwoPathsIsRefusedBeforeTheRequest(t *testing.T) {
 
 	_, err := client.CreateEgressPolicy(context.Background(), "registries", SessionEgressPolicy{
 		AllowDomains: []string{"github.com"}, InterceptHTTPS: true,
-		HTTPRules: []EgressHTTPRule{{Domains: []string{"github.com"}, PathExact: "/a", PathRegex: "b"}},
+		AllowedPorts: []uint32{22, 8443},
+		HTTPRules:    []EgressHTTPRule{{Domains: []string{"github.com"}, PathExact: "/a", PathRegex: "b"}},
 	})
 
 	if err == nil || len(handler.requests) != 0 {

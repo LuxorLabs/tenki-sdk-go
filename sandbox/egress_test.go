@@ -129,6 +129,7 @@ func TestCreateSendsHTTPSInterceptionAndRules(t *testing.T) {
 		WithAllowDomains("github.com", "pypi.org"),
 		WithEgressInterceptHTTPS(),
 		WithEgressHTTPRules(rules...),
+		WithAllowedPorts(22, 8443),
 	)
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -137,6 +138,7 @@ func TestCreateSendsHTTPSInterceptionAndRules(t *testing.T) {
 	want := &sandboxv1.SessionEgressPolicy{
 		AllowDomains:   []string{"github.com", "pypi.org"},
 		InterceptHttps: true,
+		AllowedPorts:   []uint32{22, 8443},
 		HttpRules: []*sandboxv1.SessionEgressHttpRule{
 			{Domains: []string{"github.com", "pypi.org"}, Methods: []string{"GET", "HEAD"}},
 			{
@@ -152,7 +154,7 @@ func TestCreateSendsHTTPSInterceptionAndRules(t *testing.T) {
 		t.Fatalf("wire egress = %+v, want %+v", handler.lastEgress, want)
 	}
 	got := sess.Egress()
-	if !got.InterceptHTTPS || !reflect.DeepEqual(got.HTTPRules, rules) {
+	if !got.InterceptHTTPS || !reflect.DeepEqual(got.HTTPRules, rules) || !reflect.DeepEqual(got.AllowedPorts, []uint32{22, 8443}) {
 		t.Fatalf("session.Egress() = %+v, want interception and %+v", got, rules)
 	}
 }

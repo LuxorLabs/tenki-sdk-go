@@ -241,7 +241,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			}
 		}
 	}
-	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.httpRules) > 0 {
+	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.allowedPorts) > 0 || len(cfg.httpRules) > 0 {
 		httpRules, err := egressHTTPRulesToProto(cfg.httpRules)
 		if err != nil {
 			return nil, err
@@ -250,6 +250,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			AllowDomains:   append([]string(nil), cfg.allowDomains...),
 			AllowCidrs:     append([]string(nil), cfg.allowCIDRs...),
 			InterceptHttps: cfg.interceptHTTPS,
+			AllowedPorts:   append([]uint32(nil), cfg.allowedPorts...),
 			HttpRules:      httpRules,
 		}
 	}

@@ -2486,7 +2486,9 @@ type SessionEgressPolicy struct {
 	InterceptHttps bool `protobuf:"varint,3,opt,name=intercept_https,json=interceptHttps,proto3" json:"intercept_https,omitempty"`
 	// Requires intercept_https. Each HTTP request on ports 80 and 443 must match
 	// one rule or it is refused with 403. Empty allows every request.
-	HttpRules     []*SessionEgressHttpRule `protobuf:"bytes,4,rep,name=http_rules,json=httpRules,proto3" json:"http_rules,omitempty"`
+	HttpRules []*SessionEgressHttpRule `protobuf:"bytes,4,rep,name=http_rules,json=httpRules,proto3" json:"http_rules,omitempty"`
+	// Additional public TCP ports without HTTP inspection. Requires intercept_https.
+	AllowedPorts  []uint32 `protobuf:"varint,5,rep,packed,name=allowed_ports,json=allowedPorts,proto3" json:"allowed_ports,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2545,6 +2547,13 @@ func (x *SessionEgressPolicy) GetInterceptHttps() bool {
 func (x *SessionEgressPolicy) GetHttpRules() []*SessionEgressHttpRule {
 	if x != nil {
 		return x.HttpRules
+	}
+	return nil
+}
+
+func (x *SessionEgressPolicy) GetAllowedPorts() []uint32 {
+	if x != nil {
+		return x.AllowedPorts
 	}
 	return nil
 }
@@ -15500,7 +15509,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\bended_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12,\n" +
 	"\x12stdout_artifact_id\x18\n" +
 	" \x01(\tR\x10stdoutArtifactId\x12,\n" +
-	"\x12stderr_artifact_id\x18\v \x01(\tR\x10stderrArtifactId\"\xf8\x01\n" +
+	"\x12stderr_artifact_id\x18\v \x01(\tR\x10stderrArtifactId\"\xb1\x02\n" +
 	"\x13SessionEgressPolicy\x125\n" +
 	"\rallow_domains\x18\x01 \x03(\tB\x10\xbaH\r\x92\x01\n" +
 	"\x10\x80\x02\"\x05r\x03\x18\xfd\x01R\fallowDomains\x12/\n" +
@@ -15508,7 +15517,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"allowCidrs\x12'\n" +
 	"\x0fintercept_https\x18\x03 \x01(\bR\x0einterceptHttps\x12P\n" +
 	"\n" +
-	"http_rules\x18\x04 \x03(\v2'.tenki.sandbox.v1.SessionEgressHttpRuleB\b\xbaH\x05\x92\x01\x02\x10@R\thttpRules\"\x95\x16\n" +
+	"http_rules\x18\x04 \x03(\v2'.tenki.sandbox.v1.SessionEgressHttpRuleB\b\xbaH\x05\x92\x01\x02\x10@R\thttpRules\x127\n" +
+	"\rallowed_ports\x18\x05 \x03(\rB\x12\xbaH\x0f\x92\x01\f\x10@\"\b*\x06\x18\xff\xff\x03(\x01R\fallowedPorts\"\x95\x16\n" +
 	"\x14CreateSessionRequest\x121\n" +
 	"\x0fsecret_policies\x18( \x03(\tB\b\xbaH\x05\x92\x01\x02\x10@R\x0esecretPolicies\x12P\n" +
 	"\fsecret_files\x18% \x03(\v2#.tenki.sandbox.v1.RuntimeSecretFileB\b\xbaH\x05\x92\x01\x02\x10 R\vsecretFiles\x12\"\n" +
