@@ -175,7 +175,7 @@ func (c *Client) Close() error {
 }
 
 // Create creates a sandbox session and returns an SDK Session wrapper.
-// CPU is 1-128 cores and memory 128-524288 MB (even); the workspace's size limit may be lower.
+// CPU is 1-128 cores and memory 128-524288 MiB (even); the workspace's size limit may be lower.
 //
 // If readiness fails after admission, the returned *WaitReadyFailedError carries
 // the live session so callers can close it or continue waiting.

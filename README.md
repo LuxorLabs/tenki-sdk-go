@@ -8,6 +8,21 @@ Go client for `tenki.sandbox.v1.SandboxService`.
 go get github.com/LuxorLabs/tenki-sdk-go/sandbox
 ```
 
+## Streaming without retaining output
+
+Set `RunOptions{StreamOnly: true}` on `session.Command(...).Stream(ctx)` to receive stdout and stderr chunks without copying them into `Result`.
+Drain both `handle.Stdout` and `handle.Stderr` concurrently before waiting for completion.
+`handle.Wait()` still returns exit status, timing, and disk metadata, with empty stdout and stderr.
+The default remains output collection, including `Command.Exec`.
+
+## Releasing a session handle
+
+Call `session.Release()` after finishing active commands to stop credential renewal and free this handle's local data-plane connection while the sandbox keeps running.
+Release is idempotent and safe to call concurrently.
+The released handle cannot start new data-plane operations; use `client.Get(ctx, sessionID)` to obtain another handle.
+`session.Close(ctx)` remains an explicit termination request, including after release.
+Release does not close the shared SDK client.
+
 ## Quickstart
 
 More runnable snippets live under `examples/`.
@@ -269,7 +284,7 @@ signal it and `Wait()`. There is no reattach.
 
 ### Disk space
 
-The root disk defaults to 5 GB and holds the base image as well as your work, so a fresh
+The root disk defaults to 5 GiB and holds the base image as well as your work, so a fresh
 sandbox already reports around 56% used. It is fixed at create time and cannot be grown in
 place — pass `WithDiskSizeGB` (5–100) to `Create` if you need more.
 
@@ -575,7 +590,7 @@ tenkisandbox.MiB  // 1,048,576
   must hold.
 - Create/list ownership is derived from auth context.
 - Volume size: 1 MiB - 100 GiB.
-- Session CPU: 1-128 cores. Memory: 128-524288 MB, aligned to 2 MiB. Workspace limits may be lower.
+- Session CPU: 1-128 cores. Memory: 128-524288 MiB, aligned to 2 MiB. Workspace limits may be lower.
 
 ## Workspace secrets
 

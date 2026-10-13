@@ -99,6 +99,7 @@ type Session struct {
 	// while a failed Close stays retryable.
 	closeMu   sync.Mutex
 	closeDone bool
+	released  bool
 
 	// dataPlaneWarmOnce opens the connection once the endpoint is known so the first real op skips the handshake.
 	dataPlaneWarmOnce sync.Once
@@ -659,6 +660,10 @@ func (s *Session) resolveDataPlane(ctx context.Context, verifyServing bool) (san
 		return nil, errors.New("sandbox: nil session")
 	}
 	s.dataPlaneMu.RLock()
+	if s.dataPlaneClosed {
+		s.dataPlaneMu.RUnlock()
+		return nil, errors.New("sandbox: session handle closed or released")
+	}
 	client := s.dataPlaneClient
 	credential := s.dataPlaneCredential.reveal()
 	expiresAt := s.dataPlaneExpiresAt
@@ -1357,6 +1362,15 @@ func (s *Session) Resume(ctx context.Context) error {
 	return nil
 }
 
+// Release permanently frees this handle's local data plane without terminating the sandbox.
+func (s *Session) Release() {
+	s.closeMu.Lock()
+	defer s.closeMu.Unlock()
+	s.released = true
+	s.closeDataPlane()
+	s.resetDataPlane()
+}
+
 // Close terminates this session. It is idempotent and safe to call
 // concurrently: the first successful call terminates, and every later one is a
 // no-op. A call that fails leaves the session closeable again, so a caller can
@@ -1375,7 +1389,7 @@ func (s *Session) Close(ctx context.Context) error {
 	s.resetDataPlane()
 	if err != nil {
 		s.dataPlaneMu.Lock()
-		s.dataPlaneClosed = false
+		s.dataPlaneClosed = s.released
 		s.dataPlaneMu.Unlock()
 		return mapError(err)
 	}

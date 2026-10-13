@@ -92,7 +92,7 @@ func newFrameHandle(t *testing.T, frames ...*sandboxv1.RunResponse) *RunHandle {
 	stderrR, stderrW := io.Pipe()
 	go func() { _, _ = io.Copy(io.Discard, stdoutR) }()
 	go func() { _, _ = io.Copy(io.Discard, stderrR) }()
-	go h.pumpResponses(stdoutW, stderrW)
+	go h.pumpResponses(stdoutW, stderrW, false)
 	return h
 }
 

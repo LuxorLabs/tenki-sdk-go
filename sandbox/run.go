@@ -29,6 +29,8 @@ type RunOptions struct {
 	// spent budget as CommandStatusTimedOut rather than as an error.
 	Timeout    *time.Duration
 	Privileged bool
+	// StreamOnly requires draining stdout/stderr and leaves their Result fields empty.
+	StreamOnly bool
 }
 
 type RunHandle struct {
@@ -221,7 +223,7 @@ func (c *Command) Stream(ctx context.Context) (*RunHandle, error) {
 		errCh:  make(chan error, 1),
 	}
 	go h.pumpStdin(stdinReader)
-	go h.pumpResponses(stdoutWriter, stderrWriter)
+	go h.pumpResponses(stdoutWriter, stderrWriter, c.opts.StreamOnly)
 	return h, nil
 }
 
@@ -357,7 +359,7 @@ func (h *RunHandle) pumpStdin(r *io.PipeReader) {
 	}
 }
 
-func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
+func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter, streamOnly bool) {
 	defer h.closeRequest()
 	defer stdout.Close()
 	defer stderr.Close()
@@ -377,11 +379,15 @@ func (h *RunHandle) pumpResponses(stdout, stderr *io.PipeWriter) {
 			continue
 		}
 		if data := frame.GetStdout(); len(data) > 0 {
-			result.Stdout = append(result.Stdout, data...)
+			if !streamOnly {
+				result.Stdout = append(result.Stdout, data...)
+			}
 			_, _ = stdout.Write(data)
 		}
 		if data := frame.GetStderr(); len(data) > 0 {
-			result.Stderr = append(result.Stderr, data...)
+			if !streamOnly {
+				result.Stderr = append(result.Stderr, data...)
+			}
 			_, _ = stderr.Write(data)
 		}
 		if exit := frame.GetExit(); exit != nil {
