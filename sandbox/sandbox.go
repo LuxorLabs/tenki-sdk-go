@@ -614,3 +614,34 @@ func deriveGatewayAddress(baseURL string) string {
 	u.Fragment = ""
 	return u.String()
 }
+
+// CIRunnerSize is a Linux x64 runner size a Tenki CI job can run on.
+type CIRunnerSize struct {
+	RunsOnLabel string
+	CPU         int32
+	MemoryGiB   int32
+}
+
+// CIRunnerSizes are the sizes Tenki CI can run for a workspace, within its job-size limits, smallest first.
+type CIRunnerSizes struct {
+	Sizes []CIRunnerSize
+	// DefaultRunsOnLabel is the size for a job whose runs-on names none.
+	DefaultRunsOnLabel string
+}
+
+// ListCIRunnerSizes returns the Tenki CI runner sizes for the API key's workspace.
+func (c *Client) ListCIRunnerSizes(ctx context.Context) (*CIRunnerSizes, error) {
+	resp, err := c.sandbox.ListCIRunnerSizes(ctx, connect.NewRequest(&sandboxv1.ListCIRunnerSizesRequest{}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	sizes := &CIRunnerSizes{DefaultRunsOnLabel: resp.Msg.GetDefaultRunsOnLabel()}
+	for _, size := range resp.Msg.GetSizes() {
+		sizes.Sizes = append(sizes.Sizes, CIRunnerSize{
+			RunsOnLabel: size.GetRunsOnLabel(),
+			CPU:         size.GetCpu(),
+			MemoryGiB:   size.GetMemory(),
+		})
+	}
+	return sizes, nil
+}

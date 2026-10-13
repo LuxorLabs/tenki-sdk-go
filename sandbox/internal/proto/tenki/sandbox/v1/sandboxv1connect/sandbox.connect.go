@@ -280,6 +280,9 @@ const (
 	SandboxServiceDeleteEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/DeleteEgressPolicy"
 	// SandboxServiceWhoAmIProcedure is the fully-qualified name of the SandboxService's WhoAmI RPC.
 	SandboxServiceWhoAmIProcedure = "/tenki.sandbox.v1.SandboxService/WhoAmI"
+	// SandboxServiceListCIRunnerSizesProcedure is the fully-qualified name of the SandboxService's
+	// ListCIRunnerSizes RPC.
+	SandboxServiceListCIRunnerSizesProcedure = "/tenki.sandbox.v1.SandboxService/ListCIRunnerSizes"
 	// SandboxSessionDataPlaneServiceRunProcedure is the fully-qualified name of the
 	// SandboxSessionDataPlaneService's Run RPC.
 	SandboxSessionDataPlaneServiceRunProcedure = "/tenki.sandbox.v1.SandboxSessionDataPlaneService/Run"
@@ -415,6 +418,8 @@ type SandboxServiceClient interface {
 	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
 	// Returns the authenticated caller's identity (owner type, owner ID).
 	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
+	// Linux x64 runner sizes Tenki CI can run for the workspace, within its job-size limits.
+	ListCIRunnerSizes(context.Context, *connect.Request[v1.ListCIRunnerSizesRequest]) (*connect.Response[v1.ListCIRunnerSizesResponse], error)
 }
 
 // NewSandboxServiceClient constructs a client for the tenki.sandbox.v1.SandboxService service. By
@@ -908,6 +913,12 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("WhoAmI")),
 			connect.WithClientOptions(opts...),
 		),
+		listCIRunnerSizes: connect.NewClient[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse](
+			httpClient,
+			baseURL+SandboxServiceListCIRunnerSizesProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListCIRunnerSizes")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -993,6 +1004,7 @@ type sandboxServiceClient struct {
 	listEgressPolicies            *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
 	deleteEgressPolicy            *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
 	whoAmI                        *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
+	listCIRunnerSizes             *connect.Client[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse]
 }
 
 // CreateSession calls tenki.sandbox.v1.SandboxService.CreateSession.
@@ -1410,6 +1422,11 @@ func (c *sandboxServiceClient) WhoAmI(ctx context.Context, req *connect.Request[
 	return c.whoAmI.CallUnary(ctx, req)
 }
 
+// ListCIRunnerSizes calls tenki.sandbox.v1.SandboxService.ListCIRunnerSizes.
+func (c *sandboxServiceClient) ListCIRunnerSizes(ctx context.Context, req *connect.Request[v1.ListCIRunnerSizesRequest]) (*connect.Response[v1.ListCIRunnerSizesResponse], error) {
+	return c.listCIRunnerSizes.CallUnary(ctx, req)
+}
+
 // SandboxServiceHandler is an implementation of the tenki.sandbox.v1.SandboxService service.
 type SandboxServiceHandler interface {
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
@@ -1510,6 +1527,8 @@ type SandboxServiceHandler interface {
 	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
 	// Returns the authenticated caller's identity (owner type, owner ID).
 	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
+	// Linux x64 runner sizes Tenki CI can run for the workspace, within its job-size limits.
+	ListCIRunnerSizes(context.Context, *connect.Request[v1.ListCIRunnerSizesRequest]) (*connect.Response[v1.ListCIRunnerSizesResponse], error)
 }
 
 // NewSandboxServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1999,6 +2018,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("WhoAmI")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sandboxServiceListCIRunnerSizesHandler := connect.NewUnaryHandler(
+		SandboxServiceListCIRunnerSizesProcedure,
+		svc.ListCIRunnerSizes,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListCIRunnerSizes")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tenki.sandbox.v1.SandboxService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SandboxServiceCreateSessionProcedure:
@@ -2161,6 +2186,8 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceDeleteEgressPolicyHandler.ServeHTTP(w, r)
 		case SandboxServiceWhoAmIProcedure:
 			sandboxServiceWhoAmIHandler.ServeHTTP(w, r)
+		case SandboxServiceListCIRunnerSizesProcedure:
+			sandboxServiceListCIRunnerSizesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2488,6 +2515,10 @@ func (UnimplementedSandboxServiceHandler) DeleteEgressPolicy(context.Context, *c
 
 func (UnimplementedSandboxServiceHandler) WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.WhoAmI is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListCIRunnerSizes(context.Context, *connect.Request[v1.ListCIRunnerSizesRequest]) (*connect.Response[v1.ListCIRunnerSizesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListCIRunnerSizes is not implemented"))
 }
 
 // SandboxSessionDataPlaneServiceClient is a client for the
