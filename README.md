@@ -627,12 +627,18 @@ The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
 configuration. Set `WorkspaceID` once in the client options. Leave it empty to use the authenticated workspace key's
 scope; other callers must specify one.
 
-`Create`, `Update`, `Get`, `List`, `ListVersions`, `Revoke`, and `Delete` return
+`Create`, `CreateForRepository`, `Update`, `Get`, `List`, `ListVersions`, `Revoke`, and `Delete` return
 metadata only. Secret values are `[]byte`; on update, `nil` retains the value while
 `[]byte{}` creates an empty value. Updates, revocations, and deletions require
 `ExpectedRevision`. `ActiveVersion` selects an existing version; omit the value
 when selecting one. A nil revoke version revokes every version. Revoking the active version revokes
 the secret until a new value or an unrevoked version is made active.
+
+`CreateForRepository(ctx, "acme/api", "TOKEN", valueBytes, requestID)` creates a secret that only
+Tenki CI jobs in that repository receive, replacing a workspace secret with the same name. The
+repository must be connected to the workspace; `ListRepositories` pages through the connected
+repositories and can filter them with `Search`. `Repository` is empty on workspace secrets. Managed
+runtimes and secret policies use workspace secrets only.
 
 Mutations generate a request ID when none is supplied. For retries after an
 uncertain result, supply and reuse the same request ID and identical arguments.

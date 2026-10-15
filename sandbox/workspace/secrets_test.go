@@ -30,7 +30,9 @@ func (h *secretsHandler) CreateSecret(_ context.Context, request *connect.Reques
 	if h.errorCode != 0 {
 		return nil, connect.NewError(h.errorCode, errors.New("request failed"))
 	}
-	return connect.NewResponse(&pb.CreateSecretResponse{Secret: metadataFixture()}), nil
+	secret := metadataFixture()
+	secret.Repository = request.Msg.Repository
+	return connect.NewResponse(&pb.CreateSecretResponse{Secret: secret}), nil
 }
 func (h *secretsHandler) UpdateSecret(_ context.Context, request *connect.Request[pb.UpdateSecretRequest]) (*connect.Response[pb.UpdateSecretResponse], error) {
 	h.requests = append(h.requests, proto.Clone(request.Msg))
@@ -63,6 +65,14 @@ func (h *secretsHandler) ListSecretVersions(_ context.Context, request *connect.
 		return nil, connect.NewError(h.errorCode, errors.New("request failed"))
 	}
 	return connect.NewResponse(&pb.ListSecretVersionsResponse{Versions: []*pb.SecretVersion{{Version: 1}}, NextCursor: "versions-next"}), nil
+}
+func (h *secretsHandler) ListSecretRepositories(_ context.Context, request *connect.Request[pb.ListSecretRepositoriesRequest]) (*connect.Response[pb.ListSecretRepositoriesResponse], error) {
+	h.requests = append(h.requests, proto.Clone(request.Msg))
+	h.headers = append(h.headers, request.Header().Get("Authorization"))
+	if h.errorCode != 0 {
+		return nil, connect.NewError(h.errorCode, errors.New("request failed"))
+	}
+	return connect.NewResponse(&pb.ListSecretRepositoriesResponse{Repositories: []*pb.SecretRepository{{FullName: "acme/api"}}, NextCursor: "acme/api"}), nil
 }
 func (h *secretsHandler) RevokeSecret(_ context.Context, request *connect.Request[pb.RevokeSecretRequest]) (*connect.Response[pb.RevokeSecretResponse], error) {
 	h.requests = append(h.requests, proto.Clone(request.Msg))
@@ -146,7 +156,7 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 		}
 	}
 	create := h.requests[0].(*pb.CreateSecretRequest)
-	if !bytes.Equal(create.Value, value) || create.RequestId != "00000000-0000-4000-8000-000000000001" || create.WorkspaceId != "workspace" {
+	if !bytes.Equal(create.Value, value) || create.RequestId != "00000000-0000-4000-8000-000000000001" || create.WorkspaceId != "workspace" || create.Repository != "" {
 		t.Fatal("create contract")
 	}
 	empty := h.requests[1].(*pb.CreateSecretRequest)
@@ -176,6 +186,37 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 	}
 	if _, ok := reflect.TypeOf(secret).FieldByName("Policy"); ok {
 		t.Fatal("retired access policy exposed")
+	}
+}
+func TestWorkspaceSecretsRepositoryScope(t *testing.T) {
+	h := &secretsHandler{}
+	c := testClient(t, h, "workspace")
+	secret, err := c.Secrets.CreateForRepository(context.Background(), "acme/api", "TOKEN", []byte("value"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := h.requests[0].(*pb.CreateSecretRequest)
+	if create.Repository != "acme/api" || create.Name != "TOKEN" || create.WorkspaceId != "workspace" || len(create.RequestId) != 36 {
+		t.Fatal("repository create contract")
+	}
+	if secret.Repository != "acme/api" {
+		t.Fatalf("repository %q", secret.Repository)
+	}
+	for _, repository := range []string{"", "acme", "acme/api/extra", "/api"} {
+		if _, err := c.Secrets.CreateForRepository(context.Background(), repository, "TOKEN", []byte("value"), ""); err == nil {
+			t.Fatalf("repository %q accepted", repository)
+		}
+	}
+	if len(h.requests) != 1 {
+		t.Fatal("a malformed repository reached the API")
+	}
+	page, err := c.Secrets.ListRepositories(context.Background(), SecretRepositoryPageOptions{SecretPageOptions: SecretPageOptions{PageSize: 1, Cursor: "acme/a"}, Search: "acme"})
+	if err != nil || !reflect.DeepEqual(page.Repositories, []string{"acme/api"}) || page.NextCursor != "acme/api" {
+		t.Fatalf("repositories: %+v %v", page, err)
+	}
+	list := h.requests[1].(*pb.ListSecretRepositoriesRequest)
+	if list.WorkspaceId != "workspace" || list.PageSize != 1 || list.Cursor != "acme/a" || list.Search != "acme" {
+		t.Fatal("repositories request contract")
 	}
 }
 func TestWorkspaceSecretsConflictReplay(t *testing.T) {

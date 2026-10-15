@@ -97,6 +97,7 @@ func dataPlaneReadyContext(parent context.Context, budget time.Duration) (contex
 
 func newDataPlaneHTTPClient(endpoint string) *http.Client {
 	transport := &http2.Transport{
+		// Keep in sync with KEEPALIVE_PING_OPTIONS (TypeScript) and KEEPALIVE_CHANNEL_OPTIONS (Python).
 		ReadIdleTimeout: 30 * time.Second,
 		PingTimeout:     5 * time.Second,
 	}

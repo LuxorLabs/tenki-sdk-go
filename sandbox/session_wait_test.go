@@ -3,8 +3,10 @@ package sandbox
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -369,14 +371,14 @@ func (h *waitSessionHandler) TerminateSession(_ context.Context, req *connect.Re
 func TestCreateWaitFailureReturnsSessionHandle(t *testing.T) {
 	t.Parallel()
 
-	handler := &waitSessionHandler{stayCreating: true}
+	handler := &waitSessionHandler{waitErr: connect.NewError(connect.CodePermissionDenied, errors.New("wait denied"))}
 	server, client := newWaitSessionTestServer(t, handler)
 	defer server.Close()
 
 	_, err := client.Create(
 		context.Background(),
 		WithWorkspaceID("ws-1"),
-		WithName("wait-timeout"),
+		WithName("wait-failure"),
 		WithWaitTimeout(time.Second),
 	)
 	if !errors.Is(err, ErrWaitReadyFailed) {
@@ -465,36 +467,105 @@ func TestCreateAndWaitIncludesTerminalError(t *testing.T) {
 	}
 }
 
-func TestCreateAndWaitFallsBackToPollOnRetryableWaitStreamError(t *testing.T) {
+func TestCreateAndWaitTransportRecovery(t *testing.T) {
 	t.Parallel()
-
 	tests := []struct {
-		name string
-		err  error
+		code    connect.Code
+		message string
+		recover bool
 	}{
-		{name: "unavailable", err: connect.NewError(connect.CodeUnavailable, errors.New("transport closing"))},
-		{name: "deadline", err: connect.NewError(connect.CodeDeadlineExceeded, context.DeadlineExceeded)},
-		{name: "internal stream reset", err: connect.NewError(connect.CodeInternal, errors.New("stream reset: INTERNAL_ERROR"))},
-		{name: "internal timeout", err: connect.NewError(connect.CodeInternal, errors.New("upstream request timeout"))},
+		{connect.CodeUnimplemented, "not implemented", true},
+		{connect.CodeUnavailable, "service unavailable", true},
+		{connect.CodeDeadlineExceeded, "upstream deadline", true},
+		{connect.CodeInternal, "REFUSED_STREAM", true},
+		{connect.CodeInternal, "GOAWAY", true},
+		{connect.CodeInternal, "stream reset", true},
+		{connect.CodeInternal, "stream error", true},
+		{connect.CodeInternal, "NGHTTP2_INTERNAL_ERROR", true},
+		{connect.CodeInternal, "ECONNRESET", true},
+		{connect.CodeInternal, "connection reset by peer", true},
+		{connect.CodeInternal, "socket hang up", true},
+		{connect.CodeInternal, "unexpected EOF", true},
+		{connect.CodeInternal, "stream closed before headers", true},
+		{connect.CodeInternal, "server closed", true},
+		{connect.CodeInternal, "transport closing", true},
+		{connect.CodeInternal, "upstream request timeout", true},
+		{connect.CodeAborted, "REFUSED_STREAM", true},
+		{connect.CodeAborted, "GOAWAY", true},
+		{connect.CodeAborted, "stream reset", true},
+		{connect.CodeAborted, "stream error", true},
+		{connect.CodeAborted, "NGHTTP2_INTERNAL_ERROR", true},
+		{connect.CodeAborted, "ECONNRESET", true},
+		{connect.CodeAborted, "connection reset by peer", true},
+		{connect.CodeAborted, "socket hang up", true},
+		{connect.CodeAborted, "unexpected EOF", true},
+		{connect.CodeAborted, "stream closed before headers", true},
+		{connect.CodeAborted, "server closed", true},
+		{connect.CodeAborted, "transport closing", true},
+		{connect.CodeAborted, "upstream request timeout", true},
+		{connect.CodeUnknown, "REFUSED_STREAM", true},
+		{connect.CodeUnknown, "GOAWAY", true},
+		{connect.CodeUnknown, "stream reset", true},
+		{connect.CodeUnknown, "stream error", true},
+		{connect.CodeUnknown, "NGHTTP2_INTERNAL_ERROR", true},
+		{connect.CodeUnknown, "ECONNRESET", true},
+		{connect.CodeUnknown, "connection reset by peer", true},
+		{connect.CodeUnknown, "socket hang up", true},
+		{connect.CodeUnknown, "unexpected EOF", true},
+		{connect.CodeUnknown, "stream closed before headers", true},
+		{connect.CodeUnknown, "server closed", true},
+		{connect.CodeUnknown, "transport closing", true},
+		{connect.CodeUnknown, "upstream request timeout", true},
+		{connect.CodePermissionDenied, "NGHTTP2_INTERNAL_ERROR", false},
+		{connect.CodeUnauthenticated, "NGHTTP2_INTERNAL_ERROR", false},
+		{connect.CodeCanceled, "NGHTTP2_INTERNAL_ERROR", true},
+		{connect.CodeInvalidArgument, "NGHTTP2_INTERNAL_ERROR", false},
+		{connect.CodeInternal, "Received RST_STREAM with error code 2", true},
+		{connect.CodeUnknown, "Stream removed", true},
+		{connect.CodeUnknown, "Socket closed", true},
+		{connect.CodeInternal, "protocol error: missing status", true},
+		{connect.CodeUnknown, "protocol error: no Grpc-Status trailer: unexpected EOF", true},
+		{connect.CodeInternal, "http2: client connection lost", true},
+		{connect.CodeInternal, "http2: timeout awaiting response headers", true},
+		{connect.CodeCanceled, "http/2 stream closed with error code CANCEL (0x8)", true},
+		{connect.CodeInvalidArgument, "protocol error: incomplete envelope: http2: server sent GOAWAY and closed the connection", true},
+		{connect.CodeInvalidArgument, "invalid session id", false},
+		{connect.CodeCanceled, "application failure", false},
+		{connect.CodeResourceExhausted, "http/2 connection closed with error code ENHANCE_YOUR_CALM (0xb), too_many_pings, doubled the interval", true},
+		{connect.CodeResourceExhausted, "REFUSED_STREAM", true},
+		{connect.CodePermissionDenied, "GOAWAY", true},
+		{connect.CodeResourceExhausted, "rate limit exceeded", false},
+		{connect.CodeInternal, "http2: client conn is closed", true},
+		{connect.CodeResourceExhausted, "NGHTTP2_INTERNAL_ERROR", false},
+		{connect.CodeNotFound, "NGHTTP2_INTERNAL_ERROR", false},
+		{connect.CodeInternal, "application failure", false},
+		{connect.CodeAborted, "application failure", false},
+		{connect.CodeUnknown, "application failure", false},
 	}
-
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.code.String()+"/"+tc.message, func(t *testing.T) {
 			t.Parallel()
-
-			handler := &waitSessionHandler{waitErr: tc.err}
+			handler := &waitSessionHandler{waitErr: connect.NewError(tc.code, errors.New(tc.message))}
 			server, client := newWaitSessionTestServer(t, handler)
 			defer server.Close()
-
-			session, err := client.CreateAndWait(context.Background(), time.Second, WithWorkspaceID("ws-1"), WithName("wait-stream"))
-			if err != nil {
-				t.Fatalf("CreateAndWait: %v", err)
-			}
-			if session.State != SessionStateRunning {
-				t.Fatalf("state = %s, want %s", session.State, SessionStateRunning)
-			}
-			if got := handler.getCalls.Load(); got == 0 {
-				t.Fatalf("GetSession calls = %d, want fallback polling", got)
+			session, err := client.CreateAndWait(context.Background(), time.Second, WithWorkspaceID("ws-1"))
+			if tc.recover {
+				if err != nil {
+					t.Fatalf("CreateAndWait: %v", err)
+				}
+				if session.State != SessionStateRunning {
+					t.Fatalf("state = %s", session.State)
+				}
+				if handler.getCalls.Load() == 0 {
+					t.Fatal("expected fallback polling")
+				}
+			} else {
+				if err == nil {
+					t.Fatal("expected stream failure")
+				}
+				if handler.getCalls.Load() != 0 {
+					t.Fatal("unexpected fallback polling")
+				}
 			}
 		})
 	}
@@ -512,4 +583,192 @@ func newWaitSessionTestServer(t *testing.T, h sandboxv1connect.SandboxServiceHan
 		t.Fatalf("New client: %v", err)
 	}
 	return server, client
+}
+
+func TestWaitReadyDoesNotPollAfterDeadlineOrCancellation(t *testing.T) {
+	for _, canceled := range []bool{false, true} {
+		t.Run(map[bool]string{false: "expired", true: "canceled"}[canceled], func(t *testing.T) {
+			handler := &waitSessionHandler{waitErr: connect.NewError(connect.CodeUnavailable, errors.New("unavailable"))}
+			server, client := newWaitSessionTestServer(t, handler)
+			defer server.Close()
+			session, err := client.Create(context.Background(), WithWorkspaceID("ws-1"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			handler.getCalls.Store(0)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			timeout := time.Duration(0)
+			if canceled {
+				cancel()
+				timeout = time.Second
+			}
+			if err := session.WaitReady(ctx, timeout); err == nil {
+				t.Fatal("expected wait failure")
+			}
+			if handler.getCalls.Load() != 0 {
+				t.Fatal("unexpected fallback polling")
+			}
+		})
+	}
+}
+
+type recoveringWaitHandler struct {
+	waitSessionHandler
+	pollCalls      atomic.Int32
+	firstPollError error
+	emptyStream    bool
+}
+
+func (h *recoveringWaitHandler) GetSession(ctx context.Context, req *connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error) {
+	if h.pollCalls.Add(1) == 1 && h.firstPollError != nil {
+		return nil, h.firstPollError
+	}
+	return h.waitSessionHandler.GetSession(ctx, req)
+}
+
+func (h *recoveringWaitHandler) WaitSession(ctx context.Context, req *connect.Request[sandboxv1.WaitSessionRequest], stream *connect.ServerStream[sandboxv1.WaitSessionResponse]) error {
+	if h.emptyStream {
+		return nil
+	}
+	return h.waitSessionHandler.WaitSession(ctx, req, stream)
+}
+
+func TestWaitReadyRecoversCleanStreamClose(t *testing.T) {
+	for _, empty := range []bool{false, true} {
+		t.Run(map[bool]string{false: "creating", true: "empty"}[empty], func(t *testing.T) {
+			h := &recoveringWaitHandler{waitSessionHandler: waitSessionHandler{stayCreating: true}, emptyStream: empty}
+			server, client := newWaitSessionTestServer(t, h)
+			defer server.Close()
+			session := newSession(client, &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_CREATING})
+			if err := session.WaitReady(context.Background(), time.Second); err != nil {
+				t.Fatal(err)
+			}
+			if h.pollCalls.Load() != 1 || !session.State.IsReady() {
+				t.Fatal("expected polling to reach ready")
+			}
+		})
+	}
+}
+
+func TestWaitReadyPollRecoversTransientErrors(t *testing.T) {
+	for _, code := range []connect.Code{connect.CodeNotFound, connect.CodeUnavailable, connect.CodeDeadlineExceeded, connect.CodeInternal, connect.CodePermissionDenied, connect.CodeUnauthenticated, connect.CodeCanceled, connect.CodeResourceExhausted} {
+		t.Run(code.String(), func(t *testing.T) {
+			message := "poll failed"
+			if code == connect.CodeInternal {
+				message = "stream closed with error code NGHTTP2_INTERNAL_ERROR"
+			}
+			h := &recoveringWaitHandler{waitSessionHandler: waitSessionHandler{waitErr: connect.NewError(connect.CodeUnavailable, errors.New("temporary"))}, firstPollError: connect.NewError(code, errors.New(message))}
+			server, client := newWaitSessionTestServer(t, h)
+			defer server.Close()
+			session := newSession(client, &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_CREATING})
+			err := session.WaitReady(context.Background(), 2*time.Second)
+			recover := code == connect.CodeNotFound || code == connect.CodeUnavailable || code == connect.CodeDeadlineExceeded || code == connect.CodeInternal
+			if recover {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if h.pollCalls.Load() != 2 || !session.State.IsReady() {
+					t.Fatal("expected second poll to reach ready")
+				}
+			} else if err == nil || h.pollCalls.Load() != 1 {
+				t.Fatal("expected immediate poll failure")
+			}
+		})
+	}
+}
+
+func TestWaitReadyWrappedDeadlineClassification(t *testing.T) {
+	for _, code := range []connect.Code{connect.CodeInternal, connect.CodeAborted, connect.CodeUnknown, connect.CodePermissionDenied, connect.CodeCanceled} {
+		want := code != connect.CodePermissionDenied
+		if got := isRetryableWaitStreamError(connect.NewError(code, context.DeadlineExceeded)); got != want {
+			t.Errorf("code %s: got %v want %v", code, got, want)
+		}
+	}
+	if isRetryableWaitStreamError(connect.NewError(connect.CodeInternal, errors.New("application timeout"))) {
+		t.Fatal("generic timeout must not be retried")
+	}
+}
+
+type stalledPollHandler struct {
+	waitSessionHandler
+	pollErr error
+}
+
+func (h *stalledPollHandler) GetSession(ctx context.Context, _ *connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error) {
+	if h.pollErr != nil {
+		return nil, h.pollErr
+	}
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestWaitReadyPollStaysWithinBudget(t *testing.T) {
+	h := &stalledPollHandler{waitSessionHandler: waitSessionHandler{waitErr: connect.NewError(connect.CodeUnavailable, errors.New("temporary"))}}
+	server, client := newWaitSessionTestServer(t, h)
+	defer server.Close()
+	session := newSession(client, &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_CREATING})
+	start := time.Now()
+	err := session.WaitReady(context.Background(), 300*time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "last error") {
+		t.Fatalf("err = %v, want timeout with last poll error", err)
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("WaitReady took %s with a 300ms budget", elapsed)
+	}
+}
+
+func TestWaitReadyTimeoutReportsLastPollError(t *testing.T) {
+	h := &stalledPollHandler{
+		waitSessionHandler: waitSessionHandler{waitErr: connect.NewError(connect.CodeUnavailable, errors.New("temporary"))},
+		pollErr:            connect.NewError(connect.CodeUnavailable, errors.New("edge unreachable")),
+	}
+	server, client := newWaitSessionTestServer(t, h)
+	defer server.Close()
+	session := newSession(client, &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_CREATING})
+	err := session.WaitReady(context.Background(), 300*time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "edge unreachable") {
+		t.Fatalf("err = %v, want last poll error", err)
+	}
+}
+
+func TestWaitReadyClassifierIgnoresNonRPCErrors(t *testing.T) {
+	terminal := fmt.Errorf("session entered terminal state: TERMINATED: guest agent: connection reset by peer")
+	if isRetryableWaitStreamError(terminal) || isRetryableWaitPollError(terminal) {
+		t.Fatal("terminal-state error must not be retried")
+	}
+	ioTimeout := connect.NewError(connect.CodeUnknown, fmt.Errorf("read enveloped message: read tcp: %w", os.ErrDeadlineExceeded))
+	if !isRetryableWaitStreamError(ioTimeout) || !isRetryableWaitPollError(ioTimeout) {
+		t.Fatal("network i/o timeout must be retried")
+	}
+}
+
+type stallOncePollHandler struct {
+	waitSessionHandler
+	pollCalls atomic.Int32
+}
+
+func (h *stallOncePollHandler) GetSession(ctx context.Context, req *connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error) {
+	if h.pollCalls.Add(1) == 1 {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	return h.waitSessionHandler.GetSession(ctx, req)
+}
+
+func TestWaitReadyPollRetriesAfterStalledAttempt(t *testing.T) {
+	previous := waitPollAttemptTimeout
+	waitPollAttemptTimeout = 100 * time.Millisecond
+	defer func() { waitPollAttemptTimeout = previous }()
+
+	h := &stallOncePollHandler{waitSessionHandler: waitSessionHandler{waitErr: connect.NewError(connect.CodeUnavailable, errors.New("temporary"))}}
+	server, client := newWaitSessionTestServer(t, h)
+	defer server.Close()
+	session := newSession(client, &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_CREATING})
+	if err := session.WaitReady(context.Background(), 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if h.pollCalls.Load() != 2 || !session.State.IsReady() {
+		t.Fatalf("poll calls = %d, want a second attempt after the stalled one", h.pollCalls.Load())
+	}
 }

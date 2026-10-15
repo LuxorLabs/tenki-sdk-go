@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -35,7 +36,9 @@ func workspaceSecretError(err error) error {
 }
 
 type WorkspaceSecret struct {
-	ID, WorkspaceID, Name                      string
+	ID, WorkspaceID, Name string
+	// Repository (owner/name) whose CI jobs get the secret; empty for a workspace secret.
+	Repository                                 string
 	ActiveVersion, Revision                    uint32
 	CreatedAt, UpdatedAt, RevokedAt, DeletedAt *time.Time
 }
@@ -65,6 +68,16 @@ type SecretVersionPage struct {
 	Versions   []WorkspaceSecretVersion
 	NextCursor string
 }
+type SecretRepositoryPageOptions struct {
+	SecretPageOptions
+	// Case-insensitive substring match on the full name.
+	Search string
+}
+type SecretRepositoryPage struct {
+	// Full names (owner/name), ordered by name.
+	Repositories []string
+	NextCursor   string
+}
 
 // Secrets provides metadata-only secret management through WorkspaceClient.Secrets.
 type Secrets struct {
@@ -92,11 +105,29 @@ func secretTime(ts *timestamppb.Timestamp) *time.Time {
 	return &value
 }
 func secretMetadata(secret *pb.Secret) (WorkspaceSecret, error) {
- if secret == nil { return WorkspaceSecret{},errors.New("missing secret metadata") }
- return WorkspaceSecret{ID:secret.Id,WorkspaceID:secret.WorkspaceId,Name:secret.Name,ActiveVersion:secret.ActiveVersion,Revision:secret.Revision,
- CreatedAt:secretTime(secret.CreatedAt),UpdatedAt:secretTime(secret.UpdatedAt),RevokedAt:secretTime(secret.RevokedAt),DeletedAt:secretTime(secret.DeletedAt)},nil
+	if secret == nil {
+		return WorkspaceSecret{}, errors.New("missing secret metadata")
+	}
+	return WorkspaceSecret{ID: secret.Id, WorkspaceID: secret.WorkspaceId, Name: secret.Name, Repository: secret.Repository,
+		ActiveVersion: secret.ActiveVersion, Revision: secret.Revision,
+		CreatedAt: secretTime(secret.CreatedAt), UpdatedAt: secretTime(secret.UpdatedAt), RevokedAt: secretTime(secret.RevokedAt), DeletedAt: secretTime(secret.DeletedAt)}, nil
 }
+
+// Create creates a workspace secret.
 func (c *Secrets) Create(ctx context.Context, name string, value []byte, requestID string) (WorkspaceSecret, error) {
+	return c.create(ctx, "", name, value, requestID)
+}
+
+// CreateForRepository creates a secret only CI jobs in repository (owner/name) get, replacing a workspace
+// secret with the same name. The repository must be connected to the workspace. Create keeps its v1 signature.
+func (c *Secrets) CreateForRepository(ctx context.Context, repository, name string, value []byte, requestID string) (WorkspaceSecret, error) {
+	if owner, repo, ok := strings.Cut(repository, "/"); !ok || owner == "" || repo == "" || strings.Contains(repo, "/") {
+		return WorkspaceSecret{}, fmt.Errorf("repository must be owner/name, got %q", repository)
+	}
+	return c.create(ctx, repository, name, value, requestID)
+}
+
+func (c *Secrets) create(ctx context.Context, repository, name string, value []byte, requestID string) (WorkspaceSecret, error) {
 	if value == nil {
 		return WorkspaceSecret{}, fmt.Errorf("secret value required; use a non-nil empty slice for an empty value")
 	}
@@ -104,7 +135,7 @@ func (c *Secrets) Create(ctx context.Context, name string, value []byte, request
 	if err != nil {
 		return WorkspaceSecret{}, err
 	}
-	response, err := c.rpc.CreateSecret(ctx, connect.NewRequest(&pb.CreateSecretRequest{WorkspaceId: c.workspaceID, Name: name, Value: value, RequestId: requestID}))
+	response, err := c.rpc.CreateSecret(ctx, connect.NewRequest(&pb.CreateSecretRequest{WorkspaceId: c.workspaceID, Name: name, Value: value, RequestId: requestID, Repository: repository}))
 	if err != nil {
 		return WorkspaceSecret{}, workspaceSecretError(err)
 	}
@@ -140,6 +171,19 @@ func (c *Secrets) List(ctx context.Context, options SecretPageOptions) (SecretPa
 			return SecretPage{}, err
 		}
 		result.Secrets = append(result.Secrets, metadata)
+	}
+	return result, nil
+}
+
+// ListRepositories lists the connected repositories CreateForRepository accepts.
+func (c *Secrets) ListRepositories(ctx context.Context, options SecretRepositoryPageOptions) (SecretRepositoryPage, error) {
+	response, err := c.rpc.ListSecretRepositories(ctx, connect.NewRequest(&pb.ListSecretRepositoriesRequest{WorkspaceId: c.workspaceID, PageSize: options.PageSize, Cursor: options.Cursor, Search: options.Search}))
+	if err != nil {
+		return SecretRepositoryPage{}, workspaceSecretError(err)
+	}
+	result := SecretRepositoryPage{NextCursor: response.Msg.NextCursor, Repositories: make([]string, 0, len(response.Msg.Repositories))}
+	for _, repository := range response.Msg.Repositories {
+		result.Repositories = append(result.Repositories, repository.FullName)
 	}
 	return result, nil
 }

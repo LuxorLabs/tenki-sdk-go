@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -1002,6 +1004,9 @@ func (s *Session) reauthOnUnauthenticated(ctx context.Context, err error) bool {
 func (s *Session) WaitReady(ctx context.Context, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	if err := s.waitReadyStream(ctx, timeout); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if !isRetryableWaitStreamError(err) {
 			return err
 		}
@@ -1014,26 +1019,92 @@ func (s *Session) WaitReady(ctx context.Context, timeout time.Duration) error {
 	return nil
 }
 
+var errWaitStreamEnded = errors.New("readiness stream ended before session became ready")
+
+// waitConnectionMarkers identify connection-level HTTP/2 failures that clients report under any code.
+// Keep this list and waitTransportMarkers in sync with the TypeScript and Python SDKs.
+var waitConnectionMarkers = []string{
+	"refused_stream",
+	"refused stream",
+	"goaway",
+	"too_many_pings",
+	"enhance_your_calm",
+}
+
+// waitTransportMarkers identify HTTP/2 and proxy failures across connect-go, connect-node and grpc-core.
+var waitTransportMarkers = []string{
+	"http2:",
+	"rst_stream",
+	"stream reset",
+	"stream error",
+	"stream removed",
+	"stream closed",
+	"internal_error",
+	"econnreset",
+	"connection reset",
+	"connection lost",
+	"i/o timeout",
+	"socket closed",
+	"socket hang up",
+	"unexpected eof",
+	"missing status",
+	"no grpc-status trailer",
+	"incomplete envelope",
+	"server closed",
+	"transport closing",
+	"timeout awaiting response headers",
+	"upstream request timeout",
+}
+
 func isRetryableWaitStreamError(err error) bool {
-	if err == nil {
+	if errors.Is(err, errWaitStreamEnded) || connect.CodeOf(err) == connect.CodeUnimplemented {
+		return true
+	}
+	return isTransientWaitError(err)
+}
+
+func isRetryableWaitPollError(err error) bool {
+	return connect.CodeOf(err) == connect.CodeNotFound || isTransientWaitError(err)
+}
+
+// waitPollAttemptTimeout caps one GetSession so a stalled connection cannot consume the whole readiness budget.
+var waitPollAttemptTimeout = 10 * time.Second
+
+// isTransientWaitError reports whether a readiness RPC failed in transport; callers rule out their own cancellation first.
+func isTransientWaitError(err error) bool {
+	// Only RPC errors qualify: a terminal-state error may quote transport text from the server.
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
 		return false
 	}
-	switch connect.CodeOf(err) {
-	case connect.CodeUnimplemented, connect.CodeUnavailable, connect.CodeDeadlineExceeded:
-		return true
-	case connect.CodeInternal:
-		msg := strings.ToLower(err.Error())
-		return strings.Contains(msg, "stream reset") ||
-			strings.Contains(msg, "stream error") ||
-			strings.Contains(msg, "internal_error") ||
-			strings.Contains(msg, "http2") ||
-			strings.Contains(msg, "unexpected eof") ||
-			strings.Contains(msg, "connection reset by peer") ||
-			strings.Contains(msg, "server closed") ||
-			strings.Contains(msg, "timeout")
-	default:
-		return errors.Is(err, context.DeadlineExceeded)
+	msg := strings.ToLower(err.Error())
+	for _, marker := range waitConnectionMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
 	}
+	switch connectErr.Code() {
+	case connect.CodeUnavailable, connect.CodeDeadlineExceeded:
+		return true
+	case connect.CodeInvalidArgument:
+		// connect-go reports a stream cut by GOAWAY as an incomplete envelope.
+		if !strings.Contains(msg, "protocol error") {
+			return false
+		}
+	case connect.CodeInternal, connect.CodeAborted, connect.CodeUnknown, connect.CodeCanceled:
+	default:
+		return false
+	}
+	var netErr net.Error
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrDeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout()) {
+		return true
+	}
+	for _, marker := range waitTransportMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Session) waitReadyStream(ctx context.Context, timeout time.Duration) error {
@@ -1067,40 +1138,46 @@ func (s *Session) waitReadyStream(ctx context.Context, timeout time.Duration) er
 	if s.State.IsTerminal() {
 		return s.terminalStateError()
 	}
-	return fmt.Errorf("timeout waiting for session %s to become ready", s.ID)
+	return fmt.Errorf("%w: %s", errWaitStreamEnded, s.ID)
 }
 
 func (s *Session) waitReadyPoll(ctx context.Context, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
+	pollCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	attempt := 0
-	for time.Now().Before(deadline) {
-		updated, err := s.client.Get(ctx, s.ID)
-		if err != nil {
-			if connect.CodeOf(err) == connect.CodeNotFound {
-				// Tolerate not-found during polling (read-replica lag).
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(pollBackoff(attempt)):
-				}
-				attempt++
-				continue
+	var lastErr error
+	for pollCtx.Err() == nil {
+		attemptCtx, cancelAttempt := context.WithTimeout(pollCtx, waitPollAttemptTimeout)
+		updated, err := s.client.Get(attemptCtx, s.ID)
+		cancelAttempt()
+		switch {
+		case err == nil:
+			s.copyFrom(updated)
+			if s.State.IsReady() {
+				return nil
 			}
+			if s.State.IsTerminal() {
+				return s.terminalStateError()
+			}
+		case isRetryableWaitPollError(err):
+			// Retry replica lag and transient RPC failures within the readiness budget.
+			lastErr = err
+		case ctx.Err() != nil:
+			// The caller cancelled; reported after the loop.
+		default:
 			return err
 		}
-		s.copyFrom(updated)
-		if s.State.IsReady() {
-			return nil
-		}
-		if s.State.IsTerminal() {
-			return s.terminalStateError()
-		}
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-pollCtx.Done():
 		case <-time.After(pollBackoff(attempt)):
 		}
 		attempt++
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if lastErr != nil {
+		return fmt.Errorf("timeout waiting for session %s to become ready (last error: %v)", s.ID, lastErr)
 	}
 	return fmt.Errorf("timeout waiting for session %s to become ready", s.ID)
 }
