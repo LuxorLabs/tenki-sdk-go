@@ -177,10 +177,11 @@ Workspace API keys determine Sandbox scope automatically; ordinary calls do not 
 
 ### Durable pause
 
+`Pause` returns once the session is `PAUSED`: the memory checkpoint is on the host and the RBD rootfs image is finalized.
+Ceph and R2 replication continue in the background after it returns.
+It returns an error carrying the rollback reason if a verified rollback restores `RUNNING`.
 `PauseAsync` returns after the service durably accepts the request and moves the session to `PAUSING` on a node that supports asynchronous pause.
-Snapshot capture and persistence continue in the background; acceptance does not mean the VM has stopped or the snapshot is durable.
-`Pause` retains its existing completion behavior for compatibility.
-Call `WaitPaused` before resuming or relying on a durable checkpoint.
+Acceptance does not mean the VM has stopped, so call `WaitPaused` before resuming or relying on the checkpoint.
 It returns when the session reaches `PAUSED`, returns `ErrPauseFailed` if a verified rollback restores `RUNNING`, and respects context cancellation.
 
 ```go
@@ -192,9 +193,9 @@ if err := session.WaitPaused(ctx, 0); err != nil {
 }
 ```
 
+A `LOCAL_READY` pause snapshot resumes on the host that captured it.
 `DURABLE_CEPH` snapshots can resume on a capability-matched host in the same datacenter while R2 replication continues.
 `DURABLE` snapshots are portable to eligible hosts.
-`LOCAL_READY` is not resumable for pause operations.
 
 ### What survives a pause
 
@@ -309,6 +310,29 @@ npm reports `ENOSPC` as a warning and still exits successfully with a broken ins
 - `(*Client).ListSnapshots(ctx, opts...) ([]*Snapshot, error)`
 - `(*Client).DeleteSnapshot(ctx, snapshotID) (*Snapshot, error)`
 - `(*Client).WaitSnapshotReady(ctx, snapshotID, timeout) (*Snapshot, error)`
+- `(*Session).Fork(ctx, ForkOptions) ([]*Session, error)`
+
+### Forking a session
+
+`Fork` snapshots a running session and starts new sessions that continue from its memory and disk while the source keeps running.
+Each child inherits the source's size, network policy, lifetime settings and tags, and carries `fork_of_session_id` and `fork_snapshot_id` metadata.
+`Count` accepts 1 to 10; zero means 1.
+Children are named `<NamePrefix>-1` to `<NamePrefix>-N`, and an empty prefix derives one from the source name.
+`Wait` returns once every child is `RUNNING`.
+
+```go
+children, err := session.Fork(ctx, tenkisandbox.ForkOptions{Count: 3, NamePrefix: "trial", Wait: true})
+var forkErr *tenkisandbox.ForkFailedError
+if errors.As(err, &forkErr) {
+	// forkErr.Sessions were created before the failure and keep running.
+	log.Printf("fork stopped after %d children from snapshot %s: %v", len(forkErr.Sessions), forkErr.SnapshotID, forkErr.Err)
+}
+```
+
+The fork snapshot is a regular snapshot that counts toward snapshot storage.
+A session with attached volumes cannot be forked, because the children would need the source's volume images and only the source can use them.
+Detach the volumes first.
+Delete it once every session started from it has terminated.
 
 ### Templates
 

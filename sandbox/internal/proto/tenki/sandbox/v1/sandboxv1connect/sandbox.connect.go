@@ -164,6 +164,9 @@ const (
 	// SandboxServiceCreateSnapshotProcedure is the fully-qualified name of the SandboxService's
 	// CreateSnapshot RPC.
 	SandboxServiceCreateSnapshotProcedure = "/tenki.sandbox.v1.SandboxService/CreateSnapshot"
+	// SandboxServiceForkSessionProcedure is the fully-qualified name of the SandboxService's
+	// ForkSession RPC.
+	SandboxServiceForkSessionProcedure = "/tenki.sandbox.v1.SandboxService/ForkSession"
 	// SandboxServiceGetSnapshotProcedure is the fully-qualified name of the SandboxService's
 	// GetSnapshot RPC.
 	SandboxServiceGetSnapshotProcedure = "/tenki.sandbox.v1.SandboxService/GetSnapshot"
@@ -373,6 +376,8 @@ type SandboxServiceClient interface {
 	ResolvePreviewToken(context.Context, *connect.Request[v1.ResolvePreviewTokenRequest]) (*connect.Response[v1.ResolvePreviewTokenResponse], error)
 	UpdateSSHAuthorizedKeys(context.Context, *connect.Request[v1.UpdateSSHAuthorizedKeysRequest]) (*connect.Response[v1.UpdateSSHAuthorizedKeysResponse], error)
 	CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error)
+	// Snapshots a RUNNING session and starts children from it while the source keeps running.
+	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
 	GetSnapshot(context.Context, *connect.Request[v1.GetSnapshotRequest]) (*connect.Response[v1.GetSnapshotResponse], error)
 	GetSnapshotDownloadURL(context.Context, *connect.Request[v1.GetSnapshotDownloadURLRequest]) (*connect.Response[v1.GetSnapshotDownloadURLResponse], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ListSnapshotsResponse], error)
@@ -679,6 +684,12 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("CreateSnapshot")),
 			connect.WithClientOptions(opts...),
 		),
+		forkSession: connect.NewClient[v1.ForkSessionRequest, v1.ForkSessionResponse](
+			httpClient,
+			baseURL+SandboxServiceForkSessionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ForkSession")),
+			connect.WithClientOptions(opts...),
+		),
 		getSnapshot: connect.NewClient[v1.GetSnapshotRequest, v1.GetSnapshotResponse](
 			httpClient,
 			baseURL+SandboxServiceGetSnapshotProcedure,
@@ -965,6 +976,7 @@ type sandboxServiceClient struct {
 	resolvePreviewToken           *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
 	updateSSHAuthorizedKeys       *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
 	createSnapshot                *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
+	forkSession                   *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
 	getSnapshot                   *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
 	getSnapshotDownloadURL        *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
 	listSnapshots                 *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
@@ -1222,6 +1234,11 @@ func (c *sandboxServiceClient) UpdateSSHAuthorizedKeys(ctx context.Context, req 
 // CreateSnapshot calls tenki.sandbox.v1.SandboxService.CreateSnapshot.
 func (c *sandboxServiceClient) CreateSnapshot(ctx context.Context, req *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error) {
 	return c.createSnapshot.CallUnary(ctx, req)
+}
+
+// ForkSession calls tenki.sandbox.v1.SandboxService.ForkSession.
+func (c *sandboxServiceClient) ForkSession(ctx context.Context, req *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error) {
+	return c.forkSession.CallUnary(ctx, req)
 }
 
 // GetSnapshot calls tenki.sandbox.v1.SandboxService.GetSnapshot.
@@ -1482,6 +1499,8 @@ type SandboxServiceHandler interface {
 	ResolvePreviewToken(context.Context, *connect.Request[v1.ResolvePreviewTokenRequest]) (*connect.Response[v1.ResolvePreviewTokenResponse], error)
 	UpdateSSHAuthorizedKeys(context.Context, *connect.Request[v1.UpdateSSHAuthorizedKeysRequest]) (*connect.Response[v1.UpdateSSHAuthorizedKeysResponse], error)
 	CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error)
+	// Snapshots a RUNNING session and starts children from it while the source keeps running.
+	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
 	GetSnapshot(context.Context, *connect.Request[v1.GetSnapshotRequest]) (*connect.Response[v1.GetSnapshotResponse], error)
 	GetSnapshotDownloadURL(context.Context, *connect.Request[v1.GetSnapshotDownloadURLRequest]) (*connect.Response[v1.GetSnapshotDownloadURLResponse], error)
 	ListSnapshots(context.Context, *connect.Request[v1.ListSnapshotsRequest]) (*connect.Response[v1.ListSnapshotsResponse], error)
@@ -1782,6 +1801,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceCreateSnapshotProcedure,
 		svc.CreateSnapshot,
 		connect.WithSchema(sandboxServiceMethods.ByName("CreateSnapshot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceForkSessionHandler := connect.NewUnaryHandler(
+		SandboxServiceForkSessionProcedure,
+		svc.ForkSession,
+		connect.WithSchema(sandboxServiceMethods.ByName("ForkSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceGetSnapshotHandler := connect.NewUnaryHandler(
@@ -2108,6 +2133,8 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceUpdateSSHAuthorizedKeysHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSnapshotProcedure:
 			sandboxServiceCreateSnapshotHandler.ServeHTTP(w, r)
+		case SandboxServiceForkSessionProcedure:
+			sandboxServiceForkSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceGetSnapshotProcedure:
 			sandboxServiceGetSnapshotHandler.ServeHTTP(w, r)
 		case SandboxServiceGetSnapshotDownloadURLProcedure:
@@ -2359,6 +2386,10 @@ func (UnimplementedSandboxServiceHandler) UpdateSSHAuthorizedKeys(context.Contex
 
 func (UnimplementedSandboxServiceHandler) CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateSnapshot is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ForkSession is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) GetSnapshot(context.Context, *connect.Request[v1.GetSnapshotRequest]) (*connect.Response[v1.GetSnapshotResponse], error) {

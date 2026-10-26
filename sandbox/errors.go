@@ -49,6 +49,7 @@ var (
 	ErrTemplateBuildInProgress = errors.New("sandbox: template build already in progress")
 	ErrTemplateRuntimeFailed   = errors.New("sandbox: template runtime failed")
 	ErrWaitReadyFailed         = errors.New("sandbox: session created but not ready within wait budget")
+	ErrForkFailed              = errors.New("sandbox: fork failed")
 	ErrPaginationStalled       = errors.New("sandbox: pagination token did not advance")
 )
 
@@ -74,6 +75,32 @@ func (e *WaitReadyFailedError) Unwrap() error {
 
 func (e *WaitReadyFailedError) Is(target error) bool {
 	return target == ErrWaitReadyFailed
+}
+
+// ForkFailedError reports a fork that failed after its snapshot was created. Sessions holds the
+// children created before the failure; they keep running until closed.
+type ForkFailedError struct {
+	SnapshotID string
+	Sessions   []*Session
+	Err        error
+}
+
+func (e *ForkFailedError) Error() string {
+	if e == nil || e.Err == nil {
+		return ErrForkFailed.Error()
+	}
+	return ErrForkFailed.Error() + ": " + e.Err.Error()
+}
+
+func (e *ForkFailedError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func (e *ForkFailedError) Is(target error) bool {
+	return target == ErrForkFailed
 }
 
 type TemplateRuntimeFailedError struct {

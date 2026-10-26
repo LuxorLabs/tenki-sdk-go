@@ -1441,6 +1441,54 @@ func (s *Session) Resume(ctx context.Context) error {
 	return nil
 }
 
+// ForkOptions configures Session.Fork.
+type ForkOptions struct {
+	// Count is how many children to create, 1 to 10; zero means 1.
+	Count int32
+	// NamePrefix names the children <prefix>-1 .. <prefix>-N; empty derives it from this session's name.
+	NamePrefix string
+	// Wait holds the call until every child is RUNNING or terminal.
+	Wait bool
+}
+
+// Fork snapshots this RUNNING session and starts children that continue from its memory and disk
+// while it keeps running. A failure after the snapshot exists returns *ForkFailedError.
+func (s *Session) Fork(ctx context.Context, opts ForkOptions) ([]*Session, error) {
+	resp, err := s.client.sandbox.ForkSession(ctx, connect.NewRequest(&sandboxv1.ForkSessionRequest{
+		SessionId:  s.ID,
+		Count:      opts.Count,
+		NamePrefix: opts.NamePrefix,
+		Wait:       opts.Wait,
+	}))
+	if err != nil {
+		return nil, mapForkError(s.client, err)
+	}
+	return forkChildren(s.client, resp.Msg), nil
+}
+
+func forkChildren(client *Client, resp *sandboxv1.ForkSessionResponse) []*Session {
+	children := make([]*Session, 0, len(resp.GetSessions()))
+	for _, child := range resp.GetSessions() {
+		children = append(children, newSession(client, child))
+	}
+	return children
+}
+
+func mapForkError(client *Client, err error) error {
+	mapped := mapError(err)
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		return mapped
+	}
+	for _, rawDetail := range connectErr.Details() {
+		detail, detailErr := rawDetail.Value()
+		if partial, ok := detail.(*sandboxv1.ForkSessionResponse); detailErr == nil && ok {
+			return &ForkFailedError{SnapshotID: partial.GetSnapshotId(), Sessions: forkChildren(client, partial), Err: mapped}
+		}
+	}
+	return mapped
+}
+
 // Release permanently frees this handle's local data plane without terminating the sandbox.
 func (s *Session) Release() {
 	s.closeMu.Lock()
