@@ -1762,7 +1762,8 @@ func (s *Session) AttachVolume(ctx context.Context, volumeID string, mountPath s
 }
 
 // DetachVolume detaches one persistent volume from the session. With WithForceDetach it does not
-// need the guest's consent to unmount the volume.
+// need the guest's consent to unmount the volume. A pending sync back is never skipped; the call
+// fails with ErrVolumeSyncPending until the upload finishes or an operator recovers the volume.
 func (s *Session) DetachVolume(ctx context.Context, volumeID string, opts ...DetachVolumeOption) error {
 	cfg := defaultDetachVolumeConfig()
 	for _, opt := range opts {

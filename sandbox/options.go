@@ -149,8 +149,9 @@ func (f detachVolumeOptionFunc) applyDetachVolume(cfg *detachVolumeConfig) {
 	f(cfg)
 }
 
-// WithForceDetach detaches without the guest's consent: a SYNC_PENDING attachment is released at once,
-// and an attached volume is unplugged even if the guest cannot unmount it (writes it has not flushed are lost).
+// WithForceDetach unplugs an attached volume even if the guest cannot unmount it (writes it has not
+// flushed are lost). It never releases a SYNC_PENDING attachment: wait for sync back to finish or
+// request operator recovery.
 func WithForceDetach() DetachVolumeOption {
 	return detachVolumeOptionFunc(func(cfg *detachVolumeConfig) {
 		cfg.force = true
@@ -207,6 +208,7 @@ type createConfig struct {
 	waitTimeout     time.Duration
 	waitTimeoutSet  bool
 	tailnet         *TailnetAttachment
+	disableTailnet  bool
 }
 
 type createVolumeConfig struct {
@@ -991,6 +993,11 @@ func WithTailnet(attachment TailnetAttachment) CreateOption {
 		cloned := cloneTailnetAttachment(attachment)
 		cfg.tailnet = &cloned
 	})
+}
+
+// WithoutTailnet skips the workspace default for this sandbox.
+func WithoutTailnet() CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cfg.disableTailnet = true })
 }
 
 // WithSetSticky toggles the sticky flag on Update.

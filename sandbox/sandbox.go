@@ -303,6 +303,10 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	if workspaceID := strings.TrimSpace(cfg.workspaceID); workspaceID != "" {
 		req.WorkspaceId = &workspaceID
 	}
+	if cfg.disableTailnet && cfg.tailnet != nil {
+		return nil, errors.New("choose a Tailscale connection or disable Tailscale")
+	}
+	req.DisableTailnet = cfg.disableTailnet
 	if cfg.tailnet != nil {
 		tailnet, err := tailnetAttachmentProto(*cfg.tailnet)
 		if err != nil {

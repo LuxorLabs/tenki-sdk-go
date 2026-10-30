@@ -19,7 +19,8 @@ import (
 
 type tailnetCaptureHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
-	request *sandboxv1.TailnetAttachment
+	request  *sandboxv1.TailnetAttachment
+	disabled bool
 }
 
 func (h *tailnetCaptureHandler) CreateSession(
@@ -27,6 +28,7 @@ func (h *tailnetCaptureHandler) CreateSession(
 	req *connect.Request[sandboxv1.CreateSessionRequest],
 ) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
 	h.request = req.Msg.GetTailnet()
+	h.disabled = req.Msg.GetDisableTailnet()
 	return connect.NewResponse(&sandboxv1.CreateSessionResponse{Session: &sandboxv1.SandboxSession{
 		Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_RUNNING,
 		TailnetStatus: &sandboxv1.TailnetStatus{
@@ -35,6 +37,30 @@ func (h *tailnetCaptureHandler) CreateSession(
 			Owner: "tag:sandbox", Error: "approval pending", DeviceRetained: true,
 		},
 	}}), nil
+}
+
+func TestTailnetDefaultOptOutIsSentWithoutCredentials(t *testing.T) {
+	handler := &tailnetCaptureHandler{}
+	path, endpoint := sandboxv1connect.NewSandboxServiceHandler(handler)
+	mux := http.NewServeMux()
+	mux.Handle(path, endpoint)
+	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	t.Cleanup(server.Close)
+	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	if _, err = client.Create(t.Context(), WithoutTailnet()); err != nil {
+		t.Fatal(err)
+	}
+	if !handler.disabled || handler.request != nil {
+		t.Fatal("opt-out must not send a tailnet credential")
+	}
+	_, err = client.Create(t.Context(), WithoutTailnet(), WithTailnet(TailnetAttachment{ProfileID: "11111111-1111-4111-8111-111111111111"}))
+	if err == nil {
+		t.Fatal("conflicting tailnet options accepted")
+	}
 }
 
 func TestTailnetCreateRequestAndStatus(t *testing.T) {
@@ -145,5 +171,20 @@ func TestTailnetStatusKeepsFutureProvider(t *testing.T) {
 	status := tailnetStatusFromProto(&sandboxv1.TailnetStatus{Provider: "future", State: "online"})
 	if status.Provider != "future" {
 		t.Fatalf("provider = %q", status.Provider)
+	}
+}
+
+func TestTailnetSavedProfileCredential(t *testing.T) {
+	profile := "11111111-1111-4111-8111-111111111111"
+	request, err := tailnetAttachmentProto(TailnetAttachment{ProfileID: profile, ProfileRevision: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.GetProfileId() != profile || request.GetProfileRevision() != 3 || request.GetAuthKey() != "" {
+		t.Fatal("saved connection reference was not preserved")
+	}
+	_, err = tailnetAttachmentProto(TailnetAttachment{ProfileID: profile, AuthKey: NewTailnetAuthKey("tskey-auth-sentinel")})
+	if err == nil {
+		t.Fatal("mixed credentials must be rejected")
 	}
 }

@@ -58,6 +58,8 @@ func (TailnetAuthKey) Format(state fmt.State, _ rune) {
 }
 
 type TailnetAttachment struct {
+	ProfileID            string
+	ProfileRevision      uint32
 	AuthKey              TailnetAuthKey
 	Provider             TailnetProvider
 	Hostname             string
@@ -107,7 +109,10 @@ func tailnetAttachmentProto(value TailnetAttachment) (*sandboxv1.TailnetAttachme
 	if provider != TailnetProviderTailscale {
 		return nil, fmt.Errorf("sandbox: unsupported tailnet provider %q", provider)
 	}
-	if strings.TrimSpace(value.AuthKey.value) == "" {
+	if value.ProfileID != "" && value.AuthKey.value != "" {
+		return nil, errors.New("sandbox: provide one tailnet credential: AuthKey or ProfileID")
+	}
+	if value.ProfileID == "" && strings.TrimSpace(value.AuthKey.value) == "" {
 		return nil, errors.New("sandbox: tailnet auth key is required")
 	}
 	exitPolicy, err := tailnetExitPolicyProto(value.ExitPolicy)
@@ -118,7 +123,7 @@ func tailnetAttachmentProto(value TailnetAttachment) (*sandboxv1.TailnetAttachme
 	if err != nil {
 		return nil, err
 	}
-	return &sandboxv1.TailnetAttachment{
+	request := &sandboxv1.TailnetAttachment{
 		Provider:             string(provider),
 		Hostname:             value.Hostname,
 		Tags:                 append([]string(nil), value.Tags...),
@@ -132,7 +137,12 @@ func tailnetAttachmentProto(value TailnetAttachment) (*sandboxv1.TailnetAttachme
 		Credential:           &sandboxv1.TailnetAttachment_AuthKey{AuthKey: value.AuthKey.value},
 		ExitPolicy:           exitPolicy,
 		EphemeralPausePolicy: pausePolicy,
-	}, nil
+		ProfileRevision:      value.ProfileRevision,
+	}
+	if value.ProfileID != "" {
+		request.Credential = &sandboxv1.TailnetAttachment_ProfileId{ProfileId: value.ProfileID}
+	}
+	return request, nil
 }
 
 func tailnetExitPolicyProto(value TailnetExitPolicy) (sandboxv1.TailnetExitPolicy, error) {

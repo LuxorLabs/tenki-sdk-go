@@ -41,6 +41,30 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// SandboxServiceGetTailnetDefaultsProcedure is the fully-qualified name of the SandboxService's
+	// GetTailnetDefaults RPC.
+	SandboxServiceGetTailnetDefaultsProcedure = "/tenki.sandbox.v1.SandboxService/GetTailnetDefaults"
+	// SandboxServiceSaveTailnetDefaultsProcedure is the fully-qualified name of the SandboxService's
+	// SaveTailnetDefaults RPC.
+	SandboxServiceSaveTailnetDefaultsProcedure = "/tenki.sandbox.v1.SandboxService/SaveTailnetDefaults"
+	// SandboxServiceListTailnetRunnerStatusesProcedure is the fully-qualified name of the
+	// SandboxService's ListTailnetRunnerStatuses RPC.
+	SandboxServiceListTailnetRunnerStatusesProcedure = "/tenki.sandbox.v1.SandboxService/ListTailnetRunnerStatuses"
+	// SandboxServiceSaveTailnetRunnerConfigurationProcedure is the fully-qualified name of the
+	// SandboxService's SaveTailnetRunnerConfiguration RPC.
+	SandboxServiceSaveTailnetRunnerConfigurationProcedure = "/tenki.sandbox.v1.SandboxService/SaveTailnetRunnerConfiguration"
+	// SandboxServiceListTailnetRunnerConfigurationsProcedure is the fully-qualified name of the
+	// SandboxService's ListTailnetRunnerConfigurations RPC.
+	SandboxServiceListTailnetRunnerConfigurationsProcedure = "/tenki.sandbox.v1.SandboxService/ListTailnetRunnerConfigurations"
+	// SandboxServiceSaveTailnetConnectionProcedure is the fully-qualified name of the SandboxService's
+	// SaveTailnetConnection RPC.
+	SandboxServiceSaveTailnetConnectionProcedure = "/tenki.sandbox.v1.SandboxService/SaveTailnetConnection"
+	// SandboxServiceListTailnetConnectionsProcedure is the fully-qualified name of the SandboxService's
+	// ListTailnetConnections RPC.
+	SandboxServiceListTailnetConnectionsProcedure = "/tenki.sandbox.v1.SandboxService/ListTailnetConnections"
+	// SandboxServiceTestTailnetConnectionProcedure is the fully-qualified name of the SandboxService's
+	// TestTailnetConnection RPC.
+	SandboxServiceTestTailnetConnectionProcedure = "/tenki.sandbox.v1.SandboxService/TestTailnetConnection"
 	// SandboxServiceCreateSessionProcedure is the fully-qualified name of the SandboxService's
 	// CreateSession RPC.
 	SandboxServiceCreateSessionProcedure = "/tenki.sandbox.v1.SandboxService/CreateSession"
@@ -323,6 +347,14 @@ const (
 
 // SandboxServiceClient is a client for the tenki.sandbox.v1.SandboxService service.
 type SandboxServiceClient interface {
+	GetTailnetDefaults(context.Context, *connect.Request[v1.GetTailnetDefaultsRequest]) (*connect.Response[v1.GetTailnetDefaultsResponse], error)
+	SaveTailnetDefaults(context.Context, *connect.Request[v1.SaveTailnetDefaultsRequest]) (*connect.Response[v1.SaveTailnetDefaultsResponse], error)
+	ListTailnetRunnerStatuses(context.Context, *connect.Request[v1.ListTailnetRunnerStatusesRequest]) (*connect.Response[v1.ListTailnetRunnerStatusesResponse], error)
+	SaveTailnetRunnerConfiguration(context.Context, *connect.Request[v1.SaveTailnetRunnerConfigurationRequest]) (*connect.Response[v1.SaveTailnetRunnerConfigurationResponse], error)
+	ListTailnetRunnerConfigurations(context.Context, *connect.Request[v1.ListTailnetRunnerConfigurationsRequest]) (*connect.Response[v1.ListTailnetRunnerConfigurationsResponse], error)
+	SaveTailnetConnection(context.Context, *connect.Request[v1.SaveTailnetConnectionRequest]) (*connect.Response[v1.SaveTailnetConnectionResponse], error)
+	ListTailnetConnections(context.Context, *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error)
+	TestTailnetConnection(context.Context, *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
@@ -438,6 +470,54 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	sandboxServiceMethods := v1.File_tenki_sandbox_v1_sandbox_proto.Services().ByName("SandboxService").Methods()
 	return &sandboxServiceClient{
+		getTailnetDefaults: connect.NewClient[v1.GetTailnetDefaultsRequest, v1.GetTailnetDefaultsResponse](
+			httpClient,
+			baseURL+SandboxServiceGetTailnetDefaultsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("GetTailnetDefaults")),
+			connect.WithClientOptions(opts...),
+		),
+		saveTailnetDefaults: connect.NewClient[v1.SaveTailnetDefaultsRequest, v1.SaveTailnetDefaultsResponse](
+			httpClient,
+			baseURL+SandboxServiceSaveTailnetDefaultsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetDefaults")),
+			connect.WithClientOptions(opts...),
+		),
+		listTailnetRunnerStatuses: connect.NewClient[v1.ListTailnetRunnerStatusesRequest, v1.ListTailnetRunnerStatusesResponse](
+			httpClient,
+			baseURL+SandboxServiceListTailnetRunnerStatusesProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetRunnerStatuses")),
+			connect.WithClientOptions(opts...),
+		),
+		saveTailnetRunnerConfiguration: connect.NewClient[v1.SaveTailnetRunnerConfigurationRequest, v1.SaveTailnetRunnerConfigurationResponse](
+			httpClient,
+			baseURL+SandboxServiceSaveTailnetRunnerConfigurationProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetRunnerConfiguration")),
+			connect.WithClientOptions(opts...),
+		),
+		listTailnetRunnerConfigurations: connect.NewClient[v1.ListTailnetRunnerConfigurationsRequest, v1.ListTailnetRunnerConfigurationsResponse](
+			httpClient,
+			baseURL+SandboxServiceListTailnetRunnerConfigurationsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetRunnerConfigurations")),
+			connect.WithClientOptions(opts...),
+		),
+		saveTailnetConnection: connect.NewClient[v1.SaveTailnetConnectionRequest, v1.SaveTailnetConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceSaveTailnetConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		listTailnetConnections: connect.NewClient[v1.ListTailnetConnectionsRequest, v1.ListTailnetConnectionsResponse](
+			httpClient,
+			baseURL+SandboxServiceListTailnetConnectionsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetConnections")),
+			connect.WithClientOptions(opts...),
+		),
+		testTailnetConnection: connect.NewClient[v1.TestTailnetConnectionRequest, v1.TestTailnetConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceTestTailnetConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("TestTailnetConnection")),
+			connect.WithClientOptions(opts...),
+		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
 			httpClient,
 			baseURL+SandboxServiceCreateSessionProcedure,
@@ -935,88 +1015,138 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // sandboxServiceClient implements SandboxServiceClient.
 type sandboxServiceClient struct {
-	createSession                 *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createSessionCredential       *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
-	getSession                    *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	getSessionMetrics             *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
-	waitSession                   *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
-	listSessions                  *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	listWorkspaceSandboxes        *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
-	updateSession                 *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
-	createVolume                  *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
-	getVolume                     *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
-	listVolumes                   *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
-	updateVolume                  *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
-	deleteVolume                  *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
-	resizeVolume                  *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
-	attachVolume                  *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
-	detachVolume                  *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
-	executeCommand                *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
-	streamCommandOutput           *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
-	gitOperation                  *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
-	pauseSession                  *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
-	resumeSession                 *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
-	terminateSession              *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
-	terminateSessions             *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
-	extendSession                 *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
-	getArtifactUploadUrl          *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
-	getArtifactDownloadUrl        *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
-	exposePort                    *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
-	openPreview                   *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
-	touchPreview                  *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
-	reportSessionActivity         *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
-	unexposePort                  *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
-	listExposedPorts              *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
-	createPreviewUrl              *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
-	deletePreviewUrl              *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
-	bindPreviewUrl                *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
-	unbindPreviewUrl              *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
-	listPreviewUrls               *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
-	getPreviewUrl                 *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
-	resolvePreviewToken           *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
-	updateSSHAuthorizedKeys       *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
-	createSnapshot                *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
-	forkSession                   *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
-	getSnapshot                   *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
-	getSnapshotDownloadURL        *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
-	listSnapshots                 *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
-	listSessionSnapshots          *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
-	listDanglingSnapshots         *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
-	listWorkspaceSnapshots        *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
-	getWorkspaceSandboxUsage      *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
-	getWorkspacePreviewDomains    *connect.Client[v1.GetWorkspacePreviewDomainsRequest, v1.GetWorkspacePreviewDomainsResponse]
-	updateWorkspacePreviewDomains *connect.Client[v1.UpdateWorkspacePreviewDomainsRequest, v1.UpdateWorkspacePreviewDomainsResponse]
-	updateSnapshot                *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
-	deleteSnapshot                *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
-	createTemplate                *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
-	getTemplate                   *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
-	listTemplates                 *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
-	updateTemplate                *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
-	deleteTemplate                *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
-	buildTemplate                 *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
-	cancelTemplateBuild           *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
-	getTemplateBuild              *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
-	listActiveTemplateBuilds      *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
-	listTemplateBuilds            *connect.Client[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse]
-	deleteTemplateBuild           *connect.Client[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse]
-	publishRegistryImage          *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
-	setRegistryImageVisibility    *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
-	deleteRegistryImage           *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
-	deleteRegistryImageVersion    *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
-	listRegistryImages            *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
-	getRegistryImage              *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
-	resolveRegistryRef            *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
-	shareImage                    *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
-	revokeRegistryShareGrant      *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
-	listRegistryShareGrants       *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
-	unshareRegistryImage          *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
-	createEgressPolicy            *connect.Client[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse]
-	updateEgressPolicy            *connect.Client[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse]
-	getEgressPolicy               *connect.Client[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse]
-	listEgressPolicies            *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
-	deleteEgressPolicy            *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
-	whoAmI                        *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
-	listCIRunnerSizes             *connect.Client[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse]
+	getTailnetDefaults              *connect.Client[v1.GetTailnetDefaultsRequest, v1.GetTailnetDefaultsResponse]
+	saveTailnetDefaults             *connect.Client[v1.SaveTailnetDefaultsRequest, v1.SaveTailnetDefaultsResponse]
+	listTailnetRunnerStatuses       *connect.Client[v1.ListTailnetRunnerStatusesRequest, v1.ListTailnetRunnerStatusesResponse]
+	saveTailnetRunnerConfiguration  *connect.Client[v1.SaveTailnetRunnerConfigurationRequest, v1.SaveTailnetRunnerConfigurationResponse]
+	listTailnetRunnerConfigurations *connect.Client[v1.ListTailnetRunnerConfigurationsRequest, v1.ListTailnetRunnerConfigurationsResponse]
+	saveTailnetConnection           *connect.Client[v1.SaveTailnetConnectionRequest, v1.SaveTailnetConnectionResponse]
+	listTailnetConnections          *connect.Client[v1.ListTailnetConnectionsRequest, v1.ListTailnetConnectionsResponse]
+	testTailnetConnection           *connect.Client[v1.TestTailnetConnectionRequest, v1.TestTailnetConnectionResponse]
+	createSession                   *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createSessionCredential         *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
+	getSession                      *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	getSessionMetrics               *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
+	waitSession                     *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
+	listSessions                    *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	listWorkspaceSandboxes          *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
+	updateSession                   *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
+	createVolume                    *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
+	getVolume                       *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
+	listVolumes                     *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
+	updateVolume                    *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
+	deleteVolume                    *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
+	resizeVolume                    *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
+	attachVolume                    *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
+	detachVolume                    *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
+	executeCommand                  *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
+	streamCommandOutput             *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
+	gitOperation                    *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
+	pauseSession                    *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
+	resumeSession                   *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
+	terminateSession                *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
+	terminateSessions               *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
+	extendSession                   *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
+	getArtifactUploadUrl            *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
+	getArtifactDownloadUrl          *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
+	exposePort                      *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
+	openPreview                     *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
+	touchPreview                    *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
+	reportSessionActivity           *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
+	unexposePort                    *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
+	listExposedPorts                *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
+	createPreviewUrl                *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
+	deletePreviewUrl                *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
+	bindPreviewUrl                  *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
+	unbindPreviewUrl                *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
+	listPreviewUrls                 *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
+	getPreviewUrl                   *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
+	resolvePreviewToken             *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
+	updateSSHAuthorizedKeys         *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
+	createSnapshot                  *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
+	forkSession                     *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
+	getSnapshot                     *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
+	getSnapshotDownloadURL          *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
+	listSnapshots                   *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
+	listSessionSnapshots            *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
+	listDanglingSnapshots           *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
+	listWorkspaceSnapshots          *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
+	getWorkspaceSandboxUsage        *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
+	getWorkspacePreviewDomains      *connect.Client[v1.GetWorkspacePreviewDomainsRequest, v1.GetWorkspacePreviewDomainsResponse]
+	updateWorkspacePreviewDomains   *connect.Client[v1.UpdateWorkspacePreviewDomainsRequest, v1.UpdateWorkspacePreviewDomainsResponse]
+	updateSnapshot                  *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
+	deleteSnapshot                  *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
+	createTemplate                  *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
+	getTemplate                     *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
+	listTemplates                   *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
+	updateTemplate                  *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
+	deleteTemplate                  *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
+	buildTemplate                   *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
+	cancelTemplateBuild             *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
+	getTemplateBuild                *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
+	listActiveTemplateBuilds        *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
+	listTemplateBuilds              *connect.Client[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse]
+	deleteTemplateBuild             *connect.Client[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse]
+	publishRegistryImage            *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
+	setRegistryImageVisibility      *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
+	deleteRegistryImage             *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
+	deleteRegistryImageVersion      *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
+	listRegistryImages              *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
+	getRegistryImage                *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
+	resolveRegistryRef              *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
+	shareImage                      *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
+	revokeRegistryShareGrant        *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
+	listRegistryShareGrants         *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
+	unshareRegistryImage            *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
+	createEgressPolicy              *connect.Client[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse]
+	updateEgressPolicy              *connect.Client[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse]
+	getEgressPolicy                 *connect.Client[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse]
+	listEgressPolicies              *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
+	deleteEgressPolicy              *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
+	whoAmI                          *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
+	listCIRunnerSizes               *connect.Client[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse]
+}
+
+// GetTailnetDefaults calls tenki.sandbox.v1.SandboxService.GetTailnetDefaults.
+func (c *sandboxServiceClient) GetTailnetDefaults(ctx context.Context, req *connect.Request[v1.GetTailnetDefaultsRequest]) (*connect.Response[v1.GetTailnetDefaultsResponse], error) {
+	return c.getTailnetDefaults.CallUnary(ctx, req)
+}
+
+// SaveTailnetDefaults calls tenki.sandbox.v1.SandboxService.SaveTailnetDefaults.
+func (c *sandboxServiceClient) SaveTailnetDefaults(ctx context.Context, req *connect.Request[v1.SaveTailnetDefaultsRequest]) (*connect.Response[v1.SaveTailnetDefaultsResponse], error) {
+	return c.saveTailnetDefaults.CallUnary(ctx, req)
+}
+
+// ListTailnetRunnerStatuses calls tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses.
+func (c *sandboxServiceClient) ListTailnetRunnerStatuses(ctx context.Context, req *connect.Request[v1.ListTailnetRunnerStatusesRequest]) (*connect.Response[v1.ListTailnetRunnerStatusesResponse], error) {
+	return c.listTailnetRunnerStatuses.CallUnary(ctx, req)
+}
+
+// SaveTailnetRunnerConfiguration calls
+// tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration.
+func (c *sandboxServiceClient) SaveTailnetRunnerConfiguration(ctx context.Context, req *connect.Request[v1.SaveTailnetRunnerConfigurationRequest]) (*connect.Response[v1.SaveTailnetRunnerConfigurationResponse], error) {
+	return c.saveTailnetRunnerConfiguration.CallUnary(ctx, req)
+}
+
+// ListTailnetRunnerConfigurations calls
+// tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations.
+func (c *sandboxServiceClient) ListTailnetRunnerConfigurations(ctx context.Context, req *connect.Request[v1.ListTailnetRunnerConfigurationsRequest]) (*connect.Response[v1.ListTailnetRunnerConfigurationsResponse], error) {
+	return c.listTailnetRunnerConfigurations.CallUnary(ctx, req)
+}
+
+// SaveTailnetConnection calls tenki.sandbox.v1.SandboxService.SaveTailnetConnection.
+func (c *sandboxServiceClient) SaveTailnetConnection(ctx context.Context, req *connect.Request[v1.SaveTailnetConnectionRequest]) (*connect.Response[v1.SaveTailnetConnectionResponse], error) {
+	return c.saveTailnetConnection.CallUnary(ctx, req)
+}
+
+// ListTailnetConnections calls tenki.sandbox.v1.SandboxService.ListTailnetConnections.
+func (c *sandboxServiceClient) ListTailnetConnections(ctx context.Context, req *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error) {
+	return c.listTailnetConnections.CallUnary(ctx, req)
+}
+
+// TestTailnetConnection calls tenki.sandbox.v1.SandboxService.TestTailnetConnection.
+func (c *sandboxServiceClient) TestTailnetConnection(ctx context.Context, req *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error) {
+	return c.testTailnetConnection.CallUnary(ctx, req)
 }
 
 // CreateSession calls tenki.sandbox.v1.SandboxService.CreateSession.
@@ -1446,6 +1576,14 @@ func (c *sandboxServiceClient) ListCIRunnerSizes(ctx context.Context, req *conne
 
 // SandboxServiceHandler is an implementation of the tenki.sandbox.v1.SandboxService service.
 type SandboxServiceHandler interface {
+	GetTailnetDefaults(context.Context, *connect.Request[v1.GetTailnetDefaultsRequest]) (*connect.Response[v1.GetTailnetDefaultsResponse], error)
+	SaveTailnetDefaults(context.Context, *connect.Request[v1.SaveTailnetDefaultsRequest]) (*connect.Response[v1.SaveTailnetDefaultsResponse], error)
+	ListTailnetRunnerStatuses(context.Context, *connect.Request[v1.ListTailnetRunnerStatusesRequest]) (*connect.Response[v1.ListTailnetRunnerStatusesResponse], error)
+	SaveTailnetRunnerConfiguration(context.Context, *connect.Request[v1.SaveTailnetRunnerConfigurationRequest]) (*connect.Response[v1.SaveTailnetRunnerConfigurationResponse], error)
+	ListTailnetRunnerConfigurations(context.Context, *connect.Request[v1.ListTailnetRunnerConfigurationsRequest]) (*connect.Response[v1.ListTailnetRunnerConfigurationsResponse], error)
+	SaveTailnetConnection(context.Context, *connect.Request[v1.SaveTailnetConnectionRequest]) (*connect.Response[v1.SaveTailnetConnectionResponse], error)
+	ListTailnetConnections(context.Context, *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error)
+	TestTailnetConnection(context.Context, *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
@@ -1557,6 +1695,54 @@ type SandboxServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	sandboxServiceMethods := v1.File_tenki_sandbox_v1_sandbox_proto.Services().ByName("SandboxService").Methods()
+	sandboxServiceGetTailnetDefaultsHandler := connect.NewUnaryHandler(
+		SandboxServiceGetTailnetDefaultsProcedure,
+		svc.GetTailnetDefaults,
+		connect.WithSchema(sandboxServiceMethods.ByName("GetTailnetDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceSaveTailnetDefaultsHandler := connect.NewUnaryHandler(
+		SandboxServiceSaveTailnetDefaultsProcedure,
+		svc.SaveTailnetDefaults,
+		connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListTailnetRunnerStatusesHandler := connect.NewUnaryHandler(
+		SandboxServiceListTailnetRunnerStatusesProcedure,
+		svc.ListTailnetRunnerStatuses,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetRunnerStatuses")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceSaveTailnetRunnerConfigurationHandler := connect.NewUnaryHandler(
+		SandboxServiceSaveTailnetRunnerConfigurationProcedure,
+		svc.SaveTailnetRunnerConfiguration,
+		connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetRunnerConfiguration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListTailnetRunnerConfigurationsHandler := connect.NewUnaryHandler(
+		SandboxServiceListTailnetRunnerConfigurationsProcedure,
+		svc.ListTailnetRunnerConfigurations,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetRunnerConfigurations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceSaveTailnetConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceSaveTailnetConnectionProcedure,
+		svc.SaveTailnetConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("SaveTailnetConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListTailnetConnectionsHandler := connect.NewUnaryHandler(
+		SandboxServiceListTailnetConnectionsProcedure,
+		svc.ListTailnetConnections,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListTailnetConnections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceTestTailnetConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceTestTailnetConnectionProcedure,
+		svc.TestTailnetConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("TestTailnetConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sandboxServiceCreateSessionHandler := connect.NewUnaryHandler(
 		SandboxServiceCreateSessionProcedure,
 		svc.CreateSession,
@@ -2051,6 +2237,22 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 	)
 	return "/tenki.sandbox.v1.SandboxService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case SandboxServiceGetTailnetDefaultsProcedure:
+			sandboxServiceGetTailnetDefaultsHandler.ServeHTTP(w, r)
+		case SandboxServiceSaveTailnetDefaultsProcedure:
+			sandboxServiceSaveTailnetDefaultsHandler.ServeHTTP(w, r)
+		case SandboxServiceListTailnetRunnerStatusesProcedure:
+			sandboxServiceListTailnetRunnerStatusesHandler.ServeHTTP(w, r)
+		case SandboxServiceSaveTailnetRunnerConfigurationProcedure:
+			sandboxServiceSaveTailnetRunnerConfigurationHandler.ServeHTTP(w, r)
+		case SandboxServiceListTailnetRunnerConfigurationsProcedure:
+			sandboxServiceListTailnetRunnerConfigurationsHandler.ServeHTTP(w, r)
+		case SandboxServiceSaveTailnetConnectionProcedure:
+			sandboxServiceSaveTailnetConnectionHandler.ServeHTTP(w, r)
+		case SandboxServiceListTailnetConnectionsProcedure:
+			sandboxServiceListTailnetConnectionsHandler.ServeHTTP(w, r)
+		case SandboxServiceTestTailnetConnectionProcedure:
+			sandboxServiceTestTailnetConnectionHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSessionProcedure:
 			sandboxServiceCreateSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSessionCredentialProcedure:
@@ -2223,6 +2425,38 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 
 // UnimplementedSandboxServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedSandboxServiceHandler struct{}
+
+func (UnimplementedSandboxServiceHandler) GetTailnetDefaults(context.Context, *connect.Request[v1.GetTailnetDefaultsRequest]) (*connect.Response[v1.GetTailnetDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetTailnetDefaults is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) SaveTailnetDefaults(context.Context, *connect.Request[v1.SaveTailnetDefaultsRequest]) (*connect.Response[v1.SaveTailnetDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.SaveTailnetDefaults is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListTailnetRunnerStatuses(context.Context, *connect.Request[v1.ListTailnetRunnerStatusesRequest]) (*connect.Response[v1.ListTailnetRunnerStatusesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) SaveTailnetRunnerConfiguration(context.Context, *connect.Request[v1.SaveTailnetRunnerConfigurationRequest]) (*connect.Response[v1.SaveTailnetRunnerConfigurationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListTailnetRunnerConfigurations(context.Context, *connect.Request[v1.ListTailnetRunnerConfigurationsRequest]) (*connect.Response[v1.ListTailnetRunnerConfigurationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) SaveTailnetConnection(context.Context, *connect.Request[v1.SaveTailnetConnectionRequest]) (*connect.Response[v1.SaveTailnetConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.SaveTailnetConnection is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListTailnetConnections(context.Context, *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListTailnetConnections is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) TestTailnetConnection(context.Context, *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.TestTailnetConnection is not implemented"))
+}
 
 func (UnimplementedSandboxServiceHandler) CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateSession is not implemented"))

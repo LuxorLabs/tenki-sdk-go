@@ -1591,8 +1591,11 @@ type ListRegistryImagesRequest struct {
 	PageSize      *int32                 `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
 	Cursor        *string                `protobuf:"bytes,7,opt,name=cursor,proto3,oneof" json:"cursor,omitempty"`
 	WorkspaceId   *string                `protobuf:"bytes,8,opt,name=workspace_id,json=workspaceId,proto3,oneof" json:"workspace_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// System (Tenki-curated) images are excluded unless set, or unless
+	// workspace_slug names a system namespace.
+	IncludeSystemImages bool `protobuf:"varint,9,opt,name=include_system_images,json=includeSystemImages,proto3" json:"include_system_images,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ListRegistryImagesRequest) Reset() {
@@ -1679,6 +1682,13 @@ func (x *ListRegistryImagesRequest) GetWorkspaceId() string {
 		return *x.WorkspaceId
 	}
 	return ""
+}
+
+func (x *ListRegistryImagesRequest) GetIncludeSystemImages() bool {
+	if x != nil {
+		return x.IncludeSystemImages
+	}
+	return false
 }
 
 type ListRegistryImagesResponse struct {
@@ -2623,7 +2633,7 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\"DeleteRegistryImageVersionResponse\x12#\n" +
 	"\bimage_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\aimageId\x12)\n" +
 	"\vsnapshot_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\n" +
-	"snapshotId\"\xda\x03\n" +
+	"snapshotId\"\x8e\x04\n" +
 	"\x19ListRegistryImagesRequest\x12\x16\n" +
 	"\x06labels\x18\x01 \x03(\tR\x06labels\x12*\n" +
 	"\x0eworkspace_slug\x18\x02 \x01(\tH\x00R\rworkspaceSlug\x88\x01\x01\x12*\n" +
@@ -2633,7 +2643,8 @@ const file_tenki_sandbox_v1_registry_proto_rawDesc = "" +
 	"\tpage_size\x18\x06 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xc8\x01(\x01H\x03R\bpageSize\x88\x01\x01\x12\x1b\n" +
 	"\x06cursor\x18\a \x01(\tH\x04R\x06cursor\x88\x01\x01\x120\n" +
-	"\fworkspace_id\x18\b \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x05R\vworkspaceId\x88\x01\x01B\x11\n" +
+	"\fworkspace_id\x18\b \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x05R\vworkspaceId\x88\x01\x01\x122\n" +
+	"\x15include_system_images\x18\t \x01(\bR\x13includeSystemImagesB\x11\n" +
 	"\x0f_workspace_slugB\x11\n" +
 	"\x0f_name_substringB\a\n" +
 	"\x05_kindB\f\n" +
