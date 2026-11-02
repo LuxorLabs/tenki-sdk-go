@@ -16547,12 +16547,12 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\v_expires_atB\x12\n" +
 	"\x10_store_raw_image\"P\n" +
 	"\x16CreateSnapshotResponse\x126\n" +
-	"\bsnapshot\x18\x01 \x01(\v2\x1a.tenki.sandbox.v1.SnapshotR\bsnapshot\"\x9f\x01\n" +
+	"\bsnapshot\x18\x01 \x01(\v2\x1a.tenki.sandbox.v1.SnapshotR\bsnapshot\"\x9d\x01\n" +
 	"\x12ForkSessionRequest\x12'\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\"\n" +
-	"\x05count\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
-	"(\x01R\x05count\x12(\n" +
+	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12 \n" +
+	"\x05count\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R\x05count\x12(\n" +
 	"\vname_prefix\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"namePrefix\x12\x12\n" +
 	"\x04wait\x18\x04 \x01(\bR\x04wait\"t\n" +

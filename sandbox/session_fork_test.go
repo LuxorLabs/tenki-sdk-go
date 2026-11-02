@@ -128,3 +128,15 @@ func TestSessionForkRejectionWithoutSnapshotMapsNormally(t *testing.T) {
 		t.Fatalf("Fork error = %v, want ErrSessionNotFound only", err)
 	}
 }
+
+func TestSessionForkForwardsWorkspaceCountsAboveTen(t *testing.T) {
+	handler := &forkSessionHandler{resp: &sandboxv1.ForkSessionResponse{}}
+	session := newForkTestSession(t, handler)
+	_, err := session.Fork(context.Background(), ForkOptions{Count: 11})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handler.request.GetCount() != 11 {
+		t.Fatalf("count = %d, want 11", handler.request.GetCount())
+	}
+}

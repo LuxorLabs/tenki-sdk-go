@@ -7,6 +7,7 @@
 package sandboxv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -20,6 +21,53 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+type TailnetRunnerConfigurationSortField int32
+
+const (
+	// Workspace default first, then oldest first.
+	TailnetRunnerConfigurationSortField_TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED TailnetRunnerConfigurationSortField = 0
+	TailnetRunnerConfigurationSortField_TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL       TailnetRunnerConfigurationSortField = 1
+)
+
+// Enum value maps for TailnetRunnerConfigurationSortField.
+var (
+	TailnetRunnerConfigurationSortField_name = map[int32]string{
+		0: "TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED",
+		1: "TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL",
+	}
+	TailnetRunnerConfigurationSortField_value = map[string]int32{
+		"TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED": 0,
+		"TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL":       1,
+	}
+)
+
+func (x TailnetRunnerConfigurationSortField) Enum() *TailnetRunnerConfigurationSortField {
+	p := new(TailnetRunnerConfigurationSortField)
+	*p = x
+	return p
+}
+
+func (x TailnetRunnerConfigurationSortField) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TailnetRunnerConfigurationSortField) Descriptor() protoreflect.EnumDescriptor {
+	return file_tenki_sandbox_v1_tailnet_connection_proto_enumTypes[0].Descriptor()
+}
+
+func (TailnetRunnerConfigurationSortField) Type() protoreflect.EnumType {
+	return &file_tenki_sandbox_v1_tailnet_connection_proto_enumTypes[0]
+}
+
+func (x TailnetRunnerConfigurationSortField) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TailnetRunnerConfigurationSortField.Descriptor instead.
+func (TailnetRunnerConfigurationSortField) EnumDescriptor() ([]byte, []int) {
+	return file_tenki_sandbox_v1_tailnet_connection_proto_rawDescGZIP(), []int{0}
+}
 
 type TailnetConnection struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -234,8 +282,17 @@ func (x *SaveTailnetConnectionResponse) GetConnection() *TailnetConnection {
 }
 
 type ListTailnetConnectionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// Zero returns every connection, up to 100.
+	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Offset of the first row, as returned in next_page_token.
+	PageToken string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Matches the name or any authorized tag, ignoring case.
+	Search       string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	DisabledOnly bool   `protobuf:"varint,5,opt,name=disabled_only,json=disabledOnly,proto3" json:"disabled_only,omitempty"`
+	// Sorts by name.
+	SortDesc      bool `protobuf:"varint,6,opt,name=sort_desc,json=sortDesc,proto3" json:"sort_desc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -277,10 +334,50 @@ func (x *ListTailnetConnectionsRequest) GetWorkspaceId() string {
 	return ""
 }
 
+func (x *ListTailnetConnectionsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListTailnetConnectionsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListTailnetConnectionsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListTailnetConnectionsRequest) GetDisabledOnly() bool {
+	if x != nil {
+		return x.DisabledOnly
+	}
+	return false
+}
+
+func (x *ListTailnetConnectionsRequest) GetSortDesc() bool {
+	if x != nil {
+		return x.SortDesc
+	}
+	return false
+}
+
 type ListTailnetConnectionsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Connections   []*TailnetConnection   `protobuf:"bytes,1,rep,name=connections,proto3" json:"connections,omitempty"`
 	OidcIssuer    string                 `protobuf:"bytes,2,opt,name=oidc_issuer,json=oidcIssuer,proto3" json:"oidc_issuer,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,3,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	// Matching connections across all pages.
+	Total int32 `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	// Ignores search and disabled_only.
+	DisabledTotal int32 `protobuf:"varint,5,opt,name=disabled_total,json=disabledTotal,proto3" json:"disabled_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,6 +424,27 @@ func (x *ListTailnetConnectionsResponse) GetOidcIssuer() string {
 		return x.OidcIssuer
 	}
 	return ""
+}
+
+func (x *ListTailnetConnectionsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListTailnetConnectionsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListTailnetConnectionsResponse) GetDisabledTotal() int32 {
+	if x != nil {
+		return x.DisabledTotal
+	}
+	return 0
 }
 
 type TestTailnetConnectionRequest struct {
@@ -922,8 +1040,19 @@ func (x *SaveTailnetRunnerConfigurationResponse) GetConfiguration() *TailnetRunn
 }
 
 type ListTailnetRunnerConfigurationsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// Zero returns every configuration, up to 100.
+	PageSize int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Offset of the first row, as returned in next_page_token.
+	PageToken string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Matches the runner label or connection name, ignoring case.
+	Search       string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	DisabledOnly bool   `protobuf:"varint,5,opt,name=disabled_only,json=disabledOnly,proto3" json:"disabled_only,omitempty"`
+	// Leaves out the workspace default configuration.
+	DedicatedOnly bool                                `protobuf:"varint,6,opt,name=dedicated_only,json=dedicatedOnly,proto3" json:"dedicated_only,omitempty"`
+	SortBy        TailnetRunnerConfigurationSortField `protobuf:"varint,7,opt,name=sort_by,json=sortBy,proto3,enum=tenki.sandbox.v1.TailnetRunnerConfigurationSortField" json:"sort_by,omitempty"`
+	SortDesc      bool                                `protobuf:"varint,8,opt,name=sort_desc,json=sortDesc,proto3" json:"sort_desc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -965,11 +1094,65 @@ func (x *ListTailnetRunnerConfigurationsRequest) GetWorkspaceId() string {
 	return ""
 }
 
+func (x *ListTailnetRunnerConfigurationsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetDisabledOnly() bool {
+	if x != nil {
+		return x.DisabledOnly
+	}
+	return false
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetDedicatedOnly() bool {
+	if x != nil {
+		return x.DedicatedOnly
+	}
+	return false
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetSortBy() TailnetRunnerConfigurationSortField {
+	if x != nil {
+		return x.SortBy
+	}
+	return TailnetRunnerConfigurationSortField_TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED
+}
+
+func (x *ListTailnetRunnerConfigurationsRequest) GetSortDesc() bool {
+	if x != nil {
+		return x.SortDesc
+	}
+	return false
+}
+
 type ListTailnetRunnerConfigurationsResponse struct {
 	state          protoimpl.MessageState        `protogen:"open.v1"`
 	Configurations []*TailnetRunnerConfiguration `protobuf:"bytes,1,rep,name=configurations,proto3" json:"configurations,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	NextPageToken  string                        `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	// Matching configurations across all pages.
+	Total int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// Ignores search and disabled_only.
+	DisabledTotal int32 `protobuf:"varint,4,opt,name=disabled_total,json=disabledTotal,proto3" json:"disabled_total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListTailnetRunnerConfigurationsResponse) Reset() {
@@ -1007,6 +1190,27 @@ func (x *ListTailnetRunnerConfigurationsResponse) GetConfigurations() []*Tailnet
 		return x.Configurations
 	}
 	return nil
+}
+
+func (x *ListTailnetRunnerConfigurationsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListTailnetRunnerConfigurationsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListTailnetRunnerConfigurationsResponse) GetDisabledTotal() int32 {
+	if x != nil {
+		return x.DisabledTotal
+	}
+	return 0
 }
 
 type ListTailnetRunnerStatusesRequest struct {
@@ -1225,7 +1429,7 @@ var File_tenki_sandbox_v1_tailnet_connection_proto protoreflect.FileDescriptor
 
 const file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc = "" +
 	"\n" +
-	")tenki/sandbox/v1/tailnet_connection.proto\x12\x10tenki.sandbox.v1\"\xb5\x02\n" +
+	")tenki/sandbox/v1/tailnet_connection.proto\x12\x10tenki.sandbox.v1\x1a\x1bbuf/validate/validate.proto\"\xb5\x02\n" +
 	"\x11TailnetConnection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
@@ -1246,13 +1450,22 @@ const file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc = "" +
 	"\x1dSaveTailnetConnectionResponse\x12C\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2#.tenki.sandbox.v1.TailnetConnectionR\n" +
-	"connection\"B\n" +
+	"connection\"\xed\x01\n" +
 	"\x1dListTailnetConnectionsRequest\x12!\n" +
-	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"\x88\x01\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12&\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x12 \n" +
+	"\x06search\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x06search\x12#\n" +
+	"\rdisabled_only\x18\x05 \x01(\bR\fdisabledOnly\x12\x1b\n" +
+	"\tsort_desc\x18\x06 \x01(\bR\bsortDesc\"\xed\x01\n" +
 	"\x1eListTailnetConnectionsResponse\x12E\n" +
 	"\vconnections\x18\x01 \x03(\v2#.tenki.sandbox.v1.TailnetConnectionR\vconnections\x12\x1f\n" +
 	"\voidc_issuer\x18\x02 \x01(\tR\n" +
-	"oidcIssuer\"\x82\x01\n" +
+	"oidcIssuer\x12&\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x05R\x05total\x12%\n" +
+	"\x0edisabled_total\x18\x05 \x01(\x05R\rdisabledTotal\"\x82\x01\n" +
 	"\x1cTestTailnetConnectionRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12#\n" +
 	"\rconnection_id\x18\x02 \x01(\tR\fconnectionId\x12\x1a\n" +
@@ -1296,11 +1509,22 @@ const file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc = "" +
 	"\x10base_offering_id\x18\x02 \x01(\tR\x0ebaseOfferingId\x12+\n" +
 	"\x11expected_revision\x18\x03 \x01(\rR\x10expectedRevision\"|\n" +
 	"&SaveTailnetRunnerConfigurationResponse\x12R\n" +
-	"\rconfiguration\x18\x01 \x01(\v2,.tenki.sandbox.v1.TailnetRunnerConfigurationR\rconfiguration\"K\n" +
+	"\rconfiguration\x18\x01 \x01(\v2,.tenki.sandbox.v1.TailnetRunnerConfigurationR\rconfiguration\"\xed\x02\n" +
 	"&ListTailnetRunnerConfigurationsRequest\x12!\n" +
-	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"\x7f\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12&\n" +
+	"\tpage_size\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\x12 \n" +
+	"\x06search\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x06search\x12#\n" +
+	"\rdisabled_only\x18\x05 \x01(\bR\fdisabledOnly\x12%\n" +
+	"\x0ededicated_only\x18\x06 \x01(\bR\rdedicatedOnly\x12N\n" +
+	"\asort_by\x18\a \x01(\x0e25.tenki.sandbox.v1.TailnetRunnerConfigurationSortFieldR\x06sortBy\x12\x1b\n" +
+	"\tsort_desc\x18\b \x01(\bR\bsortDesc\"\xe4\x01\n" +
 	"'ListTailnetRunnerConfigurationsResponse\x12T\n" +
-	"\x0econfigurations\x18\x01 \x03(\v2,.tenki.sandbox.v1.TailnetRunnerConfigurationR\x0econfigurations\"\x87\x01\n" +
+	"\x0econfigurations\x18\x01 \x03(\v2,.tenki.sandbox.v1.TailnetRunnerConfigurationR\x0econfigurations\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\x12%\n" +
+	"\x0edisabled_total\x18\x04 \x01(\x05R\rdisabledTotal\"\x87\x01\n" +
 	" ListTailnetRunnerStatusesRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12)\n" +
 	"\x10configuration_id\x18\x02 \x01(\tR\x0fconfigurationId\x12\x15\n" +
@@ -1319,7 +1543,10 @@ const file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc = "" +
 	"error_code\x18\b \x01(\tR\terrorCode\x12#\n" +
 	"\rjob_admission\x18\t \x01(\tR\fjobAdmission\"f\n" +
 	"!ListTailnetRunnerStatusesResponse\x12A\n" +
-	"\bstatuses\x18\x01 \x03(\v2%.tenki.sandbox.v1.TailnetRunnerStatusR\bstatusesB\xe5\x01\n" +
+	"\bstatuses\x18\x01 \x03(\v2%.tenki.sandbox.v1.TailnetRunnerStatusR\bstatuses*\x91\x01\n" +
+	"#TailnetRunnerConfigurationSortField\x127\n" +
+	"3TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED\x10\x00\x121\n" +
+	"-TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL\x10\x01B\xe5\x01\n" +
 	"\x14com.tenki.sandbox.v1B\x16TailnetConnectionProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
@@ -1334,45 +1561,48 @@ func file_tenki_sandbox_v1_tailnet_connection_proto_rawDescGZIP() []byte {
 	return file_tenki_sandbox_v1_tailnet_connection_proto_rawDescData
 }
 
+var file_tenki_sandbox_v1_tailnet_connection_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_tenki_sandbox_v1_tailnet_connection_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_tenki_sandbox_v1_tailnet_connection_proto_goTypes = []any{
-	(*TailnetConnection)(nil),                       // 0: tenki.sandbox.v1.TailnetConnection
-	(*SaveTailnetConnectionRequest)(nil),            // 1: tenki.sandbox.v1.SaveTailnetConnectionRequest
-	(*SaveTailnetConnectionResponse)(nil),           // 2: tenki.sandbox.v1.SaveTailnetConnectionResponse
-	(*ListTailnetConnectionsRequest)(nil),           // 3: tenki.sandbox.v1.ListTailnetConnectionsRequest
-	(*ListTailnetConnectionsResponse)(nil),          // 4: tenki.sandbox.v1.ListTailnetConnectionsResponse
-	(*TestTailnetConnectionRequest)(nil),            // 5: tenki.sandbox.v1.TestTailnetConnectionRequest
-	(*TestTailnetConnectionResponse)(nil),           // 6: tenki.sandbox.v1.TestTailnetConnectionResponse
-	(*TailnetRunnerConfiguration)(nil),              // 7: tenki.sandbox.v1.TailnetRunnerConfiguration
-	(*TailnetDefaults)(nil),                         // 8: tenki.sandbox.v1.TailnetDefaults
-	(*GetTailnetDefaultsRequest)(nil),               // 9: tenki.sandbox.v1.GetTailnetDefaultsRequest
-	(*GetTailnetDefaultsResponse)(nil),              // 10: tenki.sandbox.v1.GetTailnetDefaultsResponse
-	(*SaveTailnetDefaultsRequest)(nil),              // 11: tenki.sandbox.v1.SaveTailnetDefaultsRequest
-	(*SaveTailnetDefaultsResponse)(nil),             // 12: tenki.sandbox.v1.SaveTailnetDefaultsResponse
-	(*SaveTailnetRunnerConfigurationRequest)(nil),   // 13: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
-	(*SaveTailnetRunnerConfigurationResponse)(nil),  // 14: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
-	(*ListTailnetRunnerConfigurationsRequest)(nil),  // 15: tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
-	(*ListTailnetRunnerConfigurationsResponse)(nil), // 16: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
-	(*ListTailnetRunnerStatusesRequest)(nil),        // 17: tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
-	(*TailnetRunnerStatus)(nil),                     // 18: tenki.sandbox.v1.TailnetRunnerStatus
-	(*ListTailnetRunnerStatusesResponse)(nil),       // 19: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
+	(TailnetRunnerConfigurationSortField)(0),        // 0: tenki.sandbox.v1.TailnetRunnerConfigurationSortField
+	(*TailnetConnection)(nil),                       // 1: tenki.sandbox.v1.TailnetConnection
+	(*SaveTailnetConnectionRequest)(nil),            // 2: tenki.sandbox.v1.SaveTailnetConnectionRequest
+	(*SaveTailnetConnectionResponse)(nil),           // 3: tenki.sandbox.v1.SaveTailnetConnectionResponse
+	(*ListTailnetConnectionsRequest)(nil),           // 4: tenki.sandbox.v1.ListTailnetConnectionsRequest
+	(*ListTailnetConnectionsResponse)(nil),          // 5: tenki.sandbox.v1.ListTailnetConnectionsResponse
+	(*TestTailnetConnectionRequest)(nil),            // 6: tenki.sandbox.v1.TestTailnetConnectionRequest
+	(*TestTailnetConnectionResponse)(nil),           // 7: tenki.sandbox.v1.TestTailnetConnectionResponse
+	(*TailnetRunnerConfiguration)(nil),              // 8: tenki.sandbox.v1.TailnetRunnerConfiguration
+	(*TailnetDefaults)(nil),                         // 9: tenki.sandbox.v1.TailnetDefaults
+	(*GetTailnetDefaultsRequest)(nil),               // 10: tenki.sandbox.v1.GetTailnetDefaultsRequest
+	(*GetTailnetDefaultsResponse)(nil),              // 11: tenki.sandbox.v1.GetTailnetDefaultsResponse
+	(*SaveTailnetDefaultsRequest)(nil),              // 12: tenki.sandbox.v1.SaveTailnetDefaultsRequest
+	(*SaveTailnetDefaultsResponse)(nil),             // 13: tenki.sandbox.v1.SaveTailnetDefaultsResponse
+	(*SaveTailnetRunnerConfigurationRequest)(nil),   // 14: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
+	(*SaveTailnetRunnerConfigurationResponse)(nil),  // 15: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
+	(*ListTailnetRunnerConfigurationsRequest)(nil),  // 16: tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
+	(*ListTailnetRunnerConfigurationsResponse)(nil), // 17: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
+	(*ListTailnetRunnerStatusesRequest)(nil),        // 18: tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
+	(*TailnetRunnerStatus)(nil),                     // 19: tenki.sandbox.v1.TailnetRunnerStatus
+	(*ListTailnetRunnerStatusesResponse)(nil),       // 20: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
 }
 var file_tenki_sandbox_v1_tailnet_connection_proto_depIdxs = []int32{
-	0,  // 0: tenki.sandbox.v1.SaveTailnetConnectionRequest.connection:type_name -> tenki.sandbox.v1.TailnetConnection
-	0,  // 1: tenki.sandbox.v1.SaveTailnetConnectionResponse.connection:type_name -> tenki.sandbox.v1.TailnetConnection
-	0,  // 2: tenki.sandbox.v1.ListTailnetConnectionsResponse.connections:type_name -> tenki.sandbox.v1.TailnetConnection
-	8,  // 3: tenki.sandbox.v1.GetTailnetDefaultsResponse.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
-	8,  // 4: tenki.sandbox.v1.SaveTailnetDefaultsRequest.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
-	8,  // 5: tenki.sandbox.v1.SaveTailnetDefaultsResponse.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
-	7,  // 6: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest.configuration:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
-	7,  // 7: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse.configuration:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
-	7,  // 8: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse.configurations:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
-	18, // 9: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse.statuses:type_name -> tenki.sandbox.v1.TailnetRunnerStatus
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	1,  // 0: tenki.sandbox.v1.SaveTailnetConnectionRequest.connection:type_name -> tenki.sandbox.v1.TailnetConnection
+	1,  // 1: tenki.sandbox.v1.SaveTailnetConnectionResponse.connection:type_name -> tenki.sandbox.v1.TailnetConnection
+	1,  // 2: tenki.sandbox.v1.ListTailnetConnectionsResponse.connections:type_name -> tenki.sandbox.v1.TailnetConnection
+	9,  // 3: tenki.sandbox.v1.GetTailnetDefaultsResponse.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
+	9,  // 4: tenki.sandbox.v1.SaveTailnetDefaultsRequest.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
+	9,  // 5: tenki.sandbox.v1.SaveTailnetDefaultsResponse.defaults:type_name -> tenki.sandbox.v1.TailnetDefaults
+	8,  // 6: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest.configuration:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
+	8,  // 7: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse.configuration:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
+	0,  // 8: tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest.sort_by:type_name -> tenki.sandbox.v1.TailnetRunnerConfigurationSortField
+	8,  // 9: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse.configurations:type_name -> tenki.sandbox.v1.TailnetRunnerConfiguration
+	19, // 10: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse.statuses:type_name -> tenki.sandbox.v1.TailnetRunnerStatus
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_tenki_sandbox_v1_tailnet_connection_proto_init() }
@@ -1385,13 +1615,14 @@ func file_tenki_sandbox_v1_tailnet_connection_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc), len(file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_tenki_sandbox_v1_tailnet_connection_proto_goTypes,
 		DependencyIndexes: file_tenki_sandbox_v1_tailnet_connection_proto_depIdxs,
+		EnumInfos:         file_tenki_sandbox_v1_tailnet_connection_proto_enumTypes,
 		MessageInfos:      file_tenki_sandbox_v1_tailnet_connection_proto_msgTypes,
 	}.Build()
 	File_tenki_sandbox_v1_tailnet_connection_proto = out.File

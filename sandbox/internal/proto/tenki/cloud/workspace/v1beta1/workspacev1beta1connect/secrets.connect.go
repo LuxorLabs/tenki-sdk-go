@@ -63,6 +63,12 @@ const (
 	// WorkspaceSecretsServiceListSecretRepositoriesProcedure is the fully-qualified name of the
 	// WorkspaceSecretsService's ListSecretRepositories RPC.
 	WorkspaceSecretsServiceListSecretRepositoriesProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/ListSecretRepositories"
+	// WorkspaceSecretsServiceStartSecretImportProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's StartSecretImport RPC.
+	WorkspaceSecretsServiceStartSecretImportProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/StartSecretImport"
+	// WorkspaceSecretsServiceGetSecretImportProcedure is the fully-qualified name of the
+	// WorkspaceSecretsService's GetSecretImport RPC.
+	WorkspaceSecretsServiceGetSecretImportProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/GetSecretImport"
 	// WorkspaceSecretsServiceListSecretVersionsProcedure is the fully-qualified name of the
 	// WorkspaceSecretsService's ListSecretVersions RPC.
 	WorkspaceSecretsServiceListSecretVersionsProcedure = "/tenki.cloud.workspace.v1beta1.WorkspaceSecretsService/ListSecretVersions"
@@ -87,6 +93,9 @@ type WorkspaceSecretsServiceClient interface {
 	GetSecret(context.Context, *connect.Request[v1beta1.GetSecretRequest]) (*connect.Response[v1beta1.GetSecretResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1beta1.ListSecretsRequest]) (*connect.Response[v1beta1.ListSecretsResponse], error)
 	ListSecretRepositories(context.Context, *connect.Request[v1beta1.ListSecretRepositoriesRequest]) (*connect.Response[v1beta1.ListSecretRepositoriesResponse], error)
+	// Pushes a temporary branch whose workflow sends the repository's secrets back to Tenki.
+	StartSecretImport(context.Context, *connect.Request[v1beta1.StartSecretImportRequest]) (*connect.Response[v1beta1.StartSecretImportResponse], error)
+	GetSecretImport(context.Context, *connect.Request[v1beta1.GetSecretImportRequest]) (*connect.Response[v1beta1.GetSecretImportResponse], error)
 	ListSecretVersions(context.Context, *connect.Request[v1beta1.ListSecretVersionsRequest]) (*connect.Response[v1beta1.ListSecretVersionsResponse], error)
 	RevokeSecret(context.Context, *connect.Request[v1beta1.RevokeSecretRequest]) (*connect.Response[v1beta1.RevokeSecretResponse], error)
 	DeleteSecret(context.Context, *connect.Request[v1beta1.DeleteSecretRequest]) (*connect.Response[v1beta1.DeleteSecretResponse], error)
@@ -164,6 +173,18 @@ func NewWorkspaceSecretsServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(workspaceSecretsServiceMethods.ByName("ListSecretRepositories")),
 			connect.WithClientOptions(opts...),
 		),
+		startSecretImport: connect.NewClient[v1beta1.StartSecretImportRequest, v1beta1.StartSecretImportResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceStartSecretImportProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("StartSecretImport")),
+			connect.WithClientOptions(opts...),
+		),
+		getSecretImport: connect.NewClient[v1beta1.GetSecretImportRequest, v1beta1.GetSecretImportResponse](
+			httpClient,
+			baseURL+WorkspaceSecretsServiceGetSecretImportProcedure,
+			connect.WithSchema(workspaceSecretsServiceMethods.ByName("GetSecretImport")),
+			connect.WithClientOptions(opts...),
+		),
 		listSecretVersions: connect.NewClient[v1beta1.ListSecretVersionsRequest, v1beta1.ListSecretVersionsResponse](
 			httpClient,
 			baseURL+WorkspaceSecretsServiceListSecretVersionsProcedure,
@@ -197,6 +218,8 @@ type workspaceSecretsServiceClient struct {
 	getSecret              *connect.Client[v1beta1.GetSecretRequest, v1beta1.GetSecretResponse]
 	listSecrets            *connect.Client[v1beta1.ListSecretsRequest, v1beta1.ListSecretsResponse]
 	listSecretRepositories *connect.Client[v1beta1.ListSecretRepositoriesRequest, v1beta1.ListSecretRepositoriesResponse]
+	startSecretImport      *connect.Client[v1beta1.StartSecretImportRequest, v1beta1.StartSecretImportResponse]
+	getSecretImport        *connect.Client[v1beta1.GetSecretImportRequest, v1beta1.GetSecretImportResponse]
 	listSecretVersions     *connect.Client[v1beta1.ListSecretVersionsRequest, v1beta1.ListSecretVersionsResponse]
 	revokeSecret           *connect.Client[v1beta1.RevokeSecretRequest, v1beta1.RevokeSecretResponse]
 	deleteSecret           *connect.Client[v1beta1.DeleteSecretRequest, v1beta1.DeleteSecretResponse]
@@ -257,6 +280,16 @@ func (c *workspaceSecretsServiceClient) ListSecretRepositories(ctx context.Conte
 	return c.listSecretRepositories.CallUnary(ctx, req)
 }
 
+// StartSecretImport calls tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport.
+func (c *workspaceSecretsServiceClient) StartSecretImport(ctx context.Context, req *connect.Request[v1beta1.StartSecretImportRequest]) (*connect.Response[v1beta1.StartSecretImportResponse], error) {
+	return c.startSecretImport.CallUnary(ctx, req)
+}
+
+// GetSecretImport calls tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport.
+func (c *workspaceSecretsServiceClient) GetSecretImport(ctx context.Context, req *connect.Request[v1beta1.GetSecretImportRequest]) (*connect.Response[v1beta1.GetSecretImportResponse], error) {
+	return c.getSecretImport.CallUnary(ctx, req)
+}
+
 // ListSecretVersions calls
 // tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretVersions.
 func (c *workspaceSecretsServiceClient) ListSecretVersions(ctx context.Context, req *connect.Request[v1beta1.ListSecretVersionsRequest]) (*connect.Response[v1beta1.ListSecretVersionsResponse], error) {
@@ -286,6 +319,9 @@ type WorkspaceSecretsServiceHandler interface {
 	GetSecret(context.Context, *connect.Request[v1beta1.GetSecretRequest]) (*connect.Response[v1beta1.GetSecretResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1beta1.ListSecretsRequest]) (*connect.Response[v1beta1.ListSecretsResponse], error)
 	ListSecretRepositories(context.Context, *connect.Request[v1beta1.ListSecretRepositoriesRequest]) (*connect.Response[v1beta1.ListSecretRepositoriesResponse], error)
+	// Pushes a temporary branch whose workflow sends the repository's secrets back to Tenki.
+	StartSecretImport(context.Context, *connect.Request[v1beta1.StartSecretImportRequest]) (*connect.Response[v1beta1.StartSecretImportResponse], error)
+	GetSecretImport(context.Context, *connect.Request[v1beta1.GetSecretImportRequest]) (*connect.Response[v1beta1.GetSecretImportResponse], error)
 	ListSecretVersions(context.Context, *connect.Request[v1beta1.ListSecretVersionsRequest]) (*connect.Response[v1beta1.ListSecretVersionsResponse], error)
 	RevokeSecret(context.Context, *connect.Request[v1beta1.RevokeSecretRequest]) (*connect.Response[v1beta1.RevokeSecretResponse], error)
 	DeleteSecret(context.Context, *connect.Request[v1beta1.DeleteSecretRequest]) (*connect.Response[v1beta1.DeleteSecretResponse], error)
@@ -358,6 +394,18 @@ func NewWorkspaceSecretsServiceHandler(svc WorkspaceSecretsServiceHandler, opts 
 		connect.WithSchema(workspaceSecretsServiceMethods.ByName("ListSecretRepositories")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceSecretsServiceStartSecretImportHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceStartSecretImportProcedure,
+		svc.StartSecretImport,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("StartSecretImport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceSecretsServiceGetSecretImportHandler := connect.NewUnaryHandler(
+		WorkspaceSecretsServiceGetSecretImportProcedure,
+		svc.GetSecretImport,
+		connect.WithSchema(workspaceSecretsServiceMethods.ByName("GetSecretImport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	workspaceSecretsServiceListSecretVersionsHandler := connect.NewUnaryHandler(
 		WorkspaceSecretsServiceListSecretVersionsProcedure,
 		svc.ListSecretVersions,
@@ -398,6 +446,10 @@ func NewWorkspaceSecretsServiceHandler(svc WorkspaceSecretsServiceHandler, opts 
 			workspaceSecretsServiceListSecretsHandler.ServeHTTP(w, r)
 		case WorkspaceSecretsServiceListSecretRepositoriesProcedure:
 			workspaceSecretsServiceListSecretRepositoriesHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceStartSecretImportProcedure:
+			workspaceSecretsServiceStartSecretImportHandler.ServeHTTP(w, r)
+		case WorkspaceSecretsServiceGetSecretImportProcedure:
+			workspaceSecretsServiceGetSecretImportHandler.ServeHTTP(w, r)
 		case WorkspaceSecretsServiceListSecretVersionsProcedure:
 			workspaceSecretsServiceListSecretVersionsHandler.ServeHTTP(w, r)
 		case WorkspaceSecretsServiceRevokeSecretProcedure:
@@ -451,6 +503,14 @@ func (UnimplementedWorkspaceSecretsServiceHandler) ListSecrets(context.Context, 
 
 func (UnimplementedWorkspaceSecretsServiceHandler) ListSecretRepositories(context.Context, *connect.Request[v1beta1.ListSecretRepositoriesRequest]) (*connect.Response[v1beta1.ListSecretRepositoriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretRepositories is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) StartSecretImport(context.Context, *connect.Request[v1beta1.StartSecretImportRequest]) (*connect.Response[v1beta1.StartSecretImportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport is not implemented"))
+}
+
+func (UnimplementedWorkspaceSecretsServiceHandler) GetSecretImport(context.Context, *connect.Request[v1beta1.GetSecretImportRequest]) (*connect.Response[v1beta1.GetSecretImportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport is not implemented"))
 }
 
 func (UnimplementedWorkspaceSecretsServiceHandler) ListSecretVersions(context.Context, *connect.Request[v1beta1.ListSecretVersionsRequest]) (*connect.Response[v1beta1.ListSecretVersionsResponse], error) {

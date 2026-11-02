@@ -1443,7 +1443,7 @@ func (s *Session) Resume(ctx context.Context) error {
 
 // ForkOptions configures Session.Fork.
 type ForkOptions struct {
-	// Count is how many children to create, 1 to 10; zero means 1.
+	// Count is subject to the workspace fork limit, which defaults to 10; zero means 1.
 	Count int32
 	// NamePrefix names the children <prefix>-1 .. <prefix>-N; empty derives it from this session's name.
 	NamePrefix string
