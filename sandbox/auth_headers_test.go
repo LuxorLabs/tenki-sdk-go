@@ -14,4 +14,5 @@ func TestSetClientAuthHeadersAddsAuthorization(t *testing.T) {
 	if got := header.Get(headerAuthorization); got != "Bearer tk_test" {
 		t.Fatalf("authorization = %q, want Bearer tk_test", got)
 	}
+	assertClientMetadata(t, header)
 }

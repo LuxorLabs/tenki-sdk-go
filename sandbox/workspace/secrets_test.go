@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -292,6 +294,35 @@ func TestWorkspaceClientConnectionOwnership(t *testing.T) {
 		}
 		if transport.closed == supplied {
 			t.Fatalf("supplied=%v: incorrect connection ownership", supplied)
+		}
+	}
+}
+
+func TestWorkspaceClientSendsClientMetadata(t *testing.T) {
+	headers := make(chan http.Header, 1)
+	mux := http.NewServeMux()
+	mux.Handle(rpc.NewWorkspaceSecretsServiceHandler(&secretsHandler{}))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers <- r.Header.Clone()
+		mux.ServeHTTP(w, r)
+	}))
+	t.Cleanup(server.Close)
+	client, err := NewWorkspaceClient(WorkspaceOptions{AuthToken: "tk_test", BaseURL: server.URL, HTTPClient: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Secrets.Get(context.Background(), "secret"); err != nil {
+		t.Fatal(err)
+	}
+	received := <-headers
+	for name, want := range map[string]string{
+		"X-Tenki-Client-Family":     "go",
+		"X-Tenki-Client-Version":    "unknown",
+		"X-Tenki-Client-Generation": "1",
+		"X-Tenki-Client-Runtime":    "go/" + strings.TrimPrefix(runtime.Version(), "go"),
+	} {
+		if got := received.Values(name); len(got) != 1 || got[0] != want {
+			t.Errorf("%s = %q, want [%q]", name, got, want)
 		}
 	}
 }

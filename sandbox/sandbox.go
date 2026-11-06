@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
 	"golang.org/x/net/http2"
@@ -551,16 +552,13 @@ func (i *authInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 	}
 }
 
-func (i *authInterceptor) setHeaders(headerSetter interface {
-	Set(string, string)
-}) {
-	setClientAuthHeaders(headerSetter, i.authToken.reveal())
+func (i *authInterceptor) setHeaders(header http.Header) {
+	setClientAuthHeaders(header, i.authToken.reveal())
 }
 
-func setClientAuthHeaders(headerSetter interface {
-	Set(string, string)
-}, authToken string) {
-	headerSetter.Set(headerAuthorization, "Bearer "+authToken)
+func setClientAuthHeaders(header http.Header, authToken string) {
+	header.Set(headerAuthorization, "Bearer "+authToken)
+	clientinfo.SetHeaders(header)
 }
 
 func (c *Client) setAuthHeaders(headers http.Header) {

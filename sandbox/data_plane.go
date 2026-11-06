@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -343,6 +344,7 @@ func (i *dataPlaneCredentialInterceptor) setHeaders(header http.Header, msg any)
 	if credential = strings.TrimSpace(credential); credential != "" {
 		header.Set(dataPlaneCredentialHeader, credential)
 	}
+	clientinfo.SetHeaders(header)
 	return nil
 }
 

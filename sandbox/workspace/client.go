@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
 	rpc "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
 )
 
@@ -52,6 +53,7 @@ func NewWorkspaceClient(options WorkspaceOptions) (*WorkspaceClient, error) {
 	auth := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 			request.Header().Set("Authorization", "Bearer "+token)
+			clientinfo.SetHeaders(request.Header())
 			return next(ctx, request)
 		}
 	})
