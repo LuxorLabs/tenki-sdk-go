@@ -9427,8 +9427,10 @@ func (x *PauseSessionResponse) GetSession() *SandboxSession {
 }
 
 type ResumeSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// async returns once the resume is accepted. Default false waits until the session is RUNNING or the resume fails.
+	Async         bool `protobuf:"varint,2,opt,name=async,proto3" json:"async,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9468,6 +9470,13 @@ func (x *ResumeSessionRequest) GetSessionId() string {
 		return x.SessionId
 	}
 	return ""
+}
+
+func (x *ResumeSessionRequest) GetAsync() bool {
+	if x != nil {
+		return x.Async
+	}
+	return false
 }
 
 type ResumeSessionResponse struct {
@@ -16341,10 +16350,11 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x14\n" +
 	"\x05async\x18\x02 \x01(\bR\x05async\"R\n" +
 	"\x14PauseSessionResponse\x12:\n" +
-	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionR\asession\"?\n" +
+	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionR\asession\"U\n" +
 	"\x14ResumeSessionRequest\x12'\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\"S\n" +
+	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x14\n" +
+	"\x05async\x18\x02 \x01(\bR\x05async\"S\n" +
 	"\x15ResumeSessionResponse\x12:\n" +
 	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionR\asession\"B\n" +
 	"\x17TerminateSessionRequest\x12'\n" +

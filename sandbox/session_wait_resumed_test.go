@@ -11,17 +11,22 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const waitResumedTestSessionID = "019e84bc-6df8-765f-8507-2734f87156c7"
+
+var waitResumedPausedAt = time.Date(2026, 11, 6, 9, 0, 0, 0, time.UTC)
 
 // waitResumedHandler serves GetSession from a scripted state sequence; the
 // last entry repeats once the script is exhausted.
 type waitResumedHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
-	states          []sandboxv1.SessionState
-	lastResumeError string
-	getCalls        atomic.Int32
+	states           []sandboxv1.SessionState
+	pausedAts        []time.Time
+	pauseSnapshotIDs []string
+	lastResumeError  string
+	getCalls         atomic.Int32
 }
 
 func (h *waitResumedHandler) GetSession(context.Context, *connect.Request[sandboxv1.GetSessionRequest]) (*connect.Response[sandboxv1.GetSessionResponse], error) {
@@ -38,6 +43,12 @@ func (h *waitResumedHandler) GetSession(context.Context, *connect.Request[sandbo
 	}
 	if state == sandboxv1.SessionState_SESSION_STATE_PAUSED || state == sandboxv1.SessionState_SESSION_STATE_USER_SHUTDOWN {
 		session.LastResumeError = h.lastResumeError
+	}
+	if call < len(h.pausedAts) && !h.pausedAts[call].IsZero() {
+		session.PausedAt = timestamppb.New(h.pausedAts[call])
+	}
+	if call < len(h.pauseSnapshotIDs) && h.pauseSnapshotIDs[call] != "" {
+		session.PauseSnapshotId = &h.pauseSnapshotIDs[call]
 	}
 	return connect.NewResponse(&sandboxv1.GetSessionResponse{Session: session}), nil
 }
@@ -70,6 +81,89 @@ func TestWaitResumedReachesRunning(t *testing.T) {
 	}
 }
 
+func TestWaitResumedTreatsConcurrentPauseAsLanded(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitResumedHandler{states: []sandboxv1.SessionState{
+		sandboxv1.SessionState_SESSION_STATE_RESUMING,
+		sandboxv1.SessionState_SESSION_STATE_PAUSING,
+		sandboxv1.SessionState_SESSION_STATE_PAUSED,
+	}}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	session := newWaitResumedSession(client)
+	if err := session.WaitResumed(context.Background(), 10*time.Second); err != nil {
+		t.Fatalf("WaitResumed: %v", err)
+	}
+	if session.State != SessionStatePausing {
+		t.Fatalf("state = %s, want %s", session.State, SessionStatePausing)
+	}
+}
+
+func TestWaitResumedIgnoresStalePausingReadBeforeResuming(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitResumedHandler{
+		states: []sandboxv1.SessionState{
+			sandboxv1.SessionState_SESSION_STATE_PAUSING,
+			sandboxv1.SessionState_SESSION_STATE_RESUMING,
+			sandboxv1.SessionState_SESSION_STATE_PAUSED,
+		},
+		pausedAts:       []time.Time{waitResumedPausedAt, waitResumedPausedAt, waitResumedPausedAt},
+		lastResumeError: "restore failed",
+	}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	err := newWaitResumedSession(client).WaitResumed(context.Background(), 10*time.Second)
+	if !errors.Is(err, ErrResumeFailed) {
+		t.Fatalf("WaitResumed error = %v, want ErrResumeFailed", err)
+	}
+}
+
+func TestWaitResumedTreatsPauseBetweenPollsAsLanded(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitResumedHandler{
+		states: []sandboxv1.SessionState{
+			sandboxv1.SessionState_SESSION_STATE_RESUMING,
+			sandboxv1.SessionState_SESSION_STATE_PAUSED,
+		},
+		pausedAts: []time.Time{waitResumedPausedAt, waitResumedPausedAt.Add(time.Hour)},
+	}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	session := newWaitResumedSession(client)
+	if err := session.WaitResumed(context.Background(), 10*time.Second); err != nil {
+		t.Fatalf("WaitResumed: %v", err)
+	}
+	if session.State != SessionStatePaused {
+		t.Fatalf("state = %s, want %s", session.State, SessionStatePaused)
+	}
+}
+
+func TestWaitResumedReportsRevertAfterSnapshotMigrationAsFailure(t *testing.T) {
+	t.Parallel()
+
+	handler := &waitResumedHandler{
+		states: []sandboxv1.SessionState{
+			sandboxv1.SessionState_SESSION_STATE_RESUMING,
+			sandboxv1.SessionState_SESSION_STATE_PAUSED,
+		},
+		pausedAts:        []time.Time{waitResumedPausedAt, waitResumedPausedAt},
+		pauseSnapshotIDs: []string{"restored-snapshot", "migrated-snapshot"},
+	}
+	server, client := newWaitSessionTestServer(t, handler)
+	defer server.Close()
+
+	session := newWaitResumedSession(client)
+	if err := session.WaitResumed(context.Background(), 10*time.Second); !errors.Is(err, ErrResumeFailed) {
+		t.Fatalf("WaitResumed error = %v, want ErrResumeFailed", err)
+	}
+}
+
 func TestWaitResumedReturnsTypedFailureOnRevertToPaused(t *testing.T) {
 	t.Parallel()
 
@@ -80,6 +174,7 @@ func TestWaitResumedReturnsTypedFailureOnRevertToPaused(t *testing.T) {
 			sandboxv1.SessionState_SESSION_STATE_RESUMING,
 			sandboxv1.SessionState_SESSION_STATE_PAUSED,
 		},
+		pausedAts:       []time.Time{waitResumedPausedAt, waitResumedPausedAt},
 		lastResumeError: restoreErr,
 	}
 	server, client := newWaitSessionTestServer(t, handler)
@@ -173,7 +268,7 @@ func TestWaitResumedNonPositiveTimeoutFailsFast(t *testing.T) {
 			defer server.Close()
 
 			err := newWaitResumedSession(client).WaitResumed(context.Background(), timeout)
-			if err == nil || !strings.Contains(err.Error(), "timeout waiting for session") {
+			if !errors.Is(err, ErrResumeWaitTimeout) || !strings.Contains(err.Error(), "timeout waiting for session") {
 				t.Fatalf("WaitResumed error = %v, want immediate timeout", err)
 			}
 			if calls := handler.getCalls.Load(); calls != 0 {

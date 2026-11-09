@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -510,11 +511,23 @@ func TestSessionPauseResume(t *testing.T) {
 		}
 		return connect.NewResponse(&sandboxv1.PauseSessionResponse{Session: &sandboxv1.SandboxSession{Id: "session-1", State: state}}), nil
 	}
+	resumeCalls := 0
 	h.resumeSessionFn = func(req *connect.Request[sandboxv1.ResumeSessionRequest]) (*connect.Response[sandboxv1.ResumeSessionResponse], error) {
 		if req.Msg.GetSessionId() != "session-1" {
 			t.Fatalf("unexpected resume session id: %q", req.Msg.GetSessionId())
 		}
-		return connect.NewResponse(&sandboxv1.ResumeSessionResponse{Session: &sandboxv1.SandboxSession{Id: "session-1", State: sandboxv1.SessionState_SESSION_STATE_RUNNING}}), nil
+		resumeCalls++
+		if resumeCalls == 1 && req.Msg.GetAsync() {
+			t.Error("Resume must wait for RUNNING")
+		}
+		if resumeCalls == 2 && !req.Msg.GetAsync() {
+			t.Error("ResumeAsync did not request asynchronous acceptance")
+		}
+		state := sandboxv1.SessionState_SESSION_STATE_RUNNING
+		if req.Msg.GetAsync() {
+			state = sandboxv1.SessionState_SESSION_STATE_RESUMING
+		}
+		return connect.NewResponse(&sandboxv1.ResumeSessionResponse{Session: &sandboxv1.SandboxSession{Id: "session-1", State: state}}), nil
 	}
 
 	client := newStreamTestClient(t, h)
@@ -549,6 +562,58 @@ func TestSessionPauseResume(t *testing.T) {
 	}
 	if pauseCalls != 2 {
 		t.Fatalf("pause calls = %d, want 2", pauseCalls)
+	}
+	if err := session.ResumeAsync(context.Background()); err != nil {
+		t.Fatalf("ResumeAsync: %v", err)
+	}
+	if session.State != SessionStateResuming {
+		t.Fatalf("unexpected resuming state: %q", session.State)
+	}
+	if resumeCalls != 2 {
+		t.Fatalf("resume calls = %d, want 2", resumeCalls)
+	}
+}
+
+func TestSessionResumeReturnsErrResumeFailedWhenResumeDoesNotLand(t *testing.T) {
+	t.Parallel()
+
+	h := &streamTestHandler{}
+	h.resumeSessionFn = func(*connect.Request[sandboxv1.ResumeSessionRequest]) (*connect.Response[sandboxv1.ResumeSessionResponse], error) {
+		return nil, connect.NewError(connect.CodeAborted, errors.New("resume failed, session is PAUSED: restore timed out"))
+	}
+	client := newStreamTestClient(t, h)
+	_, endpoint := newDataPlaneRunTestServer(t)
+	session := newStreamTestSession(client, endpoint)
+
+	err := session.Resume(context.Background())
+	if !errors.Is(err, ErrResumeFailed) {
+		t.Fatalf("Resume error = %v, want ErrResumeFailed", err)
+	}
+	if !strings.Contains(err.Error(), "restore timed out") {
+		t.Fatalf("Resume error = %v, want the server's resume failure reason", err)
+	}
+}
+
+func TestSessionResumeReturnsErrResumeWaitTimeoutAtDeadline(t *testing.T) {
+	t.Parallel()
+
+	h := &streamTestHandler{}
+	h.resumeSessionFn = func(*connect.Request[sandboxv1.ResumeSessionRequest]) (*connect.Response[sandboxv1.ResumeSessionResponse], error) {
+		time.Sleep(time.Second)
+		return nil, connect.NewError(connect.CodeDeadlineExceeded, errors.New("context deadline exceeded"))
+	}
+	client := newStreamTestClient(t, h)
+	_, endpoint := newDataPlaneRunTestServer(t)
+	session := newStreamTestSession(client, endpoint)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err := session.Resume(ctx)
+	if !errors.Is(err, ErrResumeWaitTimeout) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Resume error = %v, want ErrResumeWaitTimeout wrapping context.DeadlineExceeded", err)
+	}
+	if errors.Is(err, ErrCommandTimeout) {
+		t.Fatalf("Resume error = %v, must not read as a command timeout", err)
 	}
 }
 

@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -233,6 +234,15 @@ func (w *fileStreamWriter) Write(p []byte) (int, error) {
 	if err := w.stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamRequest{Frame: &sandboxv1.WriteFileStreamRequest{
 		Payload: &sandboxv1.WriteFileStreamRequest_Data{Data: data},
 	}}); err != nil {
+		if errors.Is(err, io.EOF) {
+			// The server already responded; its error is only available from CloseAndReceive.
+			w.closed = true
+			if _, closeErr := w.stream.CloseAndReceive(); closeErr != nil {
+				return 0, mapError(closeErr)
+			}
+			// p was never sent, so the write must fail even though the server reported success.
+			return 0, fmt.Errorf("%w: %w: server ended the write stream before all data was sent", ErrStreamClosed, io.ErrClosedPipe)
+		}
 		return 0, mapError(err)
 	}
 	return len(p), nil

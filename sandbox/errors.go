@@ -38,6 +38,7 @@ var (
 	ErrSnapshotFailed          = errors.New("sandbox: snapshot failed")
 	ErrSnapshotWaitTimeout     = errors.New("sandbox: timed out waiting for snapshot to become ready")
 	ErrResumeFailed            = errors.New("sandbox: resume failed")
+	ErrResumeWaitTimeout       = errors.New("sandbox: timed out waiting for session to resume")
 	ErrPauseFailed             = errors.New("sandbox: pause failed")
 	ErrSnapshotNotDurable      = errors.New("sandbox: snapshot upload did not become durable")
 	ErrTemplateNotFound        = errors.New("sandbox: template not found")
@@ -470,6 +471,11 @@ func mapError(err error) error {
 		default:
 			return fmt.Errorf("%w: %w", ErrInvalidState, err)
 		}
+	case connect.CodeAborted:
+		if strings.HasPrefix(msg, "resume failed") {
+			return fmt.Errorf("%w: %w", ErrResumeFailed, err)
+		}
+		return err
 	case connect.CodeUnavailable:
 		if strings.Contains(msg, "ssh") {
 			return fmt.Errorf("%w: %w", ErrSSHUnavailable, err)

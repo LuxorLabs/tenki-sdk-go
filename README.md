@@ -171,7 +171,8 @@ Workspace API keys determine Sandbox scope automatically; ordinary calls do not 
 - `(*Session).Pause(ctx) error`
 - `(*Session).PauseAsync(ctx) error`
 - `(*Session).WaitPaused(ctx, timeout) error` - waits for durable pause completion; pass a non-positive timeout to wait until `ctx` is canceled
-- `(*Session).Resume(ctx) error`
+- `(*Session).Resume(ctx) error` - returns once the session is `RUNNING`
+- `(*Session).ResumeAsync(ctx) error`
 - `(*Session).WaitResumed(ctx, timeout) error`
 - `(*Session).Close(ctx) error`
 
@@ -196,6 +197,25 @@ if err := session.WaitPaused(ctx, 0); err != nil {
 A `LOCAL_READY` pause snapshot resumes on the host that captured it.
 `DURABLE_CEPH` snapshots can resume on a capability-matched host in the same datacenter while R2 replication continues.
 `DURABLE` snapshots are portable to eligible hosts.
+
+### Resume
+
+`Resume` returns once the session is `RUNNING`, so the next call can use it right away.
+It returns an error matching `ErrResumeFailed`, carrying the restore error, if the session falls back to `PAUSED`.
+If `ctx`'s deadline passes first, it returns `ErrResumeWaitTimeout`; the resume may still land, so call `WaitResumed` to keep waiting.
+Calling `Resume` on a session that is already `RESUMING` joins that resume instead of failing.
+`ResumeAsync` returns once the service accepts the resume, usually with the session in `RESUMING`.
+Call `WaitResumed` before running commands.
+It returns at `RUNNING`, returns `ErrResumeFailed` if the resume fails, returns `ErrResumeWaitTimeout` after `timeout`, and respects context cancellation.
+
+```go
+if err := session.ResumeAsync(ctx); err != nil {
+	return err
+}
+if err := session.WaitResumed(ctx, 3*time.Minute); err != nil {
+	return err
+}
+```
 
 ### What survives a pause
 

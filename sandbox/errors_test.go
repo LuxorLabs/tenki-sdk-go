@@ -58,6 +58,11 @@ func TestMapError_TypedMappings(t *testing.T) {
 			want: ErrSnapshotNotDurable,
 		},
 		{
+			name: "resume did not land",
+			err:  connect.NewError(connect.CodeAborted, errors.New("resume failed, session is PAUSED: restore timed out")),
+			want: ErrResumeFailed,
+		},
+		{
 			name: "session metrics not configured",
 			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("sandbox session metrics are not configured")),
 			want: ErrInvalidState,

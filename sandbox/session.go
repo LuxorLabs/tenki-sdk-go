@@ -1197,6 +1197,7 @@ func (s *Session) WaitResumed(ctx context.Context, timeout time.Duration) error 
 	deadline := time.Now().Add(timeout)
 	start := time.Now()
 	sawResuming := false
+	pausedAt := s.PausedAt
 	attempt := 0
 	for time.Now().Before(deadline) {
 		updated, err := s.client.Get(ctx, s.ID)
@@ -1221,10 +1222,22 @@ func (s *Session) WaitResumed(ctx context.Context, timeout time.Duration) error 
 			return s.terminalStateError()
 		case s.State == SessionStateResuming:
 			sawResuming = true
-		case s.State == SessionStatePaused || s.State == SessionStateUserShutdown:
-			// A stopped state is a resume failure once we saw RESUMING from
-			// the server, or after the replica-lag grace window has passed.
+			if !s.PausedAt.IsZero() {
+				pausedAt = s.PausedAt
+			}
+		case s.State == SessionStatePausing:
+			// PAUSING only follows RUNNING, so a fresh read means the resume landed before a concurrent pause.
 			if sawResuming || time.Since(start) > resumeRevertGrace {
+				return nil
+			}
+		case s.State == SessionStatePaused || s.State == SessionStateUserShutdown:
+			// A stopped state is settled once we saw RESUMING from the
+			// server, or after the replica-lag grace window has passed.
+			if sawResuming || time.Since(start) > resumeRevertGrace {
+				// A landed resume clears paused_at and a later pause or shutdown sets a newer one; a revert or snapshot migration keeps it.
+				if !pausedAt.IsZero() && s.LastResumeError == "" && !s.PausedAt.Equal(pausedAt) {
+					return nil
+				}
 				return s.resumeFailedError()
 			}
 		}
@@ -1235,7 +1248,7 @@ func (s *Session) WaitResumed(ctx context.Context, timeout time.Duration) error 
 		}
 		attempt++
 	}
-	return fmt.Errorf("timeout waiting for session %s to resume", s.ID)
+	return fmt.Errorf("%w: timeout waiting for session %s to resume; it may still be resuming, call WaitResumed to keep waiting", ErrResumeWaitTimeout, s.ID)
 }
 
 func (s *Session) resumeFailedError() error {
@@ -1428,10 +1441,28 @@ func (s *Session) pause(ctx context.Context, async bool) error {
 	return nil
 }
 
-// Resume resumes a paused session and refreshes local session state from the response.
+// Resume resumes a paused session and returns once it is RUNNING or the resume fails.
+// Calling it while a resume is in flight joins that resume.
+// If ctx's deadline passes first it returns ErrResumeWaitTimeout; the resume may still land.
 func (s *Session) Resume(ctx context.Context) error {
-	resp, err := s.client.sandbox.ResumeSession(ctx, connect.NewRequest(&sandboxv1.ResumeSessionRequest{SessionId: s.ID}))
+	return s.resume(ctx, false)
+}
+
+// ResumeAsync requests a resume and returns once the server accepts it; use WaitResumed to observe RUNNING.
+func (s *Session) ResumeAsync(ctx context.Context) error {
+	return s.resume(ctx, true)
+}
+
+func (s *Session) resume(ctx context.Context, async bool) error {
+	resp, err := s.client.sandbox.ResumeSession(ctx, connect.NewRequest(&sandboxv1.ResumeSessionRequest{
+		SessionId: s.ID,
+		Async:     async,
+	}))
 	if err != nil {
+		// The deadline ends the wait for RUNNING, not necessarily the resume.
+		if !async && connect.CodeOf(err) == connect.CodeDeadlineExceeded {
+			return fmt.Errorf("%w: session %s did not resume before the deadline; it may still be resuming, call WaitResumed to keep waiting: %w", ErrResumeWaitTimeout, s.ID, err)
+		}
 		return mapError(err)
 	}
 	if resp != nil && resp.Msg != nil && resp.Msg.Session != nil {
