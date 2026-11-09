@@ -12,8 +12,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,7 +42,11 @@ func TestTailnetDefaultOptOutIsSentWithoutCredentials(t *testing.T) {
 	path, endpoint := sandboxv1connect.NewSandboxServiceHandler(handler)
 	mux := http.NewServeMux()
 	mux.Handle(path, endpoint)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	t.Cleanup(server.Close)
 	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
 	if err != nil {
@@ -69,7 +71,11 @@ func TestTailnetCreateRequestAndStatus(t *testing.T) {
 	mux := http.NewServeMux()
 	path, connectHandler := sandboxv1connect.NewSandboxServiceHandler(handler)
 	mux.Handle(path, connectHandler)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	t.Cleanup(server.Close)
 	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
 	if err != nil {

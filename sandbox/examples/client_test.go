@@ -10,12 +10,12 @@ import (
 func TestQuickstartSmoke(t *testing.T) {
 	t.Parallel()
 
-	server := newExampleSandboxServer(&exampleSandboxHandler{
+	server, closeServers := newExampleSandboxServer(&exampleSandboxHandler{
 		t:                 t,
 		expectedHeaderKey: "Authorization",
 		expectedHeaderVal: "Bearer tk_test_api_key",
 	})
-	defer server.Close()
+	defer closeServers()
 
 	client, err := tenkisandbox.New(
 		tenkisandbox.WithAuthToken("tk_test_api_key"),
@@ -36,7 +36,7 @@ func TestQuickstartSmoke(t *testing.T) {
 		t.Fatalf("unexpected session id: %q", session.ID)
 	}
 
-	result, err := session.Exec(ctx, "whoami")
+	result, err := session.Exec(ctx, "whoami") //nolint:staticcheck // SA1019: Preserve legacy Exec quickstart coverage.
 	if err != nil {
 		t.Fatalf("exec: %v", err)
 	}

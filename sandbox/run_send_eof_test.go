@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
@@ -14,8 +15,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type sendEOFRunStream struct {
@@ -101,7 +100,11 @@ func TestRunStreamSendErrorRecoversServerStatus(t *testing.T) {
 func TestRunSendEOFRecoversHTTP2ServerRejection(t *testing.T) {
 	serverHandler := &earlyRejectRunHandler{}
 	_, handler := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(serverHandler)
-	server := httptest.NewServer(h2c.NewHandler(handler, &http2.Server{}))
+	server := httptest.NewUnstartedServer(handler)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	defer server.Close()
 	httpClient := newDataPlaneHTTPClient(server.URL)
 	defer httpClient.CloseIdleConnections()
@@ -109,7 +112,11 @@ func TestRunSendEOFRecoversHTTP2ServerRejection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	rpc := dp.Run(ctx)
-	defer rpc.CloseRequest()
+	defer func() {
+		if err := rpc.CloseRequest(); err != nil {
+			t.Errorf("close request: %v", err)
+		}
+	}()
 	if err := rpc.Send(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +153,11 @@ func (h *earlyRejectRunHandler) Run(context.Context, *connect.BidiStream[sandbox
 func TestOpenRunStreamMapsEarlyServerRejection(t *testing.T) {
 	serverHandler := &earlyRejectRunHandler{}
 	_, handler := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(serverHandler)
-	server := httptest.NewServer(h2c.NewHandler(handler, &http2.Server{}))
+	server := httptest.NewUnstartedServer(handler)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	defer server.Close()
 	httpClient := newDataPlaneHTTPClient(server.URL)
 	defer httpClient.CloseIdleConnections()

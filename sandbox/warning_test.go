@@ -100,7 +100,7 @@ func TestMaxDurationOptionsConfigureCreateAndUpdate(t *testing.T) {
 	maxDuration := 45 * time.Minute
 	createCfg := createConfig{}
 	updateCfg := updateSessionConfig{}
-	var createOptionFactory func(time.Duration) CreateOption = WithMaxDuration
+	createOptionFactory := (func(time.Duration) CreateOption)(WithMaxDuration)
 
 	createOptionFactory(maxDuration).applyCreate(&createCfg)
 	WithSetMaxDuration(maxDuration).applyUpdateSession(&updateCfg)

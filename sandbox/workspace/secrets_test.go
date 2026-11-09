@@ -259,7 +259,7 @@ func TestWorkspaceSecretsValidation(t *testing.T) {
 func TestWorkspaceClientInferredScope(t *testing.T) {
 	h := &secretsHandler{}
 	c := testClient(t, h, "")
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	if _, err := c.Secrets.Get(context.Background(), "secret"); err != nil {
 		t.Fatal(err)
 	}

@@ -9,8 +9,8 @@ import (
 
 func ExampleClient_Create() {
 	ctx := context.Background()
-	server := newExampleSandboxServer(&exampleSandboxHandler{})
-	defer server.Close()
+	server, closeServers := newExampleSandboxServer(&exampleSandboxHandler{})
+	defer closeServers()
 
 	client, err := tenkisandbox.New(
 		tenkisandbox.WithAuthToken("tk_test_api_key"),
@@ -21,7 +21,7 @@ func ExampleClient_Create() {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	session, err := client.Create(
 		ctx,

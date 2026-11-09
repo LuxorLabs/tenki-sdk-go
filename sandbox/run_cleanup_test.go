@@ -10,8 +10,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type cleanupRunHandler struct {
@@ -47,7 +45,11 @@ func TestRunExitCancelsTheRPC(t *testing.T) {
 			mux := http.NewServeMux()
 			path, service := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(handler)
 			mux.Handle(path, service)
-			server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+			server := httptest.NewUnstartedServer(mux)
+			server.Config.Protocols = new(http.Protocols)
+			server.Config.Protocols.SetHTTP1(true)
+			server.Config.Protocols.SetUnencryptedHTTP2(true)
+			server.Start()
 			defer server.Close()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()

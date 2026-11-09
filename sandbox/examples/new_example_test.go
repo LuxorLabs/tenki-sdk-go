@@ -14,5 +14,5 @@ func ExampleNew() {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 }

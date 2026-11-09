@@ -3,16 +3,16 @@ package examples_test
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -166,15 +166,21 @@ func (h *exampleSandboxHandler) TerminateSession(
 	}), nil
 }
 
-func newExampleSandboxServer(handler *exampleSandboxHandler) *httptest.Server {
+func newExampleSandboxServer(handler *exampleSandboxHandler) (*httptest.Server, func()) {
 	dataMux := http.NewServeMux()
 	dataPath, dataSvc := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(&exampleDataPlaneHandler{t: handler.t})
 	dataMux.Handle(dataPath, dataSvc)
-	dataServer := httptest.NewServer(h2c.NewHandler(dataMux, &http2.Server{}))
+	dataServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handler.t != nil && r.ProtoMajor != 2 {
+			handler.t.Errorf("data-plane protocol = %s, want HTTP/2", r.Proto)
+		}
+		dataMux.ServeHTTP(w, r)
+	}))
+	dataServer.Config.Protocols = new(http.Protocols)
+	dataServer.Config.Protocols.SetHTTP1(true)
+	dataServer.Config.Protocols.SetUnencryptedHTTP2(true)
+	dataServer.Start()
 	handler.dataPlaneEndpoint = dataServer.URL
-	if handler.t != nil {
-		handler.t.Cleanup(dataServer.Close)
-	}
 
 	mux := http.NewServeMux()
 	path, svc := sandboxv1connect.NewSandboxServiceHandler(handler)
@@ -183,5 +189,26 @@ func newExampleSandboxServer(handler *exampleSandboxHandler) *httptest.Server {
 	server := httptest.NewUnstartedServer(mux)
 	server.EnableHTTP2 = true
 	server.StartTLS()
-	return server
+	// Examples own both servers even when no testing handle is available.
+	return server, func() {
+		server.Close()
+		dataServer.Close()
+	}
+}
+
+func TestExampleServerCleanup(t *testing.T) {
+	handler := &exampleSandboxHandler{}
+	server, closeServers := newExampleSandboxServer(handler)
+	t.Cleanup(closeServers)
+	addresses := []string{server.Listener.Addr().String(), strings.TrimPrefix(handler.dataPlaneEndpoint, "http://")}
+	closeServers()
+	for _, address := range addresses {
+		conn, err := net.DialTimeout("tcp", address, time.Second)
+		if err == nil {
+			if closeErr := conn.Close(); closeErr != nil {
+				t.Error(closeErr)
+			}
+			t.Errorf("server listener %s remains open after cleanup", address)
+		}
+	}
 }

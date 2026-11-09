@@ -68,7 +68,7 @@ func TestRuntimeSecretCreateContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	spec := NewTemplateSpec().Workdir("/app").Start("app", StartOptions{SecretEnv: map[string]string{"API_TOKEN": "shared-token"}})
 	overrides := map[string]string{"shared-token": "local-token"}
 	overrideOption := WithSecretOverrides(overrides)
@@ -148,7 +148,7 @@ func TestDirectFileLaunchCarriesUnresolvedContents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	file := &RuntimeSecretFile{Path: "/app/env.tpl-sandbox", Format: &RuntimeSecretFileContent{Content: "TOKEN=secrets://TOKEN"}}
 	option := WithSecretFiles(file)
 	file.Path = "/etc/unsafe"
@@ -199,7 +199,7 @@ func TestSecretPoliciesRoundtripAndCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	option := WithSecretPolicies(names...)
 	names[0] = "mutated"
 	if _, err := client.Create(context.Background(), option, WithWaitReady(false)); err != nil {

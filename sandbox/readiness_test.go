@@ -12,8 +12,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type readinessEngineHandler struct {
@@ -100,7 +98,11 @@ func newReadinessHarness(t *testing.T, engine *readinessEngineHandler, dataPlane
 	mux.Handle(servicePath, serviceHandler)
 	dataPath, dataHandler := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(dataPlane)
 	mux.Handle(dataPath, dataHandler)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	t.Cleanup(server.Close)
 	engine.endpoint = server.URL
 	options := []Option{WithAuthToken("tk_test"), WithBaseURL(server.URL)}
@@ -115,7 +117,7 @@ func newReadinessHarness(t *testing.T, engine *readinessEngineHandler, dataPlane
 
 func TestNewPrewarmsDefaultControlPlaneConnection(t *testing.T) {
 	requestReceived := make(chan struct{}, 1)
-	server := httptest.NewServer(h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			select {
 			case requestReceived <- struct{}{}:
@@ -123,7 +125,11 @@ func TestNewPrewarmsDefaultControlPlaneConnection(t *testing.T) {
 			}
 		}
 		w.WriteHeader(http.StatusNotFound)
-	}), &http2.Server{}))
+	}))
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	defer server.Close()
 
 	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))

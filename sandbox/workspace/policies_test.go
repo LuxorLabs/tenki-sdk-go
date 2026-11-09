@@ -65,7 +65,7 @@ func TestSecretPoliciesWireContract(t *testing.T) {
 		t.Run(workspaceID, func(t *testing.T) {
 			h := &secretsHandler{}
 			c := testClient(t, h, workspaceID)
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			policies := c.Secrets.Policies()
 			ctx := context.Background()
 			requestID := "00000000-0000-4000-8000-000000000001"

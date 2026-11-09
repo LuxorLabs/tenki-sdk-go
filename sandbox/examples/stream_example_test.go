@@ -9,8 +9,8 @@ import (
 )
 
 func ExampleSession_Stream() {
-	server := newExampleSandboxServer(&exampleSandboxHandler{})
-	defer server.Close()
+	server, closeServers := newExampleSandboxServer(&exampleSandboxHandler{})
+	defer closeServers()
 
 	client, err := tenkisandbox.New(
 		tenkisandbox.WithAuthToken("tk_test_api_key"),
@@ -21,7 +21,7 @@ func ExampleSession_Stream() {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	session, err := client.Create(ctx)
@@ -29,7 +29,7 @@ func ExampleSession_Stream() {
 		panic(err)
 	}
 
-	stream, err := session.Stream(ctx, "whoami")
+	stream, err := session.Stream(ctx, "whoami") //nolint:staticcheck // SA1019: Preserve the documented legacy Stream example.
 	if err != nil {
 		panic(err)
 	}

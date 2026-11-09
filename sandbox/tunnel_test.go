@@ -17,8 +17,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type tunnelTestHandler struct {
@@ -142,7 +140,11 @@ func newTunnelTestSession(t *testing.T, scripts ...*tunnelServerScript) (*Sessio
 	dataMux := http.NewServeMux()
 	dataPath, dataSvc := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(&dataPlaneTunnelTestHandler{control: h})
 	dataMux.Handle(dataPath, dataSvc)
-	dataServer := httptest.NewServer(h2c.NewHandler(dataMux, &http2.Server{}))
+	dataServer := httptest.NewUnstartedServer(dataMux)
+	dataServer.Config.Protocols = new(http.Protocols)
+	dataServer.Config.Protocols.SetHTTP1(true)
+	dataServer.Config.Protocols.SetUnencryptedHTTP2(true)
+	dataServer.Start()
 	t.Cleanup(dataServer.Close)
 	t.Cleanup(func() {
 		for _, script := range scripts {

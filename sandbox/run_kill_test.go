@@ -11,8 +11,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // gatedKillHandler models a guest whose process outlives the signal frame: the
@@ -94,7 +92,11 @@ func newGatedKillServer(t *testing.T, handler *gatedKillHandler) string {
 	mux := http.NewServeMux()
 	path, svc := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(handler)
 	mux.Handle(path, svc)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
 	t.Cleanup(server.Close)
 	return server.URL
 }
