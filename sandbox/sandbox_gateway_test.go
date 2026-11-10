@@ -16,6 +16,11 @@ func TestDeriveGatewayAddress(t *testing.T) {
 			want:    "https://sandbox-gateway.tenki.cloud",
 		},
 		{
+			name:    "luxor api host maps to sandbox gateway",
+			baseURL: "https://api.luxor.ai",
+			want:    "https://sandbox-gateway.luxor.ai",
+		},
+		{
 			name:    "app host maps to sandbox gateway",
 			baseURL: "https://app.tenki.cloud",
 			want:    "https://sandbox-gateway.tenki.cloud",

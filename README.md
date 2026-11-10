@@ -126,8 +126,8 @@ The server may reject options from later milestones, including wake-on-connect a
 
 ## Configuration
 
-Auth token resolution: `WithAuthToken()` > `TENKI_AUTH_TOKEN` env var > `TENKI_API_KEY` env var > error.
-Base URL resolution: `WithBaseURL()` > `TENKI_API_URL` env var > `https://api.tenki.cloud`.
+Auth token resolution: `WithAuthToken()` > `LUXORAI_AUTH_TOKEN` > `LUXORAI_API_KEY` > `TENKI_AUTH_TOKEN` > `TENKI_API_KEY` > error.
+Base URL resolution: `WithBaseURL()` > `LUXORAI_API_ENDPOINT` > `LUXORAI_API_URL` > `TENKI_API_ENDPOINT` > `TENKI_API_URL` > `https://api.tenki.cloud`.
 
 ### Migrating to v1.0.0
 
@@ -141,13 +141,16 @@ Version 0.6.0 removes `WithCookieName` and support for Ory session tokens and
 browser cookie values. Use a `tk_` API key or service token with
 `WithAuthToken`; the SDK sends it as an `Authorization: Bearer` credential.
 
-| Env Var            | Description                                           |
-| ------------------ | ----------------------------------------------------- |
-| `TENKI_AUTH_TOKEN` | Auth token fallback (API key or service token), first |
-| `TENKI_API_KEY`    | Auth token fallback (API key or service token)        |
-| `TENKI_API_URL`    | Base URL fallback                                     |
+| Env Var              | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `LUXORAI_AUTH_TOKEN` | Auth token fallback (API key or service token), first |
+| `LUXORAI_API_KEY`    | Auth token fallback (API key or service token)        |
+| `LUXORAI_API_URL`    | Base URL fallback                                     |
+| `TENKI_AUTH_TOKEN`   | Auth token fallback when no `LUXORAI_*` token is set  |
+| `TENKI_API_KEY`      | Auth token fallback when no `LUXORAI_*` token is set  |
+| `TENKI_API_URL`      | Base URL fallback when no `LUXORAI_*` URL is set      |
 
-Use an API key or service token (`tk_*`), sent as `Authorization: Bearer <token>`.
+Use an API key or service token (`lx_*` or `tk_*`), sent as `Authorization: Bearer <token>`.
 Workspace API keys determine Sandbox scope automatically; ordinary calls do not require a Workspace ID.
 
 ## API
@@ -225,6 +228,10 @@ state, and the guest clock stops for the duration of the pause.
 
 `/tmp` is cleared across a pause. Keep durable state under `/home/tenki`, which
 is preserved.
+
+The kernel boot ID (`/proc/sys/kernel/random/boot_id`) changes on every resume,
+so it can't tell a resume from a restart. Memory-backed paths such as `/dev/shm`
+survive a pause but not a restart, so a token written there can.
 
 While a session is paused it serves no traffic: preview requests return `404`
 until it resumes. The client connection itself is not dropped — a held
@@ -458,6 +465,7 @@ session, err := client.Create(ctx,
 
 `WithAllowOutbound(false)` still blocks everything, regardless of `WithAllowDomains`/`WithAllowCIDRs`.
 The allowlist is checked against the names the sandbox resolves, the TLS server name (SNI), and the plaintext HTTP `Host`.
+`*.example.com` matches one subdomain label and `**.example.com` matches subdomains at any depth; neither matches `example.com` itself.
 Connections can only reach addresses that an allowed name resolved to or that fall in an allowed CIDR; traffic to an allowed CIDR is not inspected unless the sandbox uses outbound secret injection.
 UDP port 443 (HTTP/3, QUIC) is blocked for sandboxes with a domain allowlist, so clients fall back to HTTPS over TCP.
 Unless the sandbox uses outbound secret injection, HTTPS is not decrypted, so another site on the same CDN as an allowed name can be reached by sending its name in the encrypted `Host` header.

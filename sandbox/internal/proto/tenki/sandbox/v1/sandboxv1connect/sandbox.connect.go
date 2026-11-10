@@ -113,6 +113,36 @@ const (
 	// SandboxServiceDetachVolumeProcedure is the fully-qualified name of the SandboxService's
 	// DetachVolume RPC.
 	SandboxServiceDetachVolumeProcedure = "/tenki.sandbox.v1.SandboxService/DetachVolume"
+	// SandboxServiceCreateStorageConnectionProcedure is the fully-qualified name of the
+	// SandboxService's CreateStorageConnection RPC.
+	SandboxServiceCreateStorageConnectionProcedure = "/tenki.sandbox.v1.SandboxService/CreateStorageConnection"
+	// SandboxServiceTestStorageConnectionProcedure is the fully-qualified name of the SandboxService's
+	// TestStorageConnection RPC.
+	SandboxServiceTestStorageConnectionProcedure = "/tenki.sandbox.v1.SandboxService/TestStorageConnection"
+	// SandboxServiceListStorageConnectionsProcedure is the fully-qualified name of the SandboxService's
+	// ListStorageConnections RPC.
+	SandboxServiceListStorageConnectionsProcedure = "/tenki.sandbox.v1.SandboxService/ListStorageConnections"
+	// SandboxServiceUpdateStorageConnectionProcedure is the fully-qualified name of the
+	// SandboxService's UpdateStorageConnection RPC.
+	SandboxServiceUpdateStorageConnectionProcedure = "/tenki.sandbox.v1.SandboxService/UpdateStorageConnection"
+	// SandboxServiceDeleteStorageConnectionProcedure is the fully-qualified name of the
+	// SandboxService's DeleteStorageConnection RPC.
+	SandboxServiceDeleteStorageConnectionProcedure = "/tenki.sandbox.v1.SandboxService/DeleteStorageConnection"
+	// SandboxServiceListStorageMountsProcedure is the fully-qualified name of the SandboxService's
+	// ListStorageMounts RPC.
+	SandboxServiceListStorageMountsProcedure = "/tenki.sandbox.v1.SandboxService/ListStorageMounts"
+	// SandboxServiceAttachStorageMountProcedure is the fully-qualified name of the SandboxService's
+	// AttachStorageMount RPC.
+	SandboxServiceAttachStorageMountProcedure = "/tenki.sandbox.v1.SandboxService/AttachStorageMount"
+	// SandboxServiceDetachStorageMountProcedure is the fully-qualified name of the SandboxService's
+	// DetachStorageMount RPC.
+	SandboxServiceDetachStorageMountProcedure = "/tenki.sandbox.v1.SandboxService/DetachStorageMount"
+	// SandboxServiceGetStorageDefaultsProcedure is the fully-qualified name of the SandboxService's
+	// GetStorageDefaults RPC.
+	SandboxServiceGetStorageDefaultsProcedure = "/tenki.sandbox.v1.SandboxService/GetStorageDefaults"
+	// SandboxServiceSaveStorageDefaultsProcedure is the fully-qualified name of the SandboxService's
+	// SaveStorageDefaults RPC.
+	SandboxServiceSaveStorageDefaultsProcedure = "/tenki.sandbox.v1.SandboxService/SaveStorageDefaults"
 	// SandboxServiceExecuteCommandProcedure is the fully-qualified name of the SandboxService's
 	// ExecuteCommand RPC.
 	SandboxServiceExecuteCommandProcedure = "/tenki.sandbox.v1.SandboxService/ExecuteCommand"
@@ -372,6 +402,16 @@ type SandboxServiceClient interface {
 	ResizeVolume(context.Context, *connect.Request[v1.ResizeVolumeRequest]) (*connect.Response[v1.ResizeVolumeResponse], error)
 	AttachVolume(context.Context, *connect.Request[v1.AttachVolumeRequest]) (*connect.Response[v1.AttachVolumeResponse], error)
 	DetachVolume(context.Context, *connect.Request[v1.DetachVolumeRequest]) (*connect.Response[v1.DetachVolumeResponse], error)
+	CreateStorageConnection(context.Context, *connect.Request[v1.CreateStorageConnectionRequest]) (*connect.Response[v1.CreateStorageConnectionResponse], error)
+	TestStorageConnection(context.Context, *connect.Request[v1.TestStorageConnectionRequest]) (*connect.Response[v1.TestStorageConnectionResponse], error)
+	ListStorageConnections(context.Context, *connect.Request[v1.ListStorageConnectionsRequest]) (*connect.Response[v1.ListStorageConnectionsResponse], error)
+	UpdateStorageConnection(context.Context, *connect.Request[v1.UpdateStorageConnectionRequest]) (*connect.Response[v1.UpdateStorageConnectionResponse], error)
+	DeleteStorageConnection(context.Context, *connect.Request[v1.DeleteStorageConnectionRequest]) (*connect.Response[v1.DeleteStorageConnectionResponse], error)
+	ListStorageMounts(context.Context, *connect.Request[v1.ListStorageMountsRequest]) (*connect.Response[v1.ListStorageMountsResponse], error)
+	AttachStorageMount(context.Context, *connect.Request[v1.AttachStorageMountRequest]) (*connect.Response[v1.AttachStorageMountResponse], error)
+	DetachStorageMount(context.Context, *connect.Request[v1.DetachStorageMountRequest]) (*connect.Response[v1.DetachStorageMountResponse], error)
+	GetStorageDefaults(context.Context, *connect.Request[v1.GetStorageDefaultsRequest]) (*connect.Response[v1.GetStorageDefaultsResponse], error)
+	SaveStorageDefaults(context.Context, *connect.Request[v1.SaveStorageDefaultsRequest]) (*connect.Response[v1.SaveStorageDefaultsResponse], error)
 	// Deprecated: do not use.
 	ExecuteCommand(context.Context, *connect.Request[v1.ExecuteCommandRequest]) (*connect.Response[v1.ExecuteCommandResponse], error)
 	// Deprecated: do not use.
@@ -612,6 +652,66 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceDetachVolumeProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("DetachVolume")),
+			connect.WithClientOptions(opts...),
+		),
+		createStorageConnection: connect.NewClient[v1.CreateStorageConnectionRequest, v1.CreateStorageConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceCreateStorageConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("CreateStorageConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		testStorageConnection: connect.NewClient[v1.TestStorageConnectionRequest, v1.TestStorageConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceTestStorageConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("TestStorageConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		listStorageConnections: connect.NewClient[v1.ListStorageConnectionsRequest, v1.ListStorageConnectionsResponse](
+			httpClient,
+			baseURL+SandboxServiceListStorageConnectionsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListStorageConnections")),
+			connect.WithClientOptions(opts...),
+		),
+		updateStorageConnection: connect.NewClient[v1.UpdateStorageConnectionRequest, v1.UpdateStorageConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceUpdateStorageConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("UpdateStorageConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteStorageConnection: connect.NewClient[v1.DeleteStorageConnectionRequest, v1.DeleteStorageConnectionResponse](
+			httpClient,
+			baseURL+SandboxServiceDeleteStorageConnectionProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("DeleteStorageConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		listStorageMounts: connect.NewClient[v1.ListStorageMountsRequest, v1.ListStorageMountsResponse](
+			httpClient,
+			baseURL+SandboxServiceListStorageMountsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("ListStorageMounts")),
+			connect.WithClientOptions(opts...),
+		),
+		attachStorageMount: connect.NewClient[v1.AttachStorageMountRequest, v1.AttachStorageMountResponse](
+			httpClient,
+			baseURL+SandboxServiceAttachStorageMountProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("AttachStorageMount")),
+			connect.WithClientOptions(opts...),
+		),
+		detachStorageMount: connect.NewClient[v1.DetachStorageMountRequest, v1.DetachStorageMountResponse](
+			httpClient,
+			baseURL+SandboxServiceDetachStorageMountProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("DetachStorageMount")),
+			connect.WithClientOptions(opts...),
+		),
+		getStorageDefaults: connect.NewClient[v1.GetStorageDefaultsRequest, v1.GetStorageDefaultsResponse](
+			httpClient,
+			baseURL+SandboxServiceGetStorageDefaultsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("GetStorageDefaults")),
+			connect.WithClientOptions(opts...),
+		),
+		saveStorageDefaults: connect.NewClient[v1.SaveStorageDefaultsRequest, v1.SaveStorageDefaultsResponse](
+			httpClient,
+			baseURL+SandboxServiceSaveStorageDefaultsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("SaveStorageDefaults")),
 			connect.WithClientOptions(opts...),
 		),
 		executeCommand: connect.NewClient[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse](
@@ -1039,6 +1139,16 @@ type sandboxServiceClient struct {
 	resizeVolume                    *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
 	attachVolume                    *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
 	detachVolume                    *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
+	createStorageConnection         *connect.Client[v1.CreateStorageConnectionRequest, v1.CreateStorageConnectionResponse]
+	testStorageConnection           *connect.Client[v1.TestStorageConnectionRequest, v1.TestStorageConnectionResponse]
+	listStorageConnections          *connect.Client[v1.ListStorageConnectionsRequest, v1.ListStorageConnectionsResponse]
+	updateStorageConnection         *connect.Client[v1.UpdateStorageConnectionRequest, v1.UpdateStorageConnectionResponse]
+	deleteStorageConnection         *connect.Client[v1.DeleteStorageConnectionRequest, v1.DeleteStorageConnectionResponse]
+	listStorageMounts               *connect.Client[v1.ListStorageMountsRequest, v1.ListStorageMountsResponse]
+	attachStorageMount              *connect.Client[v1.AttachStorageMountRequest, v1.AttachStorageMountResponse]
+	detachStorageMount              *connect.Client[v1.DetachStorageMountRequest, v1.DetachStorageMountResponse]
+	getStorageDefaults              *connect.Client[v1.GetStorageDefaultsRequest, v1.GetStorageDefaultsResponse]
+	saveStorageDefaults             *connect.Client[v1.SaveStorageDefaultsRequest, v1.SaveStorageDefaultsResponse]
 	executeCommand                  *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
 	streamCommandOutput             *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
 	gitOperation                    *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
@@ -1229,6 +1339,56 @@ func (c *sandboxServiceClient) AttachVolume(ctx context.Context, req *connect.Re
 // DetachVolume calls tenki.sandbox.v1.SandboxService.DetachVolume.
 func (c *sandboxServiceClient) DetachVolume(ctx context.Context, req *connect.Request[v1.DetachVolumeRequest]) (*connect.Response[v1.DetachVolumeResponse], error) {
 	return c.detachVolume.CallUnary(ctx, req)
+}
+
+// CreateStorageConnection calls tenki.sandbox.v1.SandboxService.CreateStorageConnection.
+func (c *sandboxServiceClient) CreateStorageConnection(ctx context.Context, req *connect.Request[v1.CreateStorageConnectionRequest]) (*connect.Response[v1.CreateStorageConnectionResponse], error) {
+	return c.createStorageConnection.CallUnary(ctx, req)
+}
+
+// TestStorageConnection calls tenki.sandbox.v1.SandboxService.TestStorageConnection.
+func (c *sandboxServiceClient) TestStorageConnection(ctx context.Context, req *connect.Request[v1.TestStorageConnectionRequest]) (*connect.Response[v1.TestStorageConnectionResponse], error) {
+	return c.testStorageConnection.CallUnary(ctx, req)
+}
+
+// ListStorageConnections calls tenki.sandbox.v1.SandboxService.ListStorageConnections.
+func (c *sandboxServiceClient) ListStorageConnections(ctx context.Context, req *connect.Request[v1.ListStorageConnectionsRequest]) (*connect.Response[v1.ListStorageConnectionsResponse], error) {
+	return c.listStorageConnections.CallUnary(ctx, req)
+}
+
+// UpdateStorageConnection calls tenki.sandbox.v1.SandboxService.UpdateStorageConnection.
+func (c *sandboxServiceClient) UpdateStorageConnection(ctx context.Context, req *connect.Request[v1.UpdateStorageConnectionRequest]) (*connect.Response[v1.UpdateStorageConnectionResponse], error) {
+	return c.updateStorageConnection.CallUnary(ctx, req)
+}
+
+// DeleteStorageConnection calls tenki.sandbox.v1.SandboxService.DeleteStorageConnection.
+func (c *sandboxServiceClient) DeleteStorageConnection(ctx context.Context, req *connect.Request[v1.DeleteStorageConnectionRequest]) (*connect.Response[v1.DeleteStorageConnectionResponse], error) {
+	return c.deleteStorageConnection.CallUnary(ctx, req)
+}
+
+// ListStorageMounts calls tenki.sandbox.v1.SandboxService.ListStorageMounts.
+func (c *sandboxServiceClient) ListStorageMounts(ctx context.Context, req *connect.Request[v1.ListStorageMountsRequest]) (*connect.Response[v1.ListStorageMountsResponse], error) {
+	return c.listStorageMounts.CallUnary(ctx, req)
+}
+
+// AttachStorageMount calls tenki.sandbox.v1.SandboxService.AttachStorageMount.
+func (c *sandboxServiceClient) AttachStorageMount(ctx context.Context, req *connect.Request[v1.AttachStorageMountRequest]) (*connect.Response[v1.AttachStorageMountResponse], error) {
+	return c.attachStorageMount.CallUnary(ctx, req)
+}
+
+// DetachStorageMount calls tenki.sandbox.v1.SandboxService.DetachStorageMount.
+func (c *sandboxServiceClient) DetachStorageMount(ctx context.Context, req *connect.Request[v1.DetachStorageMountRequest]) (*connect.Response[v1.DetachStorageMountResponse], error) {
+	return c.detachStorageMount.CallUnary(ctx, req)
+}
+
+// GetStorageDefaults calls tenki.sandbox.v1.SandboxService.GetStorageDefaults.
+func (c *sandboxServiceClient) GetStorageDefaults(ctx context.Context, req *connect.Request[v1.GetStorageDefaultsRequest]) (*connect.Response[v1.GetStorageDefaultsResponse], error) {
+	return c.getStorageDefaults.CallUnary(ctx, req)
+}
+
+// SaveStorageDefaults calls tenki.sandbox.v1.SandboxService.SaveStorageDefaults.
+func (c *sandboxServiceClient) SaveStorageDefaults(ctx context.Context, req *connect.Request[v1.SaveStorageDefaultsRequest]) (*connect.Response[v1.SaveStorageDefaultsResponse], error) {
+	return c.saveStorageDefaults.CallUnary(ctx, req)
 }
 
 // ExecuteCommand calls tenki.sandbox.v1.SandboxService.ExecuteCommand.
@@ -1601,6 +1761,16 @@ type SandboxServiceHandler interface {
 	ResizeVolume(context.Context, *connect.Request[v1.ResizeVolumeRequest]) (*connect.Response[v1.ResizeVolumeResponse], error)
 	AttachVolume(context.Context, *connect.Request[v1.AttachVolumeRequest]) (*connect.Response[v1.AttachVolumeResponse], error)
 	DetachVolume(context.Context, *connect.Request[v1.DetachVolumeRequest]) (*connect.Response[v1.DetachVolumeResponse], error)
+	CreateStorageConnection(context.Context, *connect.Request[v1.CreateStorageConnectionRequest]) (*connect.Response[v1.CreateStorageConnectionResponse], error)
+	TestStorageConnection(context.Context, *connect.Request[v1.TestStorageConnectionRequest]) (*connect.Response[v1.TestStorageConnectionResponse], error)
+	ListStorageConnections(context.Context, *connect.Request[v1.ListStorageConnectionsRequest]) (*connect.Response[v1.ListStorageConnectionsResponse], error)
+	UpdateStorageConnection(context.Context, *connect.Request[v1.UpdateStorageConnectionRequest]) (*connect.Response[v1.UpdateStorageConnectionResponse], error)
+	DeleteStorageConnection(context.Context, *connect.Request[v1.DeleteStorageConnectionRequest]) (*connect.Response[v1.DeleteStorageConnectionResponse], error)
+	ListStorageMounts(context.Context, *connect.Request[v1.ListStorageMountsRequest]) (*connect.Response[v1.ListStorageMountsResponse], error)
+	AttachStorageMount(context.Context, *connect.Request[v1.AttachStorageMountRequest]) (*connect.Response[v1.AttachStorageMountResponse], error)
+	DetachStorageMount(context.Context, *connect.Request[v1.DetachStorageMountRequest]) (*connect.Response[v1.DetachStorageMountResponse], error)
+	GetStorageDefaults(context.Context, *connect.Request[v1.GetStorageDefaultsRequest]) (*connect.Response[v1.GetStorageDefaultsResponse], error)
+	SaveStorageDefaults(context.Context, *connect.Request[v1.SaveStorageDefaultsRequest]) (*connect.Response[v1.SaveStorageDefaultsResponse], error)
 	// Deprecated: do not use.
 	ExecuteCommand(context.Context, *connect.Request[v1.ExecuteCommandRequest]) (*connect.Response[v1.ExecuteCommandResponse], error)
 	// Deprecated: do not use.
@@ -1837,6 +2007,66 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceDetachVolumeProcedure,
 		svc.DetachVolume,
 		connect.WithSchema(sandboxServiceMethods.ByName("DetachVolume")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceCreateStorageConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceCreateStorageConnectionProcedure,
+		svc.CreateStorageConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("CreateStorageConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceTestStorageConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceTestStorageConnectionProcedure,
+		svc.TestStorageConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("TestStorageConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListStorageConnectionsHandler := connect.NewUnaryHandler(
+		SandboxServiceListStorageConnectionsProcedure,
+		svc.ListStorageConnections,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListStorageConnections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceUpdateStorageConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceUpdateStorageConnectionProcedure,
+		svc.UpdateStorageConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("UpdateStorageConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceDeleteStorageConnectionHandler := connect.NewUnaryHandler(
+		SandboxServiceDeleteStorageConnectionProcedure,
+		svc.DeleteStorageConnection,
+		connect.WithSchema(sandboxServiceMethods.ByName("DeleteStorageConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceListStorageMountsHandler := connect.NewUnaryHandler(
+		SandboxServiceListStorageMountsProcedure,
+		svc.ListStorageMounts,
+		connect.WithSchema(sandboxServiceMethods.ByName("ListStorageMounts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceAttachStorageMountHandler := connect.NewUnaryHandler(
+		SandboxServiceAttachStorageMountProcedure,
+		svc.AttachStorageMount,
+		connect.WithSchema(sandboxServiceMethods.ByName("AttachStorageMount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceDetachStorageMountHandler := connect.NewUnaryHandler(
+		SandboxServiceDetachStorageMountProcedure,
+		svc.DetachStorageMount,
+		connect.WithSchema(sandboxServiceMethods.ByName("DetachStorageMount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceGetStorageDefaultsHandler := connect.NewUnaryHandler(
+		SandboxServiceGetStorageDefaultsProcedure,
+		svc.GetStorageDefaults,
+		connect.WithSchema(sandboxServiceMethods.ByName("GetStorageDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceSaveStorageDefaultsHandler := connect.NewUnaryHandler(
+		SandboxServiceSaveStorageDefaultsProcedure,
+		svc.SaveStorageDefaults,
+		connect.WithSchema(sandboxServiceMethods.ByName("SaveStorageDefaults")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceExecuteCommandHandler := connect.NewUnaryHandler(
@@ -2285,6 +2515,26 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceAttachVolumeHandler.ServeHTTP(w, r)
 		case SandboxServiceDetachVolumeProcedure:
 			sandboxServiceDetachVolumeHandler.ServeHTTP(w, r)
+		case SandboxServiceCreateStorageConnectionProcedure:
+			sandboxServiceCreateStorageConnectionHandler.ServeHTTP(w, r)
+		case SandboxServiceTestStorageConnectionProcedure:
+			sandboxServiceTestStorageConnectionHandler.ServeHTTP(w, r)
+		case SandboxServiceListStorageConnectionsProcedure:
+			sandboxServiceListStorageConnectionsHandler.ServeHTTP(w, r)
+		case SandboxServiceUpdateStorageConnectionProcedure:
+			sandboxServiceUpdateStorageConnectionHandler.ServeHTTP(w, r)
+		case SandboxServiceDeleteStorageConnectionProcedure:
+			sandboxServiceDeleteStorageConnectionHandler.ServeHTTP(w, r)
+		case SandboxServiceListStorageMountsProcedure:
+			sandboxServiceListStorageMountsHandler.ServeHTTP(w, r)
+		case SandboxServiceAttachStorageMountProcedure:
+			sandboxServiceAttachStorageMountHandler.ServeHTTP(w, r)
+		case SandboxServiceDetachStorageMountProcedure:
+			sandboxServiceDetachStorageMountHandler.ServeHTTP(w, r)
+		case SandboxServiceGetStorageDefaultsProcedure:
+			sandboxServiceGetStorageDefaultsHandler.ServeHTTP(w, r)
+		case SandboxServiceSaveStorageDefaultsProcedure:
+			sandboxServiceSaveStorageDefaultsHandler.ServeHTTP(w, r)
 		case SandboxServiceExecuteCommandProcedure:
 			sandboxServiceExecuteCommandHandler.ServeHTTP(w, r)
 		case SandboxServiceStreamCommandOutputProcedure:
@@ -2520,6 +2770,46 @@ func (UnimplementedSandboxServiceHandler) AttachVolume(context.Context, *connect
 
 func (UnimplementedSandboxServiceHandler) DetachVolume(context.Context, *connect.Request[v1.DetachVolumeRequest]) (*connect.Response[v1.DetachVolumeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.DetachVolume is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) CreateStorageConnection(context.Context, *connect.Request[v1.CreateStorageConnectionRequest]) (*connect.Response[v1.CreateStorageConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateStorageConnection is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) TestStorageConnection(context.Context, *connect.Request[v1.TestStorageConnectionRequest]) (*connect.Response[v1.TestStorageConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.TestStorageConnection is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListStorageConnections(context.Context, *connect.Request[v1.ListStorageConnectionsRequest]) (*connect.Response[v1.ListStorageConnectionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListStorageConnections is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) UpdateStorageConnection(context.Context, *connect.Request[v1.UpdateStorageConnectionRequest]) (*connect.Response[v1.UpdateStorageConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateStorageConnection is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) DeleteStorageConnection(context.Context, *connect.Request[v1.DeleteStorageConnectionRequest]) (*connect.Response[v1.DeleteStorageConnectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.DeleteStorageConnection is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) ListStorageMounts(context.Context, *connect.Request[v1.ListStorageMountsRequest]) (*connect.Response[v1.ListStorageMountsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.ListStorageMounts is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) AttachStorageMount(context.Context, *connect.Request[v1.AttachStorageMountRequest]) (*connect.Response[v1.AttachStorageMountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.AttachStorageMount is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) DetachStorageMount(context.Context, *connect.Request[v1.DetachStorageMountRequest]) (*connect.Response[v1.DetachStorageMountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.DetachStorageMount is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) GetStorageDefaults(context.Context, *connect.Request[v1.GetStorageDefaultsRequest]) (*connect.Response[v1.GetStorageDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetStorageDefaults is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) SaveStorageDefaults(context.Context, *connect.Request[v1.SaveStorageDefaultsRequest]) (*connect.Response[v1.SaveStorageDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.SaveStorageDefaults is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) ExecuteCommand(context.Context, *connect.Request[v1.ExecuteCommandRequest]) (*connect.Response[v1.ExecuteCommandResponse], error) {

@@ -56,6 +56,9 @@ func (h *reauthDataPlaneHandler) Mkdir(
 	if got := req.Header().Get(dataPlaneCredentialHeader); got != "refreshed" {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("stale credential"))
 	}
+	if req.Header().Get("X-Luxor-Client-Family") != "go" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("missing x-luxor-client-family header"))
+	}
 	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceMkdirResponse{Response: &sandboxv1.MkdirResponse{}}), nil
 }
 

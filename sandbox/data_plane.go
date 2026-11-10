@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -332,6 +333,7 @@ func misroutedSessionError(msg any, sessionID string) error {
 }
 
 func (i *dataPlaneCredentialInterceptor) setHeaders(header http.Header, msg any) error {
+	sdkmeta.SetRequestIdentity(header)
 	if err := misroutedSessionError(msg, i.sessionID); err != nil {
 		return err
 	}

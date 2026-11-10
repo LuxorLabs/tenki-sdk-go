@@ -17,6 +17,7 @@ var (
 	ErrSessionExpired          = errors.New("sandbox: session expired")
 	ErrSessionTerminated       = errors.New("sandbox: session terminated")
 	ErrFileNotFound            = errors.New("sandbox: file not found")
+	ErrFileTooLarge            = errors.New("sandbox: file too large for a unary file call")
 	ErrInvalidState            = errors.New("sandbox: invalid session state for operation")
 	ErrCommandTimeout          = errors.New("sandbox: command execution timed out")
 	ErrUnauthorized            = errors.New("sandbox: unauthorized")
@@ -52,6 +53,15 @@ var (
 	ErrWaitReadyFailed         = errors.New("sandbox: session created but not ready within wait budget")
 	ErrForkFailed              = errors.New("sandbox: fork failed")
 	ErrPaginationStalled       = errors.New("sandbox: pagination token did not advance")
+)
+
+var (
+	ErrStorageConnectionNotFound = errors.New("sandbox: storage connection not found")
+	ErrStorageMountNotFound      = errors.New("sandbox: storage mount not found")
+	// ErrStorageMountAttachCancelled means a detach of the same mount landed before the attach finished.
+	ErrStorageMountAttachCancelled = errors.New("sandbox: storage mount attach cancelled by a detach")
+	// ErrStorageConnectionDisabled means Tenki disabled the storage connection; contact support to restore it.
+	ErrStorageConnectionDisabled = errors.New("sandbox: storage connection disabled by Tenki")
 )
 
 // WaitReadyFailedError carries a session admitted before its readiness wait failed.
@@ -128,9 +138,73 @@ func (e *TemplateRuntimeFailedError) Is(target error) bool {
 	return target == ErrTemplateRuntimeFailed
 }
 
+// FileTooLargeError means a unary ReadFile or WriteFile refused a file above MaxBytes; use ReadStream
+// or WriteStream instead. Operation is "ReadFile" or "WriteFile". SizeBytes is a lower bound when the
+// guest could not stat the file's size.
+type FileTooLargeError struct {
+	Operation string
+	SizeBytes int64
+	MaxBytes  int64
+	Err       error
+}
+
+func (e *FileTooLargeError) Error() string {
+	if e == nil {
+		return ErrFileTooLarge.Error()
+	}
+	return fmt.Sprintf("sandbox: file too large for %s: size_bytes=%d max_bytes=%d", e.Operation, e.SizeBytes, e.MaxBytes)
+}
+
+func (e *FileTooLargeError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func (e *FileTooLargeError) Is(target error) bool {
+	return target == ErrFileTooLarge
+}
+
+// Same pattern as FILE_TOO_LARGE in errors.ts and _FILE_TOO_LARGE in errors.py.
+var fileTooLargeRe = regexp.MustCompile(`file too large for (ReadFile|WriteFile): size_bytes=(\d{1,18}) max_bytes=(\d{1,18})`)
+
+func fileTooLargeFromMessage(msg string, err error) *FileTooLargeError {
+	m := fileTooLargeRe.FindStringSubmatch(msg)
+	if m == nil {
+		return nil
+	}
+	size, sizeErr := strconv.ParseInt(m[2], 10, 64)
+	limit, limitErr := strconv.ParseInt(m[3], 10, 64)
+	if sizeErr != nil || limitErr != nil {
+		return nil
+	}
+	return &FileTooLargeError{Operation: m[1], SizeBytes: size, MaxBytes: limit, Err: err}
+}
+
+// A guest agent without a primitive answers with this text; older node agents relay it as Internal, newer as Unimplemented.
+// Same pattern as LEGACY_GUEST_UNKNOWN_REQUEST in errors.ts and _LEGACY_GUEST_UNKNOWN_REQUEST in errors.py.
+var legacyGuestUnknownRequestRe = regexp.MustCompile(`unknown request type: \*sandboxv1\.GuestRequest_(\w+)`)
+
+func legacyGuestCapabilityError(msg string, err error) *CapabilityUnavailableError {
+	m := legacyGuestUnknownRequestRe.FindStringSubmatch(msg)
+	if m == nil {
+		return nil
+	}
+	return &CapabilityUnavailableError{Primitive: m[1], Message: msg, Err: err}
+}
+
 type CapabilityUnavailableError struct {
 	Primitive string
 	Message   string
+	Err       error
+}
+
+func (e *CapabilityUnavailableError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
 }
 
 // IsCapabilityUnavailable reports whether err means the server/image lacks a
@@ -376,6 +450,9 @@ func mapError(err error) error {
 	if isEdgeNotReady(err) {
 		return dataPlaneNotReadyError(err)
 	}
+	if unavailable := legacyGuestCapabilityError(connectErr.Message(), err); unavailable != nil {
+		return unavailable
+	}
 
 	msg := strings.ToLower(connectErr.Message())
 
@@ -385,29 +462,7 @@ func mapError(err error) error {
 	case connect.CodePermissionDenied:
 		return fmt.Errorf("%w: %w", ErrPermissionDenied, err)
 	case connect.CodeNotFound:
-		switch {
-		// Matched as a prefix first: the message ends with caller-chosen policy names.
-		case strings.HasPrefix(msg, "egress polic"):
-			return fmt.Errorf("%w: %w", ErrEgressPolicyNotFound, err)
-		case strings.Contains(msg, "template build"):
-			return fmt.Errorf("%w: %w", ErrTemplateBuildNotFound, err)
-		case strings.Contains(msg, "template"):
-			return fmt.Errorf("%w: %w", ErrTemplateNotFound, err)
-		case strings.Contains(msg, "registry image"):
-			return fmt.Errorf("%w: %w", ErrRegistryImageNotFound, err)
-		case strings.Contains(msg, "no such file or directory"):
-			return fmt.Errorf("%w: %w", ErrFileNotFound, err)
-		case strings.Contains(msg, "session"):
-			return fmt.Errorf("%w: %w", ErrSessionNotFound, err)
-		case strings.Contains(msg, "snapshot"):
-			return fmt.Errorf("%w: %w", ErrSnapshotNotFound, err)
-		case strings.Contains(msg, "volume"):
-			return fmt.Errorf("%w: %w", ErrVolumeNotFound, err)
-		case strings.Contains(msg, "artifact"):
-			return fmt.Errorf("%w: %w", ErrSessionExpired, err)
-		default:
-			return fmt.Errorf("%w: %w", ErrSessionNotFound, err)
-		}
+		return notFoundError(msg, err)
 	case connect.CodeAlreadyExists:
 		if strings.Contains(msg, "template") {
 			return fmt.Errorf("%w: %w", ErrTemplateExists, err)
@@ -416,6 +471,9 @@ func mapError(err error) error {
 	case connect.CodeDeadlineExceeded:
 		return fmt.Errorf("%w: %w", ErrCommandTimeout, err)
 	case connect.CodeResourceExhausted:
+		if tooLarge := fileTooLargeFromMessage(connectErr.Message(), err); tooLarge != nil {
+			return tooLarge
+		}
 		if strings.Contains(msg, "maximum exposed ports") {
 			return fmt.Errorf("%w: %w", ErrPortLimitExceeded, err)
 		}
@@ -431,6 +489,8 @@ func mapError(err error) error {
 		return fmt.Errorf("%w: %w", ErrQuotaExceeded, err)
 	case connect.CodeFailedPrecondition:
 		switch {
+		case strings.Contains(msg, "disabled by tenki"):
+			return fmt.Errorf("%w: %w", ErrStorageConnectionDisabled, err)
 		case strings.Contains(msg, "snapshot not yet durable"):
 			return fmt.Errorf("%w: %w", ErrSnapshotNotDurable, err)
 		case strings.Contains(msg, "template build already in progress"), strings.Contains(msg, "build in progress"):
@@ -472,6 +532,9 @@ func mapError(err error) error {
 			return fmt.Errorf("%w: %w", ErrInvalidState, err)
 		}
 	case connect.CodeAborted:
+		if strings.Contains(msg, "cancelled by a detach") {
+			return fmt.Errorf("%w: %w", ErrStorageMountAttachCancelled, err)
+		}
 		if strings.HasPrefix(msg, "resume failed") {
 			return fmt.Errorf("%w: %w", ErrResumeFailed, err)
 		}
@@ -483,5 +546,36 @@ func mapError(err error) error {
 		return err
 	default:
 		return err
+	}
+}
+
+// notFoundError picks the typed NotFound error from the engine's message.
+func notFoundError(msg string, err error) error {
+	switch {
+	// Matched as a prefix first: the message ends with caller-chosen policy names.
+	case strings.HasPrefix(msg, "egress polic"):
+		return fmt.Errorf("%w: %w", ErrEgressPolicyNotFound, err)
+	case strings.Contains(msg, "storage connection"):
+		return fmt.Errorf("%w: %w", ErrStorageConnectionNotFound, err)
+	case strings.Contains(msg, "storage mount"):
+		return fmt.Errorf("%w: %w", ErrStorageMountNotFound, err)
+	case strings.Contains(msg, "template build"):
+		return fmt.Errorf("%w: %w", ErrTemplateBuildNotFound, err)
+	case strings.Contains(msg, "template"):
+		return fmt.Errorf("%w: %w", ErrTemplateNotFound, err)
+	case strings.Contains(msg, "registry image"):
+		return fmt.Errorf("%w: %w", ErrRegistryImageNotFound, err)
+	case strings.Contains(msg, "no such file or directory"):
+		return fmt.Errorf("%w: %w", ErrFileNotFound, err)
+	case strings.Contains(msg, "session"):
+		return fmt.Errorf("%w: %w", ErrSessionNotFound, err)
+	case strings.Contains(msg, "snapshot"):
+		return fmt.Errorf("%w: %w", ErrSnapshotNotFound, err)
+	case strings.Contains(msg, "volume"):
+		return fmt.Errorf("%w: %w", ErrVolumeNotFound, err)
+	case strings.Contains(msg, "artifact"):
+		return fmt.Errorf("%w: %w", ErrSessionExpired, err)
+	default:
+		return fmt.Errorf("%w: %w", ErrSessionNotFound, err)
 	}
 }

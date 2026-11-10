@@ -9,25 +9,36 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
 )
 
 const (
-	defaultBaseURL = "https://api.tenki.cloud"
+	defaultBaseURL = sdkmeta.DefaultBaseURL
 	// Held create/snapshot calls use budgets up to DefaultRestoreTimeout.
 	// Keep the transport timeout above those operation-level deadlines.
 	defaultClientTimeout         = DefaultRestoreTimeout + 30*time.Second
 	defaultDataPlaneReadyTimeout = 60 * time.Second
 
-	// EnvAPIEndpoint overrides the default base URL when set.
-	EnvAPIEndpoint = "TENKI_API_ENDPOINT"
-	// EnvAPIURL overrides the default base URL when set.
-	EnvAPIURL = "TENKI_API_URL"
-	// EnvGatewayURL overrides the default gateway base URL when set.
-	EnvGatewayURL = "TENKI_SANDBOX_GATEWAY_URL"
-	// EnvAuthToken provides the auth token when not passed via WithAuthToken.
-	EnvAuthToken = "TENKI_AUTH_TOKEN"
-	// EnvAPIKey provides the auth token when not passed via WithAuthToken.
-	EnvAPIKey             = "TENKI_API_KEY"
+	// EnvLuxorAIAPIEndpoint overrides the default base URL when set; it wins over every TENKI_* base URL.
+	EnvLuxorAIAPIEndpoint = sdkmeta.EnvLuxorAIAPIEndpoint
+	// EnvLuxorAIAPIURL overrides the default base URL when set and LUXORAI_API_ENDPOINT is unset.
+	EnvLuxorAIAPIURL = sdkmeta.EnvLuxorAIAPIURL
+	// EnvLuxorAIGatewayURL overrides the default gateway base URL when set; it wins over TENKI_SANDBOX_GATEWAY_URL.
+	EnvLuxorAIGatewayURL = sdkmeta.EnvLuxorAIGatewayURL
+	// EnvLuxorAIAuthToken provides the auth token when not passed via WithAuthToken; it wins over every TENKI_* token.
+	EnvLuxorAIAuthToken = sdkmeta.EnvLuxorAIAuthToken
+	// EnvLuxorAIAPIKey provides the auth token when not passed via WithAuthToken and LUXORAI_AUTH_TOKEN is unset.
+	EnvLuxorAIAPIKey = sdkmeta.EnvLuxorAIAPIKey
+	// EnvAPIEndpoint overrides the default base URL when no LUXORAI_* base URL is set.
+	EnvAPIEndpoint = sdkmeta.EnvAPIEndpoint
+	// EnvAPIURL overrides the default base URL when no LUXORAI_* base URL is set.
+	EnvAPIURL = sdkmeta.EnvAPIURL
+	// EnvGatewayURL overrides the default gateway base URL when LUXORAI_SANDBOX_GATEWAY_URL is unset.
+	EnvGatewayURL = sdkmeta.EnvGatewayURL
+	// EnvAuthToken provides the auth token when no LUXORAI_* token is set.
+	EnvAuthToken = sdkmeta.EnvAuthToken
+	// EnvAPIKey provides the auth token when no LUXORAI_* token is set.
+	EnvAPIKey             = sdkmeta.EnvAPIKey
 	defaultCPUCores       = int32(2)
 	defaultMemoryMB       = int32(4096)
 	defaultDiskSizeGB     = int32(5)
@@ -202,13 +213,17 @@ type createConfig struct {
 	enableOpenCode  bool
 	cloneRepoURL    string
 	volumes         []*VolumeMount
-	sticky          bool
-	waitReady       bool
-	waitForRuntime  bool
-	waitTimeout     time.Duration
-	waitTimeoutSet  bool
-	tailnet         *TailnetAttachment
-	disableTailnet  bool
+	storageMounts   []*StorageMountSpec
+	// disableStorageDefaults skips the workspace's default storage mounts.
+	disableStorageDefaults bool
+	excludedDefaultMounts  []string
+	sticky                 bool
+	waitReady              bool
+	waitForRuntime         bool
+	waitTimeout            time.Duration
+	waitTimeoutSet         bool
+	tailnet                *TailnetAttachment
+	disableTailnet         bool
 }
 
 type createVolumeConfig struct {
@@ -413,6 +428,7 @@ func defaultCreateConfig(client *Client) createConfig {
 		env:           map[string]string{},
 		sshKeys:       []string{},
 		volumes:       []*VolumeMount{},
+		storageMounts: []*StorageMountSpec{},
 		waitReady:     true,
 		waitTimeout:   DefaultSessionCreateTimeout,
 	}
@@ -731,6 +747,26 @@ func WithVolume(volumeID, mountPath string, opts ...VolumeOption) CreateOption {
 	})
 }
 
+// WithStorageMount mounts a storage connection during Create, on top of the workspace's default mounts.
+// Set spec.DefaultMountID to change where or how a default mount is attached; nil fields keep the default's values.
+func WithStorageMount(spec StorageMountSpec) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.storageMounts = append(cfg.storageMounts, &spec)
+	})
+}
+
+// WithoutStorageDefaults skips the workspace's default storage mounts.
+func WithoutStorageDefaults() CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cfg.disableStorageDefaults = true })
+}
+
+// WithoutDefaultStorageMount leaves one workspace default mount out of this sandbox.
+func WithoutDefaultStorageMount(defaultMountID string) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.excludedDefaultMounts = append(cfg.excludedDefaultMounts, strings.TrimSpace(defaultMountID))
+	})
+}
+
 // OpenCodeProviderConfig configures OpenCode provider env vars for Create.
 type OpenCodeProviderConfig struct {
 	APIKey  string
@@ -785,7 +821,7 @@ func WithAllowOutbound(allowOutbound bool) CreateOption {
 	})
 }
 
-// WithAllowDomains restricts outbound network access to these domains (exact host or a single leading "*." wildcard).
+// WithAllowDomains restricts outbound network access to these domains (exact host, "*." for one subdomain label, or "**." for any depth).
 // Has no effect if allow_outbound is false.
 func WithAllowDomains(domains ...string) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {

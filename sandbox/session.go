@@ -19,6 +19,38 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func (s *Session) ListStorageMounts(ctx context.Context) ([]StorageMount, error) {
+	resp, err := s.client.sandbox.ListStorageMounts(ctx, connect.NewRequest(&sandboxv1.ListStorageMountsRequest{SessionId: s.ID}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	mounts := make([]StorageMount, 0, len(resp.Msg.GetMounts()))
+	for _, mount := range resp.Msg.GetMounts() {
+		mounts = append(mounts, storageMountFromProto(mount))
+	}
+	return mounts, nil
+}
+
+func (s *Session) AttachStorageMount(ctx context.Context, spec StorageMountSpec) (*StorageMount, error) {
+	resp, err := s.client.sandbox.AttachStorageMount(ctx, connect.NewRequest(&sandboxv1.AttachStorageMountRequest{
+		SessionId: s.ID,
+		Mount:     storageMountSpecToProto(spec),
+	}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	mount := storageMountFromProto(resp.Msg.GetMount())
+	return &mount, nil
+}
+
+func (s *Session) DetachStorageMount(ctx context.Context, mountID string) error {
+	_, err := s.client.sandbox.DetachStorageMount(ctx, connect.NewRequest(&sandboxv1.DetachStorageMountRequest{
+		SessionId: s.ID,
+		MountId:   strings.TrimSpace(mountID),
+	}))
+	return mapError(err)
+}
+
 // SessionState mirrors session lifecycle states from service contract.
 type SessionState string
 
@@ -1575,7 +1607,7 @@ func (s *Session) Extend(ctx context.Context, additional time.Duration) error {
 	return nil
 }
 
-// WriteFile writes content into a file inside the session.
+// WriteFile writes content into a file inside the session, up to 32 MiB; larger content fails with *FileTooLargeError, so write it with WriteStream.
 func (s *Session) WriteFile(ctx context.Context, path string, data []byte) error {
 	dp, err := s.dataPlane(ctx)
 	if err != nil {
@@ -1589,7 +1621,7 @@ func (s *Session) WriteFile(ctx context.Context, path string, data []byte) error
 	return mapError(err)
 }
 
-// ReadFile reads file content from inside the session.
+// ReadFile reads file content from inside the session, up to 32 MiB; larger files fail with *FileTooLargeError, so read them with ReadStream.
 func (s *Session) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	dp, err := s.dataPlane(ctx)
 	if err != nil {

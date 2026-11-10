@@ -51,6 +51,9 @@ type readinessDataPlaneHandler struct {
 	runCalls    atomic.Int32
 	runFailure  error
 	statCalls   atomic.Int32
+	statErr     error
+	// writeStreamErr fails WriteFileStream after the whole upload is drained, as the node agent does.
+	writeStreamErr error
 	// keepaliveFirst sends a keepalive frame before anything else on every Run.
 	keepaliveFirst bool
 }
@@ -60,9 +63,28 @@ func (h *readinessDataPlaneHandler) Stat(
 	_ *connect.Request[sandboxv1.SandboxSessionDataPlaneServiceStatRequest],
 ) (*connect.Response[sandboxv1.SandboxSessionDataPlaneServiceStatResponse], error) {
 	h.statCalls.Add(1)
+	if h.statErr != nil {
+		return nil, h.statErr
+	}
 	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceStatResponse{
 		Response: &sandboxv1.StatResponse{Exists: true},
 	}), nil
+}
+
+func (h *readinessDataPlaneHandler) WriteFileStream(
+	_ context.Context,
+	stream *connect.ClientStream[sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamRequest],
+) (*connect.Response[sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse], error) {
+	for stream.Receive() {
+		_ = stream.Msg()
+	}
+	if err := stream.Err(); err != nil {
+		return nil, err
+	}
+	if h.writeStreamErr != nil {
+		return nil, h.writeStreamErr
+	}
+	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse{}), nil
 }
 
 func (h *readinessDataPlaneHandler) Run(

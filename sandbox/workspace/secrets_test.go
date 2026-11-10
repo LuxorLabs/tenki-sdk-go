@@ -247,6 +247,8 @@ func TestWorkspaceSecretsConflictReplay(t *testing.T) {
 func TestWorkspaceSecretsValidation(t *testing.T) {
 	t.Setenv("TENKI_AUTH_TOKEN", "")
 	t.Setenv("TENKI_API_KEY", "")
+	t.Setenv("LUXORAI_AUTH_TOKEN", "")
+	t.Setenv("LUXORAI_API_KEY", "")
 	if _, err := NewWorkspaceClient(WorkspaceOptions{}); !errors.Is(err, ErrMissingAuthToken) {
 		t.Fatal(err)
 	}
@@ -316,10 +318,10 @@ func TestWorkspaceClientSendsClientMetadata(t *testing.T) {
 	}
 	received := <-headers
 	for name, want := range map[string]string{
-		"X-Tenki-Client-Family":     "go",
-		"X-Tenki-Client-Version":    "unknown",
-		"X-Tenki-Client-Generation": "1",
-		"X-Tenki-Client-Runtime":    "go/" + strings.TrimPrefix(runtime.Version(), "go"),
+		"X-Luxor-Client-Family":     "go",
+		"X-Luxor-Client-Version":    "unknown",
+		"X-Luxor-Client-Generation": "1",
+		"X-Luxor-Client-Runtime":    "go/" + strings.TrimPrefix(runtime.Version(), "go"),
 	} {
 		if got := received.Values(name); len(got) != 1 || got[0] != want {
 			t.Errorf("%s = %q, want [%q]", name, got, want)

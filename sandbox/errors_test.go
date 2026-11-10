@@ -48,6 +48,33 @@ func TestMapError_TypedMappings(t *testing.T) {
 			want: ErrRegistryImageNotFound,
 		},
 		{
+			name: "storage connection not found",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("storage connection not found")),
+			want: ErrStorageConnectionNotFound,
+		},
+		{
+			name: "storage mount not found",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("storage mount not found")),
+			want: ErrStorageMountNotFound,
+		},
+		{
+			// The engine's message when the caller's own detach lands while the attach is still mounting.
+			name: "storage mount attach cancelled by a detach",
+			err:  connect.NewError(connect.CodeAborted, errors.New("storage mount attach was cancelled by a detach")),
+			want: ErrStorageMountAttachCancelled,
+		},
+		{
+			// The engine's message for a create or attach naming a connection Tenki disabled.
+			name: "storage connection disabled by Tenki",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New(`storage connection "Build cache" was disabled by Tenki; contact support`)),
+			want: ErrStorageConnectionDisabled,
+		},
+		{
+			name: "session not found",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("session not found")),
+			want: ErrSessionNotFound,
+		},
+		{
 			name: "template build already in progress",
 			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("template build already in progress")),
 			want: ErrTemplateBuildInProgress,
@@ -77,6 +104,15 @@ func TestMapError_TypedMappings(t *testing.T) {
 				t.Fatalf("expected %v, got %v", tc.want, mapped)
 			}
 		})
+	}
+}
+
+func TestMapError_OtherAbortedErrorsStayUntyped(t *testing.T) {
+	t.Parallel()
+	err := connect.NewError(connect.CodeAborted, errors.New("read ECONNRESET"))
+	mapped := mapError(err)
+	if errors.Is(mapped, ErrStorageMountAttachCancelled) || connect.CodeOf(mapped) != connect.CodeAborted {
+		t.Fatalf("expected the untyped Aborted error, got %v", mapped)
 	}
 }
 

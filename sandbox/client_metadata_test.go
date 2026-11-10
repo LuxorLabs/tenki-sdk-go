@@ -19,10 +19,10 @@ import (
 
 // go test builds the SDK as the main module at (devel), which reports unknown.
 var wantClientMetadata = map[string]string{
-	"X-Tenki-Client-Family":     "go",
-	"X-Tenki-Client-Version":    "unknown",
-	"X-Tenki-Client-Generation": "1",
-	"X-Tenki-Client-Runtime":    "go/" + strings.TrimPrefix(runtime.Version(), "go"),
+	"X-Luxor-Client-Family":     "go",
+	"X-Luxor-Client-Version":    "unknown",
+	"X-Luxor-Client-Generation": "1",
+	"X-Luxor-Client-Runtime":    "go/" + strings.TrimPrefix(runtime.Version(), "go"),
 }
 
 func assertClientMetadata(t *testing.T, header http.Header) {

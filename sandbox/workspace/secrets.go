@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	ErrMissingAuthToken = errors.New("workspace: missing auth token; set TENKI_AUTH_TOKEN or TENKI_API_KEY")
-	ErrInvalidAuthToken = errors.New("workspace: API keys and service tokens must start with tk_")
+	ErrMissingAuthToken = errors.New("workspace: missing auth token; set LUXORAI_AUTH_TOKEN or LUXORAI_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY)")
+	ErrInvalidAuthToken = errors.New("workspace: API keys and service tokens must start with lx_ or tk_")
 )
 
 // WorkspaceSecretError preserves the RPC status for conflict and replay handling.

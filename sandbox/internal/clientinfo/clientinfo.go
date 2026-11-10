@@ -14,10 +14,10 @@ const (
 )
 
 var headers = [...][2]string{
-	{"x-tenki-client-family", "go"},
-	{"x-tenki-client-version", moduleVersion(debug.ReadBuildInfo())},
-	{"x-tenki-client-generation", generation},
-	{"x-tenki-client-runtime", goRuntime(runtime.Version())},
+	{"x-luxor-client-family", "go"},
+	{"x-luxor-client-version", moduleVersion(debug.ReadBuildInfo())},
+	{"x-luxor-client-generation", generation},
+	{"x-luxor-client-runtime", goRuntime(runtime.Version())},
 }
 
 // SetHeaders sets the client metadata headers on an outgoing request.

@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strings"
 	"sync"
@@ -18,6 +17,7 @@ import (
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
 	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
 	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -34,7 +34,7 @@ type Client struct {
 	baseURL        string
 	gatewayAddress string
 	// gatewayAddressExplicit is true when the operator pinned the
-	// gatewayAddress via WithGatewayAddress / TENKI_SANDBOX_GATEWAY_URL /
+	// gatewayAddress via WithGatewayAddress / LUXORAI_SANDBOX_GATEWAY_URL /
 	// config. When false (i.e. we fell back to deriveGatewayAddress), the
 	// SSH method will first try to discover the SSH WS bridge URL by
 	// calling engine.ListActiveSSHGateways, which lets staging/prod
@@ -53,31 +53,27 @@ type Client struct {
 
 var (
 	// ErrMissingAuthToken is returned when no auth token is provided via WithAuthToken or env vars.
-	ErrMissingAuthToken = errors.New("sandbox: missing auth token - set TENKI_AUTH_TOKEN or TENKI_API_KEY or use WithAuthToken")
-	// ErrInvalidAuthToken is returned when a nonempty auth token does not start with "tk_".
-	ErrInvalidAuthToken = errors.New("sandbox: invalid auth token - API keys and service tokens must start with tk_")
+	ErrMissingAuthToken = errors.New("sandbox: missing auth token - set LUXORAI_AUTH_TOKEN or LUXORAI_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY) or use WithAuthToken")
+	// ErrInvalidAuthToken is returned when a nonempty auth token does not start with "lx_" or "tk_".
+	ErrInvalidAuthToken = errors.New("sandbox: invalid auth token - API keys and service tokens must start with lx_ or tk_")
 )
 
 // New creates a new sandbox SDK client.
 //
-// Auth token resolution: WithAuthToken option > TENKI_AUTH_TOKEN env var > TENKI_API_KEY env var > error.
-// Base URL resolution: WithBaseURL option > TENKI_API_ENDPOINT env var > TENKI_API_URL env var > https://api.tenki.cloud.
-// Gateway URL resolution: WithGatewayAddress option > TENKI_SANDBOX_GATEWAY_URL env var > derived from base URL.
+// Auth token resolution: WithAuthToken option > LUXORAI_AUTH_TOKEN > LUXORAI_API_KEY > TENKI_AUTH_TOKEN > TENKI_API_KEY > error.
+// Base URL resolution: WithBaseURL option > LUXORAI_API_ENDPOINT > LUXORAI_API_URL > TENKI_API_ENDPOINT > TENKI_API_URL > https://api.tenki.cloud.
+// Gateway URL resolution: WithGatewayAddress option > LUXORAI_SANDBOX_GATEWAY_URL > TENKI_SANDBOX_GATEWAY_URL > derived from base URL.
 func New(opts ...Option) (*Client, error) {
 	cfg := defaultClientConfig()
 
 	// Apply env var fallbacks before options.
-	if envURL := os.Getenv(EnvAPIEndpoint); envURL != "" {
-		cfg.baseURL = envURL
-	} else if envURL := os.Getenv(EnvAPIURL); envURL != "" {
+	if envURL := sdkmeta.Getenv(sdkmeta.BaseURLEnvs); envURL != "" {
 		cfg.baseURL = envURL
 	}
-	if envGatewayURL := os.Getenv(EnvGatewayURL); envGatewayURL != "" {
+	if envGatewayURL := sdkmeta.Getenv(sdkmeta.GatewayURLEnvs); envGatewayURL != "" {
 		cfg.gatewayAddress = envGatewayURL
 	}
-	if envKey := os.Getenv(EnvAuthToken); envKey != "" {
-		cfg.authToken = envKey
-	} else if envKey := os.Getenv(EnvAPIKey); envKey != "" {
+	if envKey := sdkmeta.Getenv(sdkmeta.AuthTokenEnvs); envKey != "" {
 		cfg.authToken = envKey
 	}
 
@@ -92,7 +88,7 @@ func New(opts ...Option) (*Client, error) {
 	if authToken == "" {
 		return nil, ErrMissingAuthToken
 	}
-	if !strings.HasPrefix(authToken, "tk_") {
+	if !sdkmeta.HasAPIKeyPrefix(authToken) {
 		return nil, ErrInvalidAuthToken
 	}
 	cfg.authToken = authToken
@@ -270,6 +266,13 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			})
 		}
 	}
+	for _, mount := range cfg.storageMounts {
+		if mount != nil {
+			req.StorageMounts = append(req.StorageMounts, storageMountSpecToProto(*mount))
+		}
+	}
+	req.DisableStorageDefaults = cfg.disableStorageDefaults
+	req.ExcludedDefaultMountIds = cfg.excludedDefaultMounts
 
 	if cfg.maxDuration != nil {
 		req.MaxDuration = durationpb.New(*cfg.maxDuration)
@@ -558,6 +561,7 @@ func (i *authInterceptor) setHeaders(header http.Header) {
 
 func setClientAuthHeaders(header http.Header, authToken string) {
 	header.Set(headerAuthorization, "Bearer "+authToken)
+	sdkmeta.SetRequestIdentity(header)
 	clientinfo.SetHeaders(header)
 }
 
