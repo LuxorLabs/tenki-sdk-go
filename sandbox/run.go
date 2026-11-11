@@ -29,6 +29,8 @@ type RunOptions struct {
 	// spent budget as CommandStatusTimedOut rather than as an error.
 	Timeout    *time.Duration
 	Privileged bool
+	// WithSecrets adds the secrets delivered to the session; Env still wins.
+	WithSecrets bool
 	// StreamOnly requires draining stdout/stderr and leaves their Result fields empty.
 	StreamOnly bool
 }
@@ -246,6 +248,7 @@ func (c *Command) openRunStream(ctx context.Context) (*dataPlaneRunStream, *sand
 			Env:         c.opts.Env,
 			StreamStdin: true,
 			Privileged:  c.opts.Privileged,
+			WithSecrets: c.opts.WithSecrets,
 		}
 		start.TimeoutMs = runTimeoutMs(c.opts.Timeout)
 		if err := stream.Send(&sandboxv1.RunRequest{Payload: &sandboxv1.RunRequest_Start{Start: start}}); err != nil {

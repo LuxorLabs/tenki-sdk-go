@@ -671,7 +671,7 @@ import "github.com/LuxorLabs/tenki-sdk-go/sandbox/workspace"
 client, err := workspace.NewWorkspaceClient(workspace.WorkspaceOptions{WorkspaceID: workspaceID})
 if err != nil { return err }
 defer client.Close()
-secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes, requestID)
+secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes, workspace.CreateSecretOptions{Description: "Deploy token", RequestID: requestID})
 ```
 
 The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
@@ -679,18 +679,21 @@ The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
 configuration. Set `WorkspaceID` once in the client options. Leave it empty to use the authenticated workspace key's
 scope; other callers must specify one.
 
-`Create`, `CreateForRepository`, `Update`, `Get`, `List`, `ListVersions`, `Revoke`, and `Delete` return
-metadata only. Secret values are `[]byte`; on update, `nil` retains the value while
-`[]byte{}` creates an empty value. Updates, revocations, and deletions require
-`ExpectedRevision`. `ActiveVersion` selects an existing version; omit the value
-when selecting one. A nil revoke version revokes every version. Revoking the active version revokes
-the secret until a new value or an unrevoked version is made active.
+`Create`, `Update`, `Get`, `List`, `ListVersions`, `Revoke`, and `Delete` return metadata only.
+Secret values are `[]byte`; `[]byte{}` creates an empty value. Updates, revocations, and deletions
+require `ExpectedRevision`. `Update` changes only what you set, at least one of `Value`,
+`ActiveVersion`, `Description`, or `Availability`: a new value or an existing `ActiveVersion` becomes
+active and restores a revoked secret, while description and availability changes don't. A pointer
+to `""` clears the description. A nil revoke version revokes every version. Revoking the active
+version revokes the secret until a new value or an unrevoked version is made active.
 
-`CreateForRepository(ctx, "acme/api", "TOKEN", valueBytes, requestID)` creates a secret that only
-Tenki CI jobs in that repository receive, replacing a workspace secret with the same name. The
-repository must be connected to the workspace; `ListRepositories` pages through the connected
-repositories and can filter them with `Search`. `Repository` is empty on workspace secrets. Managed
-runtimes and secret policies use workspace secrets only.
+`Create(ctx, "TOKEN", valueBytes, workspace.CreateSecretOptions{Repository: "acme/api"})` creates a
+secret that only Tenki CI jobs in that repository receive, replacing a workspace secret with the same
+name. The repository must be connected to the workspace; `ListRepositories` pages through the
+connected repositories and can filter them with `Search`. `Update` moves a secret with
+`Availability: workspace.SecretAvailabilityWorkspace`, or with `workspace.SecretAvailabilityRepository` and a
+`Repository`; `List` filters by the same `Availability` and `Repository`. `Repository` is empty on
+workspace secrets. Managed runtimes and secret policies use workspace secrets only.
 
 Mutations generate a request ID when none is supplied. For retries after an
 uncertain result, supply and reuse the same request ID and identical arguments.

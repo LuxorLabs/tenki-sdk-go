@@ -1068,6 +1068,8 @@ const (
 	SandboxWarningCode_SANDBOX_WARNING_CODE_STICKY_OVERRIDES_MAX_DURATION SandboxWarningCode = 1
 	SandboxWarningCode_SANDBOX_WARNING_CODE_STICKY_OVERRIDES_IDLE_TIMEOUT SandboxWarningCode = 2
 	SandboxWarningCode_SANDBOX_WARNING_CODE_MAX_DURATION_CAPPED           SandboxWarningCode = 3
+	// A restore skipped secret bindings from its snapshot whose workspace secrets no longer exist.
+	SandboxWarningCode_SANDBOX_WARNING_CODE_RESTORE_SECRETS_SKIPPED SandboxWarningCode = 4
 )
 
 // Enum value maps for SandboxWarningCode.
@@ -1077,12 +1079,14 @@ var (
 		1: "SANDBOX_WARNING_CODE_STICKY_OVERRIDES_MAX_DURATION",
 		2: "SANDBOX_WARNING_CODE_STICKY_OVERRIDES_IDLE_TIMEOUT",
 		3: "SANDBOX_WARNING_CODE_MAX_DURATION_CAPPED",
+		4: "SANDBOX_WARNING_CODE_RESTORE_SECRETS_SKIPPED",
 	}
 	SandboxWarningCode_value = map[string]int32{
 		"SANDBOX_WARNING_CODE_UNSPECIFIED":                   0,
 		"SANDBOX_WARNING_CODE_STICKY_OVERRIDES_MAX_DURATION": 1,
 		"SANDBOX_WARNING_CODE_STICKY_OVERRIDES_IDLE_TIMEOUT": 2,
 		"SANDBOX_WARNING_CODE_MAX_DURATION_CAPPED":           3,
+		"SANDBOX_WARNING_CODE_RESTORE_SECRETS_SKIPPED":       4,
 	}
 )
 
@@ -9303,15 +9307,17 @@ func (*RunRequest_Signal) isRunRequest_Payload() {}
 func (*RunRequest_StdinClose) isRunRequest_Payload() {}
 
 type RunStart struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Cmd           []string               `protobuf:"bytes,2,rep,name=cmd,proto3" json:"cmd,omitempty"`
-	Cwd           string                 `protobuf:"bytes,3,opt,name=cwd,proto3" json:"cwd,omitempty"`
-	Env           map[string]string      `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Pty           bool                   `protobuf:"varint,5,opt,name=pty,proto3" json:"pty,omitempty"`
-	StreamStdin   bool                   `protobuf:"varint,6,opt,name=stream_stdin,json=streamStdin,proto3" json:"stream_stdin,omitempty"`
-	TimeoutMs     uint32                 `protobuf:"varint,7,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
-	Privileged    bool                   `protobuf:"varint,8,opt,name=privileged,proto3" json:"privileged,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Cmd         []string               `protobuf:"bytes,2,rep,name=cmd,proto3" json:"cmd,omitempty"`
+	Cwd         string                 `protobuf:"bytes,3,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	Env         map[string]string      `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Pty         bool                   `protobuf:"varint,5,opt,name=pty,proto3" json:"pty,omitempty"`
+	StreamStdin bool                   `protobuf:"varint,6,opt,name=stream_stdin,json=streamStdin,proto3" json:"stream_stdin,omitempty"`
+	TimeoutMs   uint32                 `protobuf:"varint,7,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	Privileged  bool                   `protobuf:"varint,8,opt,name=privileged,proto3" json:"privileged,omitempty"`
+	// Adds the session's delivered runtime secret environment; the caller's env still wins.
+	WithSecrets   bool `protobuf:"varint,9,opt,name=with_secrets,json=withSecrets,proto3" json:"with_secrets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9398,6 +9404,13 @@ func (x *RunStart) GetTimeoutMs() uint32 {
 func (x *RunStart) GetPrivileged() bool {
 	if x != nil {
 		return x.Privileged
+	}
+	return false
+}
+
+func (x *RunStart) GetWithSecrets() bool {
+	if x != nil {
+		return x.WithSecrets
 	}
 	return false
 }
@@ -10737,12 +10750,14 @@ func (*WriteFileStreamRequest_Start) isWriteFileStreamRequest_Payload() {}
 func (*WriteFileStreamRequest_Data) isWriteFileStreamRequest_Payload() {}
 
 type WriteFileStreamStart struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Mode          uint32                 `protobuf:"varint,3,opt,name=mode,proto3" json:"mode,omitempty"`
-	Truncate      bool                   `protobuf:"varint,4,opt,name=truncate,proto3" json:"truncate,omitempty"`
-	Sync          bool                   `protobuf:"varint,5,opt,name=sync,proto3" json:"sync,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Path      string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Mode      uint32                 `protobuf:"varint,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	Truncate  bool                   `protobuf:"varint,4,opt,name=truncate,proto3" json:"truncate,omitempty"`
+	Sync      bool                   `protobuf:"varint,5,opt,name=sync,proto3" json:"sync,omitempty"`
+	// Writes outside the guest workdir, as root; the session user already has passwordless sudo.
+	Privileged    bool `protobuf:"varint,6,opt,name=privileged,proto3" json:"privileged,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10808,6 +10823,13 @@ func (x *WriteFileStreamStart) GetTruncate() bool {
 func (x *WriteFileStreamStart) GetSync() bool {
 	if x != nil {
 		return x.Sync
+	}
+	return false
+}
+
+func (x *WriteFileStreamStart) GetPrivileged() bool {
+	if x != nil {
+		return x.Privileged
 	}
 	return false
 }
@@ -14709,6 +14731,188 @@ func (*UpdateSSHAuthorizedKeysResponse) Descriptor() ([]byte, []int) {
 	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{198}
 }
 
+type RefreshSessionSecretsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	RequestId     string                 `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshSessionSecretsRequest) Reset() {
+	*x = RefreshSessionSecretsRequest{}
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[199]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshSessionSecretsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshSessionSecretsRequest) ProtoMessage() {}
+
+func (x *RefreshSessionSecretsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[199]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshSessionSecretsRequest.ProtoReflect.Descriptor instead.
+func (*RefreshSessionSecretsRequest) Descriptor() ([]byte, []int) {
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{199}
+}
+
+func (x *RefreshSessionSecretsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *RefreshSessionSecretsRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type RefreshSessionSecretsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// False when every binding already used the current version; the runtime environment is re-delivered either way.
+	Changed       bool                       `protobuf:"varint,1,opt,name=changed,proto3" json:"changed,omitempty"`
+	Versions      []*RuntimeSecretVersionRef `protobuf:"bytes,2,rep,name=versions,proto3" json:"versions,omitempty"`
+	WorkflowId    string                     `protobuf:"bytes,3,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshSessionSecretsResponse) Reset() {
+	*x = RefreshSessionSecretsResponse{}
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[200]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshSessionSecretsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshSessionSecretsResponse) ProtoMessage() {}
+
+func (x *RefreshSessionSecretsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[200]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshSessionSecretsResponse.ProtoReflect.Descriptor instead.
+func (*RefreshSessionSecretsResponse) Descriptor() ([]byte, []int) {
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{200}
+}
+
+func (x *RefreshSessionSecretsResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *RefreshSessionSecretsResponse) GetVersions() []*RuntimeSecretVersionRef {
+	if x != nil {
+		return x.Versions
+	}
+	return nil
+}
+
+func (x *RefreshSessionSecretsResponse) GetWorkflowId() string {
+	if x != nil {
+		return x.WorkflowId
+	}
+	return ""
+}
+
+// Names and version numbers only; values never leave the engine.
+type RuntimeSecretVersionRef struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	SecretName     string                 `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	Version        uint32                 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	EnvironmentKey string                 `protobuf:"bytes,3,opt,name=environment_key,json=environmentKey,proto3" json:"environment_key,omitempty"`
+	FilePath       string                 `protobuf:"bytes,4,opt,name=file_path,json=filePath,proto3" json:"file_path,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RuntimeSecretVersionRef) Reset() {
+	*x = RuntimeSecretVersionRef{}
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[201]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeSecretVersionRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeSecretVersionRef) ProtoMessage() {}
+
+func (x *RuntimeSecretVersionRef) ProtoReflect() protoreflect.Message {
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[201]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeSecretVersionRef.ProtoReflect.Descriptor instead.
+func (*RuntimeSecretVersionRef) Descriptor() ([]byte, []int) {
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{201}
+}
+
+func (x *RuntimeSecretVersionRef) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+func (x *RuntimeSecretVersionRef) GetVersion() uint32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *RuntimeSecretVersionRef) GetEnvironmentKey() string {
+	if x != nil {
+		return x.EnvironmentKey
+	}
+	return ""
+}
+
+func (x *RuntimeSecretVersionRef) GetFilePath() string {
+	if x != nil {
+		return x.FilePath
+	}
+	return ""
+}
+
 type CreateSnapshotRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -14728,7 +14932,7 @@ type CreateSnapshotRequest struct {
 
 func (x *CreateSnapshotRequest) Reset() {
 	*x = CreateSnapshotRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[199]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14740,7 +14944,7 @@ func (x *CreateSnapshotRequest) String() string {
 func (*CreateSnapshotRequest) ProtoMessage() {}
 
 func (x *CreateSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[199]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14753,7 +14957,7 @@ func (x *CreateSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*CreateSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{199}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{202}
 }
 
 func (x *CreateSnapshotRequest) GetSessionId() string {
@@ -14800,7 +15004,7 @@ type CreateSnapshotResponse struct {
 
 func (x *CreateSnapshotResponse) Reset() {
 	*x = CreateSnapshotResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[200]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14812,7 +15016,7 @@ func (x *CreateSnapshotResponse) String() string {
 func (*CreateSnapshotResponse) ProtoMessage() {}
 
 func (x *CreateSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[200]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14825,7 +15029,7 @@ func (x *CreateSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*CreateSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{200}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *CreateSnapshotResponse) GetSnapshot() *Snapshot {
@@ -14850,7 +15054,7 @@ type ForkSessionRequest struct {
 
 func (x *ForkSessionRequest) Reset() {
 	*x = ForkSessionRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[201]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14862,7 +15066,7 @@ func (x *ForkSessionRequest) String() string {
 func (*ForkSessionRequest) ProtoMessage() {}
 
 func (x *ForkSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[201]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14875,7 +15079,7 @@ func (x *ForkSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForkSessionRequest.ProtoReflect.Descriptor instead.
 func (*ForkSessionRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{201}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *ForkSessionRequest) GetSessionId() string {
@@ -14917,7 +15121,7 @@ type ForkSessionResponse struct {
 
 func (x *ForkSessionResponse) Reset() {
 	*x = ForkSessionResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[202]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14929,7 +15133,7 @@ func (x *ForkSessionResponse) String() string {
 func (*ForkSessionResponse) ProtoMessage() {}
 
 func (x *ForkSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[202]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14942,7 +15146,7 @@ func (x *ForkSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForkSessionResponse.ProtoReflect.Descriptor instead.
 func (*ForkSessionResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{202}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *ForkSessionResponse) GetSnapshotId() string {
@@ -14968,7 +15172,7 @@ type GetSnapshotRequest struct {
 
 func (x *GetSnapshotRequest) Reset() {
 	*x = GetSnapshotRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[203]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14980,7 +15184,7 @@ func (x *GetSnapshotRequest) String() string {
 func (*GetSnapshotRequest) ProtoMessage() {}
 
 func (x *GetSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[203]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14993,7 +15197,7 @@ func (x *GetSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{203}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{206}
 }
 
 func (x *GetSnapshotRequest) GetSnapshotId() string {
@@ -15012,7 +15216,7 @@ type GetSnapshotResponse struct {
 
 func (x *GetSnapshotResponse) Reset() {
 	*x = GetSnapshotResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[204]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15024,7 +15228,7 @@ func (x *GetSnapshotResponse) String() string {
 func (*GetSnapshotResponse) ProtoMessage() {}
 
 func (x *GetSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[204]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15037,7 +15241,7 @@ func (x *GetSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*GetSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{204}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{207}
 }
 
 func (x *GetSnapshotResponse) GetSnapshot() *Snapshot {
@@ -15056,7 +15260,7 @@ type GetSnapshotDownloadURLRequest struct {
 
 func (x *GetSnapshotDownloadURLRequest) Reset() {
 	*x = GetSnapshotDownloadURLRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[205]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15068,7 +15272,7 @@ func (x *GetSnapshotDownloadURLRequest) String() string {
 func (*GetSnapshotDownloadURLRequest) ProtoMessage() {}
 
 func (x *GetSnapshotDownloadURLRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[205]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15081,7 +15285,7 @@ func (x *GetSnapshotDownloadURLRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSnapshotDownloadURLRequest.ProtoReflect.Descriptor instead.
 func (*GetSnapshotDownloadURLRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{205}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *GetSnapshotDownloadURLRequest) GetSnapshotId() string {
@@ -15101,7 +15305,7 @@ type GetSnapshotDownloadURLResponse struct {
 
 func (x *GetSnapshotDownloadURLResponse) Reset() {
 	*x = GetSnapshotDownloadURLResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[206]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15113,7 +15317,7 @@ func (x *GetSnapshotDownloadURLResponse) String() string {
 func (*GetSnapshotDownloadURLResponse) ProtoMessage() {}
 
 func (x *GetSnapshotDownloadURLResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[206]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15126,7 +15330,7 @@ func (x *GetSnapshotDownloadURLResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSnapshotDownloadURLResponse.ProtoReflect.Descriptor instead.
 func (*GetSnapshotDownloadURLResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{206}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *GetSnapshotDownloadURLResponse) GetUrl() string {
@@ -15153,7 +15357,7 @@ type ListSnapshotsRequest struct {
 
 func (x *ListSnapshotsRequest) Reset() {
 	*x = ListSnapshotsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[207]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[210]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15165,7 +15369,7 @@ func (x *ListSnapshotsRequest) String() string {
 func (*ListSnapshotsRequest) ProtoMessage() {}
 
 func (x *ListSnapshotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[207]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[210]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15178,7 +15382,7 @@ func (x *ListSnapshotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSnapshotsRequest.ProtoReflect.Descriptor instead.
 func (*ListSnapshotsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{207}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{210}
 }
 
 func (x *ListSnapshotsRequest) GetPageSize() int32 {
@@ -15205,7 +15409,7 @@ type ListSnapshotsResponse struct {
 
 func (x *ListSnapshotsResponse) Reset() {
 	*x = ListSnapshotsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[208]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[211]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15217,7 +15421,7 @@ func (x *ListSnapshotsResponse) String() string {
 func (*ListSnapshotsResponse) ProtoMessage() {}
 
 func (x *ListSnapshotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[208]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[211]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15230,7 +15434,7 @@ func (x *ListSnapshotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSnapshotsResponse.ProtoReflect.Descriptor instead.
 func (*ListSnapshotsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{208}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{211}
 }
 
 func (x *ListSnapshotsResponse) GetSnapshots() []*Snapshot {
@@ -15258,7 +15462,7 @@ type ListSessionSnapshotsRequest struct {
 
 func (x *ListSessionSnapshotsRequest) Reset() {
 	*x = ListSessionSnapshotsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[209]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[212]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15270,7 +15474,7 @@ func (x *ListSessionSnapshotsRequest) String() string {
 func (*ListSessionSnapshotsRequest) ProtoMessage() {}
 
 func (x *ListSessionSnapshotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[209]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[212]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15283,7 +15487,7 @@ func (x *ListSessionSnapshotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionSnapshotsRequest.ProtoReflect.Descriptor instead.
 func (*ListSessionSnapshotsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{209}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{212}
 }
 
 func (x *ListSessionSnapshotsRequest) GetSessionId() string {
@@ -15317,7 +15521,7 @@ type ListSessionSnapshotsResponse struct {
 
 func (x *ListSessionSnapshotsResponse) Reset() {
 	*x = ListSessionSnapshotsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[210]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[213]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15329,7 +15533,7 @@ func (x *ListSessionSnapshotsResponse) String() string {
 func (*ListSessionSnapshotsResponse) ProtoMessage() {}
 
 func (x *ListSessionSnapshotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[210]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[213]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15342,7 +15546,7 @@ func (x *ListSessionSnapshotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSessionSnapshotsResponse.ProtoReflect.Descriptor instead.
 func (*ListSessionSnapshotsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{210}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{213}
 }
 
 func (x *ListSessionSnapshotsResponse) GetSnapshots() []*Snapshot {
@@ -15369,7 +15573,7 @@ type ListDanglingSnapshotsRequest struct {
 
 func (x *ListDanglingSnapshotsRequest) Reset() {
 	*x = ListDanglingSnapshotsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[211]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[214]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15381,7 +15585,7 @@ func (x *ListDanglingSnapshotsRequest) String() string {
 func (*ListDanglingSnapshotsRequest) ProtoMessage() {}
 
 func (x *ListDanglingSnapshotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[211]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[214]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15394,7 +15598,7 @@ func (x *ListDanglingSnapshotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDanglingSnapshotsRequest.ProtoReflect.Descriptor instead.
 func (*ListDanglingSnapshotsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{211}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{214}
 }
 
 func (x *ListDanglingSnapshotsRequest) GetPageSize() int32 {
@@ -15421,7 +15625,7 @@ type ListDanglingSnapshotsResponse struct {
 
 func (x *ListDanglingSnapshotsResponse) Reset() {
 	*x = ListDanglingSnapshotsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[212]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[215]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15433,7 +15637,7 @@ func (x *ListDanglingSnapshotsResponse) String() string {
 func (*ListDanglingSnapshotsResponse) ProtoMessage() {}
 
 func (x *ListDanglingSnapshotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[212]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[215]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15446,7 +15650,7 @@ func (x *ListDanglingSnapshotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDanglingSnapshotsResponse.ProtoReflect.Descriptor instead.
 func (*ListDanglingSnapshotsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{212}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{215}
 }
 
 func (x *ListDanglingSnapshotsResponse) GetSnapshots() []*Snapshot {
@@ -15474,7 +15678,7 @@ type ListWorkspaceSnapshotsRequest struct {
 
 func (x *ListWorkspaceSnapshotsRequest) Reset() {
 	*x = ListWorkspaceSnapshotsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[213]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[216]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15486,7 +15690,7 @@ func (x *ListWorkspaceSnapshotsRequest) String() string {
 func (*ListWorkspaceSnapshotsRequest) ProtoMessage() {}
 
 func (x *ListWorkspaceSnapshotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[213]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[216]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15499,7 +15703,7 @@ func (x *ListWorkspaceSnapshotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspaceSnapshotsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkspaceSnapshotsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{213}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{216}
 }
 
 func (x *ListWorkspaceSnapshotsRequest) GetWorkspaceId() string {
@@ -15533,7 +15737,7 @@ type ListWorkspaceSnapshotsResponse struct {
 
 func (x *ListWorkspaceSnapshotsResponse) Reset() {
 	*x = ListWorkspaceSnapshotsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[214]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15545,7 +15749,7 @@ func (x *ListWorkspaceSnapshotsResponse) String() string {
 func (*ListWorkspaceSnapshotsResponse) ProtoMessage() {}
 
 func (x *ListWorkspaceSnapshotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[214]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15558,7 +15762,7 @@ func (x *ListWorkspaceSnapshotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspaceSnapshotsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkspaceSnapshotsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{214}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{217}
 }
 
 func (x *ListWorkspaceSnapshotsResponse) GetSnapshots() []*Snapshot {
@@ -15584,7 +15788,7 @@ type GetWorkspaceSandboxUsageRequest struct {
 
 func (x *GetWorkspaceSandboxUsageRequest) Reset() {
 	*x = GetWorkspaceSandboxUsageRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[215]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15596,7 +15800,7 @@ func (x *GetWorkspaceSandboxUsageRequest) String() string {
 func (*GetWorkspaceSandboxUsageRequest) ProtoMessage() {}
 
 func (x *GetWorkspaceSandboxUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[215]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15609,7 +15813,7 @@ func (x *GetWorkspaceSandboxUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkspaceSandboxUsageRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkspaceSandboxUsageRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{215}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *GetWorkspaceSandboxUsageRequest) GetWorkspaceId() string {
@@ -15628,7 +15832,7 @@ type GetWorkspaceSandboxUsageResponse struct {
 
 func (x *GetWorkspaceSandboxUsageResponse) Reset() {
 	*x = GetWorkspaceSandboxUsageResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[216]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[219]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15640,7 +15844,7 @@ func (x *GetWorkspaceSandboxUsageResponse) String() string {
 func (*GetWorkspaceSandboxUsageResponse) ProtoMessage() {}
 
 func (x *GetWorkspaceSandboxUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[216]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[219]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15653,7 +15857,7 @@ func (x *GetWorkspaceSandboxUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkspaceSandboxUsageResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkspaceSandboxUsageResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{216}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{219}
 }
 
 func (x *GetWorkspaceSandboxUsageResponse) GetLimits() []*WorkspaceSandboxUsageLimit {
@@ -15672,7 +15876,7 @@ type GetWorkspacePreviewDomainsRequest struct {
 
 func (x *GetWorkspacePreviewDomainsRequest) Reset() {
 	*x = GetWorkspacePreviewDomainsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[217]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15684,7 +15888,7 @@ func (x *GetWorkspacePreviewDomainsRequest) String() string {
 func (*GetWorkspacePreviewDomainsRequest) ProtoMessage() {}
 
 func (x *GetWorkspacePreviewDomainsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[217]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15697,7 +15901,7 @@ func (x *GetWorkspacePreviewDomainsRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetWorkspacePreviewDomainsRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkspacePreviewDomainsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{217}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *GetWorkspacePreviewDomainsRequest) GetWorkspaceId() string {
@@ -15725,7 +15929,7 @@ type GetWorkspacePreviewDomainsResponse struct {
 
 func (x *GetWorkspacePreviewDomainsResponse) Reset() {
 	*x = GetWorkspacePreviewDomainsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[218]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15737,7 +15941,7 @@ func (x *GetWorkspacePreviewDomainsResponse) String() string {
 func (*GetWorkspacePreviewDomainsResponse) ProtoMessage() {}
 
 func (x *GetWorkspacePreviewDomainsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[218]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15750,7 +15954,7 @@ func (x *GetWorkspacePreviewDomainsResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetWorkspacePreviewDomainsResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkspacePreviewDomainsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{218}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{221}
 }
 
 func (x *GetWorkspacePreviewDomainsResponse) GetEnabled() bool {
@@ -15787,7 +15991,7 @@ type UpdateWorkspacePreviewDomainsRequest struct {
 
 func (x *UpdateWorkspacePreviewDomainsRequest) Reset() {
 	*x = UpdateWorkspacePreviewDomainsRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[219]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[222]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15799,7 +16003,7 @@ func (x *UpdateWorkspacePreviewDomainsRequest) String() string {
 func (*UpdateWorkspacePreviewDomainsRequest) ProtoMessage() {}
 
 func (x *UpdateWorkspacePreviewDomainsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[219]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[222]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15812,7 +16016,7 @@ func (x *UpdateWorkspacePreviewDomainsRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdateWorkspacePreviewDomainsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateWorkspacePreviewDomainsRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{219}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{222}
 }
 
 func (x *UpdateWorkspacePreviewDomainsRequest) GetWorkspaceId() string {
@@ -15839,7 +16043,7 @@ type UpdateWorkspacePreviewDomainsResponse struct {
 
 func (x *UpdateWorkspacePreviewDomainsResponse) Reset() {
 	*x = UpdateWorkspacePreviewDomainsResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[220]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[223]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15851,7 +16055,7 @@ func (x *UpdateWorkspacePreviewDomainsResponse) String() string {
 func (*UpdateWorkspacePreviewDomainsResponse) ProtoMessage() {}
 
 func (x *UpdateWorkspacePreviewDomainsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[220]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[223]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15864,7 +16068,7 @@ func (x *UpdateWorkspacePreviewDomainsResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use UpdateWorkspacePreviewDomainsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateWorkspacePreviewDomainsResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{220}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{223}
 }
 
 func (x *UpdateWorkspacePreviewDomainsResponse) GetEnabled() bool {
@@ -15890,7 +16094,7 @@ type DeleteSnapshotRequest struct {
 
 func (x *DeleteSnapshotRequest) Reset() {
 	*x = DeleteSnapshotRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[221]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[224]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15902,7 +16106,7 @@ func (x *DeleteSnapshotRequest) String() string {
 func (*DeleteSnapshotRequest) ProtoMessage() {}
 
 func (x *DeleteSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[221]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[224]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15915,7 +16119,7 @@ func (x *DeleteSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{221}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{224}
 }
 
 func (x *DeleteSnapshotRequest) GetSnapshotId() string {
@@ -15934,7 +16138,7 @@ type DeleteSnapshotResponse struct {
 
 func (x *DeleteSnapshotResponse) Reset() {
 	*x = DeleteSnapshotResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[222]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[225]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15946,7 +16150,7 @@ func (x *DeleteSnapshotResponse) String() string {
 func (*DeleteSnapshotResponse) ProtoMessage() {}
 
 func (x *DeleteSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[222]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[225]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15959,7 +16163,7 @@ func (x *DeleteSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{222}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{225}
 }
 
 func (x *DeleteSnapshotResponse) GetSnapshot() *Snapshot {
@@ -15983,7 +16187,7 @@ type UpdateSnapshotRequest struct {
 
 func (x *UpdateSnapshotRequest) Reset() {
 	*x = UpdateSnapshotRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[223]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[226]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15995,7 +16199,7 @@ func (x *UpdateSnapshotRequest) String() string {
 func (*UpdateSnapshotRequest) ProtoMessage() {}
 
 func (x *UpdateSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[223]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[226]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16008,7 +16212,7 @@ func (x *UpdateSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{223}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{226}
 }
 
 func (x *UpdateSnapshotRequest) GetSnapshotId() string {
@@ -16062,7 +16266,7 @@ type UpdateSnapshotResponse struct {
 
 func (x *UpdateSnapshotResponse) Reset() {
 	*x = UpdateSnapshotResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[224]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[227]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16074,7 +16278,7 @@ func (x *UpdateSnapshotResponse) String() string {
 func (*UpdateSnapshotResponse) ProtoMessage() {}
 
 func (x *UpdateSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[224]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[227]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16087,7 +16291,7 @@ func (x *UpdateSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{224}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{227}
 }
 
 func (x *UpdateSnapshotResponse) GetSnapshot() *Snapshot {
@@ -16105,7 +16309,7 @@ type WhoAmIRequest struct {
 
 func (x *WhoAmIRequest) Reset() {
 	*x = WhoAmIRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[225]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[228]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16117,7 +16321,7 @@ func (x *WhoAmIRequest) String() string {
 func (*WhoAmIRequest) ProtoMessage() {}
 
 func (x *WhoAmIRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[225]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[228]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16130,7 +16334,7 @@ func (x *WhoAmIRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WhoAmIRequest.ProtoReflect.Descriptor instead.
 func (*WhoAmIRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{225}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{228}
 }
 
 type WhoAmIResponse struct {
@@ -16147,7 +16351,7 @@ type WhoAmIResponse struct {
 
 func (x *WhoAmIResponse) Reset() {
 	*x = WhoAmIResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[226]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[229]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16159,7 +16363,7 @@ func (x *WhoAmIResponse) String() string {
 func (*WhoAmIResponse) ProtoMessage() {}
 
 func (x *WhoAmIResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[226]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[229]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16172,7 +16376,7 @@ func (x *WhoAmIResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WhoAmIResponse.ProtoReflect.Descriptor instead.
 func (*WhoAmIResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{226}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{229}
 }
 
 func (x *WhoAmIResponse) GetOwnerType() string {
@@ -16206,7 +16410,7 @@ type WhoAmIWorkspace struct {
 
 func (x *WhoAmIWorkspace) Reset() {
 	*x = WhoAmIWorkspace{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[227]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[230]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16218,7 +16422,7 @@ func (x *WhoAmIWorkspace) String() string {
 func (*WhoAmIWorkspace) ProtoMessage() {}
 
 func (x *WhoAmIWorkspace) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[227]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[230]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16231,7 +16435,7 @@ func (x *WhoAmIWorkspace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WhoAmIWorkspace.ProtoReflect.Descriptor instead.
 func (*WhoAmIWorkspace) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{227}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{230}
 }
 
 func (x *WhoAmIWorkspace) GetWorkspaceId() string {
@@ -16258,7 +16462,7 @@ type ListCIRunnerSizesRequest struct {
 
 func (x *ListCIRunnerSizesRequest) Reset() {
 	*x = ListCIRunnerSizesRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[228]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[231]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16270,7 +16474,7 @@ func (x *ListCIRunnerSizesRequest) String() string {
 func (*ListCIRunnerSizesRequest) ProtoMessage() {}
 
 func (x *ListCIRunnerSizesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[228]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[231]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16283,7 +16487,7 @@ func (x *ListCIRunnerSizesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCIRunnerSizesRequest.ProtoReflect.Descriptor instead.
 func (*ListCIRunnerSizesRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{228}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{231}
 }
 
 func (x *ListCIRunnerSizesRequest) GetWorkspaceId() string {
@@ -16305,7 +16509,7 @@ type ListCIRunnerSizesResponse struct {
 
 func (x *ListCIRunnerSizesResponse) Reset() {
 	*x = ListCIRunnerSizesResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[229]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[232]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16317,7 +16521,7 @@ func (x *ListCIRunnerSizesResponse) String() string {
 func (*ListCIRunnerSizesResponse) ProtoMessage() {}
 
 func (x *ListCIRunnerSizesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[229]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[232]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16330,7 +16534,7 @@ func (x *ListCIRunnerSizesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCIRunnerSizesResponse.ProtoReflect.Descriptor instead.
 func (*ListCIRunnerSizesResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{229}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{232}
 }
 
 func (x *ListCIRunnerSizesResponse) GetSizes() []*CIRunnerSize {
@@ -16359,7 +16563,7 @@ type CIRunnerSize struct {
 
 func (x *CIRunnerSize) Reset() {
 	*x = CIRunnerSize{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[230]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[233]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16371,7 +16575,7 @@ func (x *CIRunnerSize) String() string {
 func (*CIRunnerSize) ProtoMessage() {}
 
 func (x *CIRunnerSize) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[230]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[233]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16384,7 +16588,7 @@ func (x *CIRunnerSize) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CIRunnerSize.ProtoReflect.Descriptor instead.
 func (*CIRunnerSize) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{230}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{233}
 }
 
 func (x *CIRunnerSize) GetRunsOnLabel() string {
@@ -16418,7 +16622,7 @@ type SandboxWarning struct {
 
 func (x *SandboxWarning) Reset() {
 	*x = SandboxWarning{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[231]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[234]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16430,7 +16634,7 @@ func (x *SandboxWarning) String() string {
 func (*SandboxWarning) ProtoMessage() {}
 
 func (x *SandboxWarning) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[231]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[234]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16443,7 +16647,7 @@ func (x *SandboxWarning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SandboxWarning.ProtoReflect.Descriptor instead.
 func (*SandboxWarning) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{231}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{234}
 }
 
 func (x *SandboxWarning) GetCode() SandboxWarningCode {
@@ -16488,7 +16692,7 @@ type TailnetAttachment struct {
 
 func (x *TailnetAttachment) Reset() {
 	*x = TailnetAttachment{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[232]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[235]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16500,7 +16704,7 @@ func (x *TailnetAttachment) String() string {
 func (*TailnetAttachment) ProtoMessage() {}
 
 func (x *TailnetAttachment) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[232]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[235]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16513,7 +16717,7 @@ func (x *TailnetAttachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TailnetAttachment.ProtoReflect.Descriptor instead.
 func (*TailnetAttachment) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{232}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{235}
 }
 
 func (x *TailnetAttachment) GetHostname() string {
@@ -16673,7 +16877,7 @@ type TailnetFederatedCredential struct {
 
 func (x *TailnetFederatedCredential) Reset() {
 	*x = TailnetFederatedCredential{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[233]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[236]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16685,7 +16889,7 @@ func (x *TailnetFederatedCredential) String() string {
 func (*TailnetFederatedCredential) ProtoMessage() {}
 
 func (x *TailnetFederatedCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[233]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[236]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16698,7 +16902,7 @@ func (x *TailnetFederatedCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TailnetFederatedCredential.ProtoReflect.Descriptor instead.
 func (*TailnetFederatedCredential) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{233}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{236}
 }
 
 func (x *TailnetFederatedCredential) GetProfileId() string {
@@ -16733,7 +16937,7 @@ type TailnetStatus struct {
 
 func (x *TailnetStatus) Reset() {
 	*x = TailnetStatus{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[234]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[237]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16745,7 +16949,7 @@ func (x *TailnetStatus) String() string {
 func (*TailnetStatus) ProtoMessage() {}
 
 func (x *TailnetStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[234]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[237]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16758,7 +16962,7 @@ func (x *TailnetStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TailnetStatus.ProtoReflect.Descriptor instead.
 func (*TailnetStatus) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{234}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{237}
 }
 
 func (x *TailnetStatus) GetState() string {
@@ -16846,7 +17050,7 @@ type SessionEgressHttpRule struct {
 
 func (x *SessionEgressHttpRule) Reset() {
 	*x = SessionEgressHttpRule{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[235]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[238]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16858,7 +17062,7 @@ func (x *SessionEgressHttpRule) String() string {
 func (*SessionEgressHttpRule) ProtoMessage() {}
 
 func (x *SessionEgressHttpRule) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[235]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[238]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16871,7 +17075,7 @@ func (x *SessionEgressHttpRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionEgressHttpRule.ProtoReflect.Descriptor instead.
 func (*SessionEgressHttpRule) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{235}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{238}
 }
 
 func (x *SessionEgressHttpRule) GetDomains() []string {
@@ -16963,7 +17167,7 @@ type EgressPolicy struct {
 
 func (x *EgressPolicy) Reset() {
 	*x = EgressPolicy{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[236]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[239]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16975,7 +17179,7 @@ func (x *EgressPolicy) String() string {
 func (*EgressPolicy) ProtoMessage() {}
 
 func (x *EgressPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[236]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[239]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16988,7 +17192,7 @@ func (x *EgressPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EgressPolicy.ProtoReflect.Descriptor instead.
 func (*EgressPolicy) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{236}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{239}
 }
 
 func (x *EgressPolicy) GetId() string {
@@ -17068,7 +17272,7 @@ type CreateEgressPolicyRequest struct {
 
 func (x *CreateEgressPolicyRequest) Reset() {
 	*x = CreateEgressPolicyRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[237]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[240]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17080,7 +17284,7 @@ func (x *CreateEgressPolicyRequest) String() string {
 func (*CreateEgressPolicyRequest) ProtoMessage() {}
 
 func (x *CreateEgressPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[237]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[240]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17093,7 +17297,7 @@ func (x *CreateEgressPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEgressPolicyRequest.ProtoReflect.Descriptor instead.
 func (*CreateEgressPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{237}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{240}
 }
 
 func (x *CreateEgressPolicyRequest) GetWorkspaceId() string {
@@ -17126,7 +17330,7 @@ type CreateEgressPolicyResponse struct {
 
 func (x *CreateEgressPolicyResponse) Reset() {
 	*x = CreateEgressPolicyResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[238]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[241]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17138,7 +17342,7 @@ func (x *CreateEgressPolicyResponse) String() string {
 func (*CreateEgressPolicyResponse) ProtoMessage() {}
 
 func (x *CreateEgressPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[238]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[241]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17151,7 +17355,7 @@ func (x *CreateEgressPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEgressPolicyResponse.ProtoReflect.Descriptor instead.
 func (*CreateEgressPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{238}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{241}
 }
 
 func (x *CreateEgressPolicyResponse) GetPolicy() *EgressPolicy {
@@ -17175,7 +17379,7 @@ type UpdateEgressPolicyRequest struct {
 
 func (x *UpdateEgressPolicyRequest) Reset() {
 	*x = UpdateEgressPolicyRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[239]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[242]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17187,7 +17391,7 @@ func (x *UpdateEgressPolicyRequest) String() string {
 func (*UpdateEgressPolicyRequest) ProtoMessage() {}
 
 func (x *UpdateEgressPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[239]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[242]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17200,7 +17404,7 @@ func (x *UpdateEgressPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateEgressPolicyRequest.ProtoReflect.Descriptor instead.
 func (*UpdateEgressPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{239}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{242}
 }
 
 func (x *UpdateEgressPolicyRequest) GetWorkspaceId() string {
@@ -17240,7 +17444,7 @@ type UpdateEgressPolicyResponse struct {
 
 func (x *UpdateEgressPolicyResponse) Reset() {
 	*x = UpdateEgressPolicyResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[240]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[243]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17252,7 +17456,7 @@ func (x *UpdateEgressPolicyResponse) String() string {
 func (*UpdateEgressPolicyResponse) ProtoMessage() {}
 
 func (x *UpdateEgressPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[240]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[243]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17265,7 +17469,7 @@ func (x *UpdateEgressPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateEgressPolicyResponse.ProtoReflect.Descriptor instead.
 func (*UpdateEgressPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{240}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{243}
 }
 
 func (x *UpdateEgressPolicyResponse) GetPolicy() *EgressPolicy {
@@ -17286,7 +17490,7 @@ type GetEgressPolicyRequest struct {
 
 func (x *GetEgressPolicyRequest) Reset() {
 	*x = GetEgressPolicyRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[241]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[244]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17298,7 +17502,7 @@ func (x *GetEgressPolicyRequest) String() string {
 func (*GetEgressPolicyRequest) ProtoMessage() {}
 
 func (x *GetEgressPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[241]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[244]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17311,7 +17515,7 @@ func (x *GetEgressPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEgressPolicyRequest.ProtoReflect.Descriptor instead.
 func (*GetEgressPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{241}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{244}
 }
 
 func (x *GetEgressPolicyRequest) GetWorkspaceId() string {
@@ -17337,7 +17541,7 @@ type GetEgressPolicyResponse struct {
 
 func (x *GetEgressPolicyResponse) Reset() {
 	*x = GetEgressPolicyResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[242]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[245]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17349,7 +17553,7 @@ func (x *GetEgressPolicyResponse) String() string {
 func (*GetEgressPolicyResponse) ProtoMessage() {}
 
 func (x *GetEgressPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[242]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[245]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17362,7 +17566,7 @@ func (x *GetEgressPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEgressPolicyResponse.ProtoReflect.Descriptor instead.
 func (*GetEgressPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{242}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{245}
 }
 
 func (x *GetEgressPolicyResponse) GetPolicy() *EgressPolicy {
@@ -17384,7 +17588,7 @@ type ListEgressPoliciesRequest struct {
 
 func (x *ListEgressPoliciesRequest) Reset() {
 	*x = ListEgressPoliciesRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[243]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[246]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17396,7 +17600,7 @@ func (x *ListEgressPoliciesRequest) String() string {
 func (*ListEgressPoliciesRequest) ProtoMessage() {}
 
 func (x *ListEgressPoliciesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[243]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[246]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17409,7 +17613,7 @@ func (x *ListEgressPoliciesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEgressPoliciesRequest.ProtoReflect.Descriptor instead.
 func (*ListEgressPoliciesRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{243}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{246}
 }
 
 func (x *ListEgressPoliciesRequest) GetWorkspaceId() string {
@@ -17443,7 +17647,7 @@ type ListEgressPoliciesResponse struct {
 
 func (x *ListEgressPoliciesResponse) Reset() {
 	*x = ListEgressPoliciesResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[244]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[247]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17455,7 +17659,7 @@ func (x *ListEgressPoliciesResponse) String() string {
 func (*ListEgressPoliciesResponse) ProtoMessage() {}
 
 func (x *ListEgressPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[244]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[247]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17468,7 +17672,7 @@ func (x *ListEgressPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEgressPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*ListEgressPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{244}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{247}
 }
 
 func (x *ListEgressPoliciesResponse) GetPolicies() []*EgressPolicy {
@@ -17497,7 +17701,7 @@ type DeleteEgressPolicyRequest struct {
 
 func (x *DeleteEgressPolicyRequest) Reset() {
 	*x = DeleteEgressPolicyRequest{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[245]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[248]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17509,7 +17713,7 @@ func (x *DeleteEgressPolicyRequest) String() string {
 func (*DeleteEgressPolicyRequest) ProtoMessage() {}
 
 func (x *DeleteEgressPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[245]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[248]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17522,7 +17726,7 @@ func (x *DeleteEgressPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEgressPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEgressPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{245}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{248}
 }
 
 func (x *DeleteEgressPolicyRequest) GetWorkspaceId() string {
@@ -17555,7 +17759,7 @@ type DeleteEgressPolicyResponse struct {
 
 func (x *DeleteEgressPolicyResponse) Reset() {
 	*x = DeleteEgressPolicyResponse{}
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[246]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[249]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17567,7 +17771,7 @@ func (x *DeleteEgressPolicyResponse) String() string {
 func (*DeleteEgressPolicyResponse) ProtoMessage() {}
 
 func (x *DeleteEgressPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[246]
+	mi := &file_tenki_sandbox_v1_sandbox_proto_msgTypes[249]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17580,7 +17784,7 @@ func (x *DeleteEgressPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEgressPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DeleteEgressPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{246}
+	return file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{249}
 }
 
 func (x *DeleteEgressPolicyResponse) GetPolicy() *EgressPolicy {
@@ -18386,7 +18590,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x06signal\x18\x03 \x01(\v2\x1b.tenki.sandbox.v1.RunSignalH\x00R\x06signal\x12!\n" +
 	"\vstdin_close\x18\x04 \x01(\bH\x00R\n" +
 	"stdinCloseB\t\n" +
-	"\apayload\"\xa2\x03\n" +
+	"\apayload\"\xc5\x03\n" +
 	"\bRunStart\x12'\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x1a\n" +
@@ -18399,7 +18603,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"timeout_ms\x18\a \x01(\rR\ttimeoutMs\x12\x1e\n" +
 	"\n" +
 	"privileged\x18\b \x01(\bR\n" +
-	"privileged\x1a6\n" +
+	"privileged\x12!\n" +
+	"\fwith_secrets\x18\t \x01(\bR\vwithSecrets\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\\\xbaHY\x1aW\n" +
@@ -18531,14 +18736,17 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x16WriteFileStreamRequest\x12>\n" +
 	"\x05start\x18\x01 \x01(\v2&.tenki.sandbox.v1.WriteFileStreamStartH\x00R\x05start\x12\x14\n" +
 	"\x04data\x18\x02 \x01(\fH\x00R\x04dataB\t\n" +
-	"\apayload\"\xa0\x01\n" +
+	"\apayload\"\xc0\x01\n" +
 	"\x14WriteFileStreamStart\x12'\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x1b\n" +
 	"\x04path\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04path\x12\x12\n" +
 	"\x04mode\x18\x03 \x01(\rR\x04mode\x12\x1a\n" +
 	"\btruncate\x18\x04 \x01(\bR\btruncate\x12\x12\n" +
-	"\x04sync\x18\x05 \x01(\bR\x04sync\"R\n" +
+	"\x04sync\x18\x05 \x01(\bR\x04sync\x12\x1e\n" +
+	"\n" +
+	"privileged\x18\x06 \x01(\bR\n" +
+	"privileged\"R\n" +
 	"\x17WriteFileStreamResponse\x12#\n" +
 	"\rbytes_written\x18\x01 \x01(\x03R\fbytesWritten\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\"S\n" +
@@ -18856,7 +19064,23 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12>\n" +
 	"\x13ssh_authorized_keys\x18\x02 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x11sshAuthorizedKeys\"!\n" +
-	"\x1fUpdateSSHAuthorizedKeysResponse\"\x88\x02\n" +
+	"\x1fUpdateSSHAuthorizedKeysResponse\"f\n" +
+	"\x1cRefreshSessionSecretsRequest\x12'\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\"\xa1\x01\n" +
+	"\x1dRefreshSessionSecretsResponse\x12\x18\n" +
+	"\achanged\x18\x01 \x01(\bR\achanged\x12E\n" +
+	"\bversions\x18\x02 \x03(\v2).tenki.sandbox.v1.RuntimeSecretVersionRefR\bversions\x12\x1f\n" +
+	"\vworkflow_id\x18\x03 \x01(\tR\n" +
+	"workflowId\"\x9a\x01\n" +
+	"\x17RuntimeSecretVersionRef\x12\x1f\n" +
+	"\vsecret_name\x18\x01 \x01(\tR\n" +
+	"secretName\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\rR\aversion\x12'\n" +
+	"\x0fenvironment_key\x18\x03 \x01(\tR\x0eenvironmentKey\x12\x1b\n" +
+	"\tfile_path\x18\x04 \x01(\tR\bfilePath\"\x88\x02\n" +
 	"\x15CreateSnapshotRequest\x12'\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\tsessionId\x12\x17\n" +
@@ -19193,12 +19417,13 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\"PREVIEW_URL_SORT_FIELD_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bPREVIEW_URL_SORT_FIELD_SLUG\x10\x01\x12 \n" +
 	"\x1cPREVIEW_URL_SORT_FIELD_STATE\x10\x02\x12%\n" +
-	"!PREVIEW_URL_SORT_FIELD_CREATED_AT\x10\x03*\xd8\x01\n" +
+	"!PREVIEW_URL_SORT_FIELD_CREATED_AT\x10\x03*\x8a\x02\n" +
 	"\x12SandboxWarningCode\x12$\n" +
 	" SANDBOX_WARNING_CODE_UNSPECIFIED\x10\x00\x126\n" +
 	"2SANDBOX_WARNING_CODE_STICKY_OVERRIDES_MAX_DURATION\x10\x01\x126\n" +
 	"2SANDBOX_WARNING_CODE_STICKY_OVERRIDES_IDLE_TIMEOUT\x10\x02\x12,\n" +
-	"(SANDBOX_WARNING_CODE_MAX_DURATION_CAPPED\x10\x03*\x8c\x01\n" +
+	"(SANDBOX_WARNING_CODE_MAX_DURATION_CAPPED\x10\x03\x120\n" +
+	",SANDBOX_WARNING_CODE_RESTORE_SECRETS_SKIPPED\x10\x04*\x8c\x01\n" +
 	"\x11TailnetExitPolicy\x12#\n" +
 	"\x1fTAILNET_EXIT_POLICY_UNSPECIFIED\x10\x00\x12'\n" +
 	"#TAILNET_EXIT_POLICY_TENKI_ALLOWLIST\x10\x01\x12)\n" +
@@ -19206,7 +19431,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x1bTailnetEphemeralPausePolicy\x12.\n" +
 	"*TAILNET_EPHEMERAL_PAUSE_POLICY_UNSPECIFIED\x10\x00\x12)\n" +
 	"%TAILNET_EPHEMERAL_PAUSE_POLICY_REJECT\x10\x01\x125\n" +
-	"1TAILNET_EPHEMERAL_PAUSE_POLICY_RECREATE_ON_RESUME\x10\x022\xf7V\n" +
+	"1TAILNET_EPHEMERAL_PAUSE_POLICY_RECREATE_ON_RESUME\x10\x022\xf1W\n" +
 	"\x0eSandboxService\x12o\n" +
 	"\x12GetTailnetDefaults\x12+.tenki.sandbox.v1.GetTailnetDefaultsRequest\x1a,.tenki.sandbox.v1.GetTailnetDefaultsResponse\x12r\n" +
 	"\x13SaveTailnetDefaults\x12,.tenki.sandbox.v1.SaveTailnetDefaultsRequest\x1a-.tenki.sandbox.v1.SaveTailnetDefaultsResponse\x12\x84\x01\n" +
@@ -19267,7 +19492,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x0fListPreviewUrls\x12(.tenki.sandbox.v1.ListPreviewUrlsRequest\x1a).tenki.sandbox.v1.ListPreviewUrlsResponse\x12`\n" +
 	"\rGetPreviewUrl\x12&.tenki.sandbox.v1.GetPreviewUrlRequest\x1a'.tenki.sandbox.v1.GetPreviewUrlResponse\x12r\n" +
 	"\x13ResolvePreviewToken\x12,.tenki.sandbox.v1.ResolvePreviewTokenRequest\x1a-.tenki.sandbox.v1.ResolvePreviewTokenResponse\x12~\n" +
-	"\x17UpdateSSHAuthorizedKeys\x120.tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest\x1a1.tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse\x12c\n" +
+	"\x17UpdateSSHAuthorizedKeys\x120.tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest\x1a1.tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse\x12x\n" +
+	"\x15RefreshSessionSecrets\x12..tenki.sandbox.v1.RefreshSessionSecretsRequest\x1a/.tenki.sandbox.v1.RefreshSessionSecretsResponse\x12c\n" +
 	"\x0eCreateSnapshot\x12'.tenki.sandbox.v1.CreateSnapshotRequest\x1a(.tenki.sandbox.v1.CreateSnapshotResponse\x12Z\n" +
 	"\vForkSession\x12$.tenki.sandbox.v1.ForkSessionRequest\x1a%.tenki.sandbox.v1.ForkSessionResponse\x12Z\n" +
 	"\vGetSnapshot\x12$.tenki.sandbox.v1.GetSnapshotRequest\x1a%.tenki.sandbox.v1.GetSnapshotResponse\x12{\n" +
@@ -19338,7 +19564,7 @@ func file_tenki_sandbox_v1_sandbox_proto_rawDescGZIP() []byte {
 }
 
 var file_tenki_sandbox_v1_sandbox_proto_enumTypes = make([]protoimpl.EnumInfo, 24)
-var file_tenki_sandbox_v1_sandbox_proto_msgTypes = make([]protoimpl.MessageInfo, 259)
+var file_tenki_sandbox_v1_sandbox_proto_msgTypes = make([]protoimpl.MessageInfo, 262)
 var file_tenki_sandbox_v1_sandbox_proto_goTypes = []any{
 	(SessionState)(0),                                             // 0: tenki.sandbox.v1.SessionState
 	(CommandStatus)(0),                                            // 1: tenki.sandbox.v1.CommandStatus
@@ -19563,131 +19789,134 @@ var file_tenki_sandbox_v1_sandbox_proto_goTypes = []any{
 	(*ResolvePreviewTokenResponse)(nil),                           // 220: tenki.sandbox.v1.ResolvePreviewTokenResponse
 	(*UpdateSSHAuthorizedKeysRequest)(nil),                        // 221: tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest
 	(*UpdateSSHAuthorizedKeysResponse)(nil),                       // 222: tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse
-	(*CreateSnapshotRequest)(nil),                                 // 223: tenki.sandbox.v1.CreateSnapshotRequest
-	(*CreateSnapshotResponse)(nil),                                // 224: tenki.sandbox.v1.CreateSnapshotResponse
-	(*ForkSessionRequest)(nil),                                    // 225: tenki.sandbox.v1.ForkSessionRequest
-	(*ForkSessionResponse)(nil),                                   // 226: tenki.sandbox.v1.ForkSessionResponse
-	(*GetSnapshotRequest)(nil),                                    // 227: tenki.sandbox.v1.GetSnapshotRequest
-	(*GetSnapshotResponse)(nil),                                   // 228: tenki.sandbox.v1.GetSnapshotResponse
-	(*GetSnapshotDownloadURLRequest)(nil),                         // 229: tenki.sandbox.v1.GetSnapshotDownloadURLRequest
-	(*GetSnapshotDownloadURLResponse)(nil),                        // 230: tenki.sandbox.v1.GetSnapshotDownloadURLResponse
-	(*ListSnapshotsRequest)(nil),                                  // 231: tenki.sandbox.v1.ListSnapshotsRequest
-	(*ListSnapshotsResponse)(nil),                                 // 232: tenki.sandbox.v1.ListSnapshotsResponse
-	(*ListSessionSnapshotsRequest)(nil),                           // 233: tenki.sandbox.v1.ListSessionSnapshotsRequest
-	(*ListSessionSnapshotsResponse)(nil),                          // 234: tenki.sandbox.v1.ListSessionSnapshotsResponse
-	(*ListDanglingSnapshotsRequest)(nil),                          // 235: tenki.sandbox.v1.ListDanglingSnapshotsRequest
-	(*ListDanglingSnapshotsResponse)(nil),                         // 236: tenki.sandbox.v1.ListDanglingSnapshotsResponse
-	(*ListWorkspaceSnapshotsRequest)(nil),                         // 237: tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
-	(*ListWorkspaceSnapshotsResponse)(nil),                        // 238: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
-	(*GetWorkspaceSandboxUsageRequest)(nil),                       // 239: tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
-	(*GetWorkspaceSandboxUsageResponse)(nil),                      // 240: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
-	(*GetWorkspacePreviewDomainsRequest)(nil),                     // 241: tenki.sandbox.v1.GetWorkspacePreviewDomainsRequest
-	(*GetWorkspacePreviewDomainsResponse)(nil),                    // 242: tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse
-	(*UpdateWorkspacePreviewDomainsRequest)(nil),                  // 243: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsRequest
-	(*UpdateWorkspacePreviewDomainsResponse)(nil),                 // 244: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse
-	(*DeleteSnapshotRequest)(nil),                                 // 245: tenki.sandbox.v1.DeleteSnapshotRequest
-	(*DeleteSnapshotResponse)(nil),                                // 246: tenki.sandbox.v1.DeleteSnapshotResponse
-	(*UpdateSnapshotRequest)(nil),                                 // 247: tenki.sandbox.v1.UpdateSnapshotRequest
-	(*UpdateSnapshotResponse)(nil),                                // 248: tenki.sandbox.v1.UpdateSnapshotResponse
-	(*WhoAmIRequest)(nil),                                         // 249: tenki.sandbox.v1.WhoAmIRequest
-	(*WhoAmIResponse)(nil),                                        // 250: tenki.sandbox.v1.WhoAmIResponse
-	(*WhoAmIWorkspace)(nil),                                       // 251: tenki.sandbox.v1.WhoAmIWorkspace
-	(*ListCIRunnerSizesRequest)(nil),                              // 252: tenki.sandbox.v1.ListCIRunnerSizesRequest
-	(*ListCIRunnerSizesResponse)(nil),                             // 253: tenki.sandbox.v1.ListCIRunnerSizesResponse
-	(*CIRunnerSize)(nil),                                          // 254: tenki.sandbox.v1.CIRunnerSize
-	(*SandboxWarning)(nil),                                        // 255: tenki.sandbox.v1.SandboxWarning
-	(*TailnetAttachment)(nil),                                     // 256: tenki.sandbox.v1.TailnetAttachment
-	(*TailnetFederatedCredential)(nil),                            // 257: tenki.sandbox.v1.TailnetFederatedCredential
-	(*TailnetStatus)(nil),                                         // 258: tenki.sandbox.v1.TailnetStatus
-	(*SessionEgressHttpRule)(nil),                                 // 259: tenki.sandbox.v1.SessionEgressHttpRule
-	(*EgressPolicy)(nil),                                          // 260: tenki.sandbox.v1.EgressPolicy
-	(*CreateEgressPolicyRequest)(nil),                             // 261: tenki.sandbox.v1.CreateEgressPolicyRequest
-	(*CreateEgressPolicyResponse)(nil),                            // 262: tenki.sandbox.v1.CreateEgressPolicyResponse
-	(*UpdateEgressPolicyRequest)(nil),                             // 263: tenki.sandbox.v1.UpdateEgressPolicyRequest
-	(*UpdateEgressPolicyResponse)(nil),                            // 264: tenki.sandbox.v1.UpdateEgressPolicyResponse
-	(*GetEgressPolicyRequest)(nil),                                // 265: tenki.sandbox.v1.GetEgressPolicyRequest
-	(*GetEgressPolicyResponse)(nil),                               // 266: tenki.sandbox.v1.GetEgressPolicyResponse
-	(*ListEgressPoliciesRequest)(nil),                             // 267: tenki.sandbox.v1.ListEgressPoliciesRequest
-	(*ListEgressPoliciesResponse)(nil),                            // 268: tenki.sandbox.v1.ListEgressPoliciesResponse
-	(*DeleteEgressPolicyRequest)(nil),                             // 269: tenki.sandbox.v1.DeleteEgressPolicyRequest
-	(*DeleteEgressPolicyResponse)(nil),                            // 270: tenki.sandbox.v1.DeleteEgressPolicyResponse
-	nil,                                                           // 271: tenki.sandbox.v1.SandboxSession.MetadataEntry
-	nil,                                                           // 272: tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
-	nil,                                                           // 273: tenki.sandbox.v1.CreateSessionRequest.EnvEntry
-	nil,                                                           // 274: tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
-	nil,                                                           // 275: tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
-	nil,                                                           // 276: tenki.sandbox.v1.CreateSessionRequest.SecretOverridesEntry
-	nil,                                                           // 277: tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
-	nil,                                                           // 278: tenki.sandbox.v1.RunStart.EnvEntry
-	nil,                                                           // 279: tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry
-	nil,                                                           // 280: tenki.sandbox.v1.OpenCodeProviderConfig.HeadersEntry
-	nil,                                                           // 281: tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry
-	nil,                                                           // 282: tenki.sandbox.v1.GitOperationRequest.ArgsEntry
-	(*timestamppb.Timestamp)(nil),                                 // 283: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),                                   // 284: google.protobuf.Duration
-	(TemplateRuntimeState)(0),                                     // 285: tenki.sandbox.v1.TemplateRuntimeState
-	(*RuntimeSecretFile)(nil),                                     // 286: tenki.sandbox.v1.RuntimeSecretFile
-	(*TemplateRuntime)(nil),                                       // 287: tenki.sandbox.v1.TemplateRuntime
-	(*GetTailnetDefaultsRequest)(nil),                             // 288: tenki.sandbox.v1.GetTailnetDefaultsRequest
-	(*SaveTailnetDefaultsRequest)(nil),                            // 289: tenki.sandbox.v1.SaveTailnetDefaultsRequest
-	(*ListTailnetRunnerStatusesRequest)(nil),                      // 290: tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
-	(*SaveTailnetRunnerConfigurationRequest)(nil),                 // 291: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
-	(*ListTailnetRunnerConfigurationsRequest)(nil),                // 292: tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
-	(*SaveTailnetConnectionRequest)(nil),                          // 293: tenki.sandbox.v1.SaveTailnetConnectionRequest
-	(*ListTailnetConnectionsRequest)(nil),                         // 294: tenki.sandbox.v1.ListTailnetConnectionsRequest
-	(*TestTailnetConnectionRequest)(nil),                          // 295: tenki.sandbox.v1.TestTailnetConnectionRequest
-	(*CreateTemplateRequest)(nil),                                 // 296: tenki.sandbox.v1.CreateTemplateRequest
-	(*GetTemplateRequest)(nil),                                    // 297: tenki.sandbox.v1.GetTemplateRequest
-	(*ListTemplatesRequest)(nil),                                  // 298: tenki.sandbox.v1.ListTemplatesRequest
-	(*UpdateTemplateRequest)(nil),                                 // 299: tenki.sandbox.v1.UpdateTemplateRequest
-	(*DeleteTemplateRequest)(nil),                                 // 300: tenki.sandbox.v1.DeleteTemplateRequest
-	(*BuildTemplateRequest)(nil),                                  // 301: tenki.sandbox.v1.BuildTemplateRequest
-	(*CancelTemplateBuildRequest)(nil),                            // 302: tenki.sandbox.v1.CancelTemplateBuildRequest
-	(*GetTemplateBuildRequest)(nil),                               // 303: tenki.sandbox.v1.GetTemplateBuildRequest
-	(*ListActiveTemplateBuildsRequest)(nil),                       // 304: tenki.sandbox.v1.ListActiveTemplateBuildsRequest
-	(*ListTemplateBuildsRequest)(nil),                             // 305: tenki.sandbox.v1.ListTemplateBuildsRequest
-	(*DeleteTemplateBuildRequest)(nil),                            // 306: tenki.sandbox.v1.DeleteTemplateBuildRequest
-	(*PublishRegistryImageRequest)(nil),                           // 307: tenki.sandbox.v1.PublishRegistryImageRequest
-	(*SetRegistryImageVisibilityRequest)(nil),                     // 308: tenki.sandbox.v1.SetRegistryImageVisibilityRequest
-	(*DeleteRegistryImageRequest)(nil),                            // 309: tenki.sandbox.v1.DeleteRegistryImageRequest
-	(*DeleteRegistryImageVersionRequest)(nil),                     // 310: tenki.sandbox.v1.DeleteRegistryImageVersionRequest
-	(*ListRegistryImagesRequest)(nil),                             // 311: tenki.sandbox.v1.ListRegistryImagesRequest
-	(*GetRegistryImageRequest)(nil),                               // 312: tenki.sandbox.v1.GetRegistryImageRequest
-	(*ResolveRegistryRefRequest)(nil),                             // 313: tenki.sandbox.v1.ResolveRegistryRefRequest
-	(*ShareImageRequest)(nil),                                     // 314: tenki.sandbox.v1.ShareImageRequest
-	(*RevokeRegistryShareGrantRequest)(nil),                       // 315: tenki.sandbox.v1.RevokeRegistryShareGrantRequest
-	(*ListRegistryShareGrantsRequest)(nil),                        // 316: tenki.sandbox.v1.ListRegistryShareGrantsRequest
-	(*UnshareRegistryImageRequest)(nil),                           // 317: tenki.sandbox.v1.UnshareRegistryImageRequest
-	(*GetTailnetDefaultsResponse)(nil),                            // 318: tenki.sandbox.v1.GetTailnetDefaultsResponse
-	(*SaveTailnetDefaultsResponse)(nil),                           // 319: tenki.sandbox.v1.SaveTailnetDefaultsResponse
-	(*ListTailnetRunnerStatusesResponse)(nil),                     // 320: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
-	(*SaveTailnetRunnerConfigurationResponse)(nil),                // 321: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
-	(*ListTailnetRunnerConfigurationsResponse)(nil),               // 322: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
-	(*SaveTailnetConnectionResponse)(nil),                         // 323: tenki.sandbox.v1.SaveTailnetConnectionResponse
-	(*ListTailnetConnectionsResponse)(nil),                        // 324: tenki.sandbox.v1.ListTailnetConnectionsResponse
-	(*TestTailnetConnectionResponse)(nil),                         // 325: tenki.sandbox.v1.TestTailnetConnectionResponse
-	(*CreateTemplateResponse)(nil),                                // 326: tenki.sandbox.v1.CreateTemplateResponse
-	(*GetTemplateResponse)(nil),                                   // 327: tenki.sandbox.v1.GetTemplateResponse
-	(*ListTemplatesResponse)(nil),                                 // 328: tenki.sandbox.v1.ListTemplatesResponse
-	(*UpdateTemplateResponse)(nil),                                // 329: tenki.sandbox.v1.UpdateTemplateResponse
-	(*DeleteTemplateResponse)(nil),                                // 330: tenki.sandbox.v1.DeleteTemplateResponse
-	(*BuildTemplateResponse)(nil),                                 // 331: tenki.sandbox.v1.BuildTemplateResponse
-	(*CancelTemplateBuildResponse)(nil),                           // 332: tenki.sandbox.v1.CancelTemplateBuildResponse
-	(*GetTemplateBuildResponse)(nil),                              // 333: tenki.sandbox.v1.GetTemplateBuildResponse
-	(*ListActiveTemplateBuildsResponse)(nil),                      // 334: tenki.sandbox.v1.ListActiveTemplateBuildsResponse
-	(*ListTemplateBuildsResponse)(nil),                            // 335: tenki.sandbox.v1.ListTemplateBuildsResponse
-	(*DeleteTemplateBuildResponse)(nil),                           // 336: tenki.sandbox.v1.DeleteTemplateBuildResponse
-	(*PublishRegistryImageResponse)(nil),                          // 337: tenki.sandbox.v1.PublishRegistryImageResponse
-	(*SetRegistryImageVisibilityResponse)(nil),                    // 338: tenki.sandbox.v1.SetRegistryImageVisibilityResponse
-	(*DeleteRegistryImageResponse)(nil),                           // 339: tenki.sandbox.v1.DeleteRegistryImageResponse
-	(*DeleteRegistryImageVersionResponse)(nil),                    // 340: tenki.sandbox.v1.DeleteRegistryImageVersionResponse
-	(*ListRegistryImagesResponse)(nil),                            // 341: tenki.sandbox.v1.ListRegistryImagesResponse
-	(*GetRegistryImageResponse)(nil),                              // 342: tenki.sandbox.v1.GetRegistryImageResponse
-	(*ResolveRegistryRefResponse)(nil),                            // 343: tenki.sandbox.v1.ResolveRegistryRefResponse
-	(*ShareImageResponse)(nil),                                    // 344: tenki.sandbox.v1.ShareImageResponse
-	(*RevokeRegistryShareGrantResponse)(nil),                      // 345: tenki.sandbox.v1.RevokeRegistryShareGrantResponse
-	(*ListRegistryShareGrantsResponse)(nil),                       // 346: tenki.sandbox.v1.ListRegistryShareGrantsResponse
-	(*UnshareRegistryImageResponse)(nil),                          // 347: tenki.sandbox.v1.UnshareRegistryImageResponse
+	(*RefreshSessionSecretsRequest)(nil),                          // 223: tenki.sandbox.v1.RefreshSessionSecretsRequest
+	(*RefreshSessionSecretsResponse)(nil),                         // 224: tenki.sandbox.v1.RefreshSessionSecretsResponse
+	(*RuntimeSecretVersionRef)(nil),                               // 225: tenki.sandbox.v1.RuntimeSecretVersionRef
+	(*CreateSnapshotRequest)(nil),                                 // 226: tenki.sandbox.v1.CreateSnapshotRequest
+	(*CreateSnapshotResponse)(nil),                                // 227: tenki.sandbox.v1.CreateSnapshotResponse
+	(*ForkSessionRequest)(nil),                                    // 228: tenki.sandbox.v1.ForkSessionRequest
+	(*ForkSessionResponse)(nil),                                   // 229: tenki.sandbox.v1.ForkSessionResponse
+	(*GetSnapshotRequest)(nil),                                    // 230: tenki.sandbox.v1.GetSnapshotRequest
+	(*GetSnapshotResponse)(nil),                                   // 231: tenki.sandbox.v1.GetSnapshotResponse
+	(*GetSnapshotDownloadURLRequest)(nil),                         // 232: tenki.sandbox.v1.GetSnapshotDownloadURLRequest
+	(*GetSnapshotDownloadURLResponse)(nil),                        // 233: tenki.sandbox.v1.GetSnapshotDownloadURLResponse
+	(*ListSnapshotsRequest)(nil),                                  // 234: tenki.sandbox.v1.ListSnapshotsRequest
+	(*ListSnapshotsResponse)(nil),                                 // 235: tenki.sandbox.v1.ListSnapshotsResponse
+	(*ListSessionSnapshotsRequest)(nil),                           // 236: tenki.sandbox.v1.ListSessionSnapshotsRequest
+	(*ListSessionSnapshotsResponse)(nil),                          // 237: tenki.sandbox.v1.ListSessionSnapshotsResponse
+	(*ListDanglingSnapshotsRequest)(nil),                          // 238: tenki.sandbox.v1.ListDanglingSnapshotsRequest
+	(*ListDanglingSnapshotsResponse)(nil),                         // 239: tenki.sandbox.v1.ListDanglingSnapshotsResponse
+	(*ListWorkspaceSnapshotsRequest)(nil),                         // 240: tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
+	(*ListWorkspaceSnapshotsResponse)(nil),                        // 241: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
+	(*GetWorkspaceSandboxUsageRequest)(nil),                       // 242: tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
+	(*GetWorkspaceSandboxUsageResponse)(nil),                      // 243: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
+	(*GetWorkspacePreviewDomainsRequest)(nil),                     // 244: tenki.sandbox.v1.GetWorkspacePreviewDomainsRequest
+	(*GetWorkspacePreviewDomainsResponse)(nil),                    // 245: tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse
+	(*UpdateWorkspacePreviewDomainsRequest)(nil),                  // 246: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsRequest
+	(*UpdateWorkspacePreviewDomainsResponse)(nil),                 // 247: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse
+	(*DeleteSnapshotRequest)(nil),                                 // 248: tenki.sandbox.v1.DeleteSnapshotRequest
+	(*DeleteSnapshotResponse)(nil),                                // 249: tenki.sandbox.v1.DeleteSnapshotResponse
+	(*UpdateSnapshotRequest)(nil),                                 // 250: tenki.sandbox.v1.UpdateSnapshotRequest
+	(*UpdateSnapshotResponse)(nil),                                // 251: tenki.sandbox.v1.UpdateSnapshotResponse
+	(*WhoAmIRequest)(nil),                                         // 252: tenki.sandbox.v1.WhoAmIRequest
+	(*WhoAmIResponse)(nil),                                        // 253: tenki.sandbox.v1.WhoAmIResponse
+	(*WhoAmIWorkspace)(nil),                                       // 254: tenki.sandbox.v1.WhoAmIWorkspace
+	(*ListCIRunnerSizesRequest)(nil),                              // 255: tenki.sandbox.v1.ListCIRunnerSizesRequest
+	(*ListCIRunnerSizesResponse)(nil),                             // 256: tenki.sandbox.v1.ListCIRunnerSizesResponse
+	(*CIRunnerSize)(nil),                                          // 257: tenki.sandbox.v1.CIRunnerSize
+	(*SandboxWarning)(nil),                                        // 258: tenki.sandbox.v1.SandboxWarning
+	(*TailnetAttachment)(nil),                                     // 259: tenki.sandbox.v1.TailnetAttachment
+	(*TailnetFederatedCredential)(nil),                            // 260: tenki.sandbox.v1.TailnetFederatedCredential
+	(*TailnetStatus)(nil),                                         // 261: tenki.sandbox.v1.TailnetStatus
+	(*SessionEgressHttpRule)(nil),                                 // 262: tenki.sandbox.v1.SessionEgressHttpRule
+	(*EgressPolicy)(nil),                                          // 263: tenki.sandbox.v1.EgressPolicy
+	(*CreateEgressPolicyRequest)(nil),                             // 264: tenki.sandbox.v1.CreateEgressPolicyRequest
+	(*CreateEgressPolicyResponse)(nil),                            // 265: tenki.sandbox.v1.CreateEgressPolicyResponse
+	(*UpdateEgressPolicyRequest)(nil),                             // 266: tenki.sandbox.v1.UpdateEgressPolicyRequest
+	(*UpdateEgressPolicyResponse)(nil),                            // 267: tenki.sandbox.v1.UpdateEgressPolicyResponse
+	(*GetEgressPolicyRequest)(nil),                                // 268: tenki.sandbox.v1.GetEgressPolicyRequest
+	(*GetEgressPolicyResponse)(nil),                               // 269: tenki.sandbox.v1.GetEgressPolicyResponse
+	(*ListEgressPoliciesRequest)(nil),                             // 270: tenki.sandbox.v1.ListEgressPoliciesRequest
+	(*ListEgressPoliciesResponse)(nil),                            // 271: tenki.sandbox.v1.ListEgressPoliciesResponse
+	(*DeleteEgressPolicyRequest)(nil),                             // 272: tenki.sandbox.v1.DeleteEgressPolicyRequest
+	(*DeleteEgressPolicyResponse)(nil),                            // 273: tenki.sandbox.v1.DeleteEgressPolicyResponse
+	nil,                                                           // 274: tenki.sandbox.v1.SandboxSession.MetadataEntry
+	nil,                                                           // 275: tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
+	nil,                                                           // 276: tenki.sandbox.v1.CreateSessionRequest.EnvEntry
+	nil,                                                           // 277: tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
+	nil,                                                           // 278: tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
+	nil,                                                           // 279: tenki.sandbox.v1.CreateSessionRequest.SecretOverridesEntry
+	nil,                                                           // 280: tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
+	nil,                                                           // 281: tenki.sandbox.v1.RunStart.EnvEntry
+	nil,                                                           // 282: tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry
+	nil,                                                           // 283: tenki.sandbox.v1.OpenCodeProviderConfig.HeadersEntry
+	nil,                                                           // 284: tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry
+	nil,                                                           // 285: tenki.sandbox.v1.GitOperationRequest.ArgsEntry
+	(*timestamppb.Timestamp)(nil),                                 // 286: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),                                   // 287: google.protobuf.Duration
+	(TemplateRuntimeState)(0),                                     // 288: tenki.sandbox.v1.TemplateRuntimeState
+	(*RuntimeSecretFile)(nil),                                     // 289: tenki.sandbox.v1.RuntimeSecretFile
+	(*TemplateRuntime)(nil),                                       // 290: tenki.sandbox.v1.TemplateRuntime
+	(*GetTailnetDefaultsRequest)(nil),                             // 291: tenki.sandbox.v1.GetTailnetDefaultsRequest
+	(*SaveTailnetDefaultsRequest)(nil),                            // 292: tenki.sandbox.v1.SaveTailnetDefaultsRequest
+	(*ListTailnetRunnerStatusesRequest)(nil),                      // 293: tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
+	(*SaveTailnetRunnerConfigurationRequest)(nil),                 // 294: tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
+	(*ListTailnetRunnerConfigurationsRequest)(nil),                // 295: tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
+	(*SaveTailnetConnectionRequest)(nil),                          // 296: tenki.sandbox.v1.SaveTailnetConnectionRequest
+	(*ListTailnetConnectionsRequest)(nil),                         // 297: tenki.sandbox.v1.ListTailnetConnectionsRequest
+	(*TestTailnetConnectionRequest)(nil),                          // 298: tenki.sandbox.v1.TestTailnetConnectionRequest
+	(*CreateTemplateRequest)(nil),                                 // 299: tenki.sandbox.v1.CreateTemplateRequest
+	(*GetTemplateRequest)(nil),                                    // 300: tenki.sandbox.v1.GetTemplateRequest
+	(*ListTemplatesRequest)(nil),                                  // 301: tenki.sandbox.v1.ListTemplatesRequest
+	(*UpdateTemplateRequest)(nil),                                 // 302: tenki.sandbox.v1.UpdateTemplateRequest
+	(*DeleteTemplateRequest)(nil),                                 // 303: tenki.sandbox.v1.DeleteTemplateRequest
+	(*BuildTemplateRequest)(nil),                                  // 304: tenki.sandbox.v1.BuildTemplateRequest
+	(*CancelTemplateBuildRequest)(nil),                            // 305: tenki.sandbox.v1.CancelTemplateBuildRequest
+	(*GetTemplateBuildRequest)(nil),                               // 306: tenki.sandbox.v1.GetTemplateBuildRequest
+	(*ListActiveTemplateBuildsRequest)(nil),                       // 307: tenki.sandbox.v1.ListActiveTemplateBuildsRequest
+	(*ListTemplateBuildsRequest)(nil),                             // 308: tenki.sandbox.v1.ListTemplateBuildsRequest
+	(*DeleteTemplateBuildRequest)(nil),                            // 309: tenki.sandbox.v1.DeleteTemplateBuildRequest
+	(*PublishRegistryImageRequest)(nil),                           // 310: tenki.sandbox.v1.PublishRegistryImageRequest
+	(*SetRegistryImageVisibilityRequest)(nil),                     // 311: tenki.sandbox.v1.SetRegistryImageVisibilityRequest
+	(*DeleteRegistryImageRequest)(nil),                            // 312: tenki.sandbox.v1.DeleteRegistryImageRequest
+	(*DeleteRegistryImageVersionRequest)(nil),                     // 313: tenki.sandbox.v1.DeleteRegistryImageVersionRequest
+	(*ListRegistryImagesRequest)(nil),                             // 314: tenki.sandbox.v1.ListRegistryImagesRequest
+	(*GetRegistryImageRequest)(nil),                               // 315: tenki.sandbox.v1.GetRegistryImageRequest
+	(*ResolveRegistryRefRequest)(nil),                             // 316: tenki.sandbox.v1.ResolveRegistryRefRequest
+	(*ShareImageRequest)(nil),                                     // 317: tenki.sandbox.v1.ShareImageRequest
+	(*RevokeRegistryShareGrantRequest)(nil),                       // 318: tenki.sandbox.v1.RevokeRegistryShareGrantRequest
+	(*ListRegistryShareGrantsRequest)(nil),                        // 319: tenki.sandbox.v1.ListRegistryShareGrantsRequest
+	(*UnshareRegistryImageRequest)(nil),                           // 320: tenki.sandbox.v1.UnshareRegistryImageRequest
+	(*GetTailnetDefaultsResponse)(nil),                            // 321: tenki.sandbox.v1.GetTailnetDefaultsResponse
+	(*SaveTailnetDefaultsResponse)(nil),                           // 322: tenki.sandbox.v1.SaveTailnetDefaultsResponse
+	(*ListTailnetRunnerStatusesResponse)(nil),                     // 323: tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
+	(*SaveTailnetRunnerConfigurationResponse)(nil),                // 324: tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
+	(*ListTailnetRunnerConfigurationsResponse)(nil),               // 325: tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
+	(*SaveTailnetConnectionResponse)(nil),                         // 326: tenki.sandbox.v1.SaveTailnetConnectionResponse
+	(*ListTailnetConnectionsResponse)(nil),                        // 327: tenki.sandbox.v1.ListTailnetConnectionsResponse
+	(*TestTailnetConnectionResponse)(nil),                         // 328: tenki.sandbox.v1.TestTailnetConnectionResponse
+	(*CreateTemplateResponse)(nil),                                // 329: tenki.sandbox.v1.CreateTemplateResponse
+	(*GetTemplateResponse)(nil),                                   // 330: tenki.sandbox.v1.GetTemplateResponse
+	(*ListTemplatesResponse)(nil),                                 // 331: tenki.sandbox.v1.ListTemplatesResponse
+	(*UpdateTemplateResponse)(nil),                                // 332: tenki.sandbox.v1.UpdateTemplateResponse
+	(*DeleteTemplateResponse)(nil),                                // 333: tenki.sandbox.v1.DeleteTemplateResponse
+	(*BuildTemplateResponse)(nil),                                 // 334: tenki.sandbox.v1.BuildTemplateResponse
+	(*CancelTemplateBuildResponse)(nil),                           // 335: tenki.sandbox.v1.CancelTemplateBuildResponse
+	(*GetTemplateBuildResponse)(nil),                              // 336: tenki.sandbox.v1.GetTemplateBuildResponse
+	(*ListActiveTemplateBuildsResponse)(nil),                      // 337: tenki.sandbox.v1.ListActiveTemplateBuildsResponse
+	(*ListTemplateBuildsResponse)(nil),                            // 338: tenki.sandbox.v1.ListTemplateBuildsResponse
+	(*DeleteTemplateBuildResponse)(nil),                           // 339: tenki.sandbox.v1.DeleteTemplateBuildResponse
+	(*PublishRegistryImageResponse)(nil),                          // 340: tenki.sandbox.v1.PublishRegistryImageResponse
+	(*SetRegistryImageVisibilityResponse)(nil),                    // 341: tenki.sandbox.v1.SetRegistryImageVisibilityResponse
+	(*DeleteRegistryImageResponse)(nil),                           // 342: tenki.sandbox.v1.DeleteRegistryImageResponse
+	(*DeleteRegistryImageVersionResponse)(nil),                    // 343: tenki.sandbox.v1.DeleteRegistryImageVersionResponse
+	(*ListRegistryImagesResponse)(nil),                            // 344: tenki.sandbox.v1.ListRegistryImagesResponse
+	(*GetRegistryImageResponse)(nil),                              // 345: tenki.sandbox.v1.GetRegistryImageResponse
+	(*ResolveRegistryRefResponse)(nil),                            // 346: tenki.sandbox.v1.ResolveRegistryRefResponse
+	(*ShareImageResponse)(nil),                                    // 347: tenki.sandbox.v1.ShareImageResponse
+	(*RevokeRegistryShareGrantResponse)(nil),                      // 348: tenki.sandbox.v1.RevokeRegistryShareGrantResponse
+	(*ListRegistryShareGrantsResponse)(nil),                       // 349: tenki.sandbox.v1.ListRegistryShareGrantsResponse
+	(*UnshareRegistryImageResponse)(nil),                          // 350: tenki.sandbox.v1.UnshareRegistryImageResponse
 }
 var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	2,   // 0: tenki.sandbox.v1.Volume.state:type_name -> tenki.sandbox.v1.VolumeState
@@ -19699,11 +19928,11 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	7,   // 6: tenki.sandbox.v1.StorageConnection.auth_method:type_name -> tenki.sandbox.v1.StorageAuthMethod
 	28,  // 7: tenki.sandbox.v1.StorageConnection.secrets:type_name -> tenki.sandbox.v1.StorageConnectionSecrets
 	8,   // 8: tenki.sandbox.v1.StorageConnection.default_access:type_name -> tenki.sandbox.v1.StorageAccess
-	283, // 9: tenki.sandbox.v1.StorageConnection.created_at:type_name -> google.protobuf.Timestamp
-	283, // 10: tenki.sandbox.v1.StorageConnection.updated_at:type_name -> google.protobuf.Timestamp
-	283, // 11: tenki.sandbox.v1.StorageConnection.last_tested_at:type_name -> google.protobuf.Timestamp
+	286, // 9: tenki.sandbox.v1.StorageConnection.created_at:type_name -> google.protobuf.Timestamp
+	286, // 10: tenki.sandbox.v1.StorageConnection.updated_at:type_name -> google.protobuf.Timestamp
+	286, // 11: tenki.sandbox.v1.StorageConnection.last_tested_at:type_name -> google.protobuf.Timestamp
 	9,   // 12: tenki.sandbox.v1.StorageConnection.last_test_reason:type_name -> tenki.sandbox.v1.StorageTestReason
-	283, // 13: tenki.sandbox.v1.StorageConnection.disabled_at:type_name -> google.protobuf.Timestamp
+	286, // 13: tenki.sandbox.v1.StorageConnection.disabled_at:type_name -> google.protobuf.Timestamp
 	8,   // 14: tenki.sandbox.v1.StorageMountSpec.access:type_name -> tenki.sandbox.v1.StorageAccess
 	30,  // 15: tenki.sandbox.v1.StorageMount.spec:type_name -> tenki.sandbox.v1.StorageMountSpec
 	8,   // 16: tenki.sandbox.v1.StorageDefaultMount.access:type_name -> tenki.sandbox.v1.StorageAccess
@@ -19725,64 +19954,64 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	30,  // 32: tenki.sandbox.v1.AttachStorageMountRequest.mount:type_name -> tenki.sandbox.v1.StorageMountSpec
 	31,  // 33: tenki.sandbox.v1.AttachStorageMountResponse.mount:type_name -> tenki.sandbox.v1.StorageMount
 	0,   // 34: tenki.sandbox.v1.SandboxSession.state:type_name -> tenki.sandbox.v1.SessionState
-	283, // 35: tenki.sandbox.v1.SandboxSession.created_at:type_name -> google.protobuf.Timestamp
-	283, // 36: tenki.sandbox.v1.SandboxSession.ready_at:type_name -> google.protobuf.Timestamp
-	283, // 37: tenki.sandbox.v1.SandboxSession.terminated_at:type_name -> google.protobuf.Timestamp
-	283, // 38: tenki.sandbox.v1.SandboxSession.timeout_at:type_name -> google.protobuf.Timestamp
-	271, // 39: tenki.sandbox.v1.SandboxSession.metadata:type_name -> tenki.sandbox.v1.SandboxSession.MetadataEntry
+	286, // 35: tenki.sandbox.v1.SandboxSession.created_at:type_name -> google.protobuf.Timestamp
+	286, // 36: tenki.sandbox.v1.SandboxSession.ready_at:type_name -> google.protobuf.Timestamp
+	286, // 37: tenki.sandbox.v1.SandboxSession.terminated_at:type_name -> google.protobuf.Timestamp
+	286, // 38: tenki.sandbox.v1.SandboxSession.timeout_at:type_name -> google.protobuf.Timestamp
+	274, // 39: tenki.sandbox.v1.SandboxSession.metadata:type_name -> tenki.sandbox.v1.SandboxSession.MetadataEntry
 	54,  // 40: tenki.sandbox.v1.SandboxSession.volume_attachments:type_name -> tenki.sandbox.v1.VolumeAttachment
-	283, // 41: tenki.sandbox.v1.SandboxSession.last_activity_at:type_name -> google.protobuf.Timestamp
-	283, // 42: tenki.sandbox.v1.SandboxSession.paused_at:type_name -> google.protobuf.Timestamp
-	284, // 43: tenki.sandbox.v1.SandboxSession.pause_retention:type_name -> google.protobuf.Duration
+	286, // 41: tenki.sandbox.v1.SandboxSession.last_activity_at:type_name -> google.protobuf.Timestamp
+	286, // 42: tenki.sandbox.v1.SandboxSession.paused_at:type_name -> google.protobuf.Timestamp
+	287, // 43: tenki.sandbox.v1.SandboxSession.pause_retention:type_name -> google.protobuf.Duration
 	56,  // 44: tenki.sandbox.v1.SandboxSession.pause_snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	283, // 45: tenki.sandbox.v1.SandboxSession.pause_expires_at:type_name -> google.protobuf.Timestamp
-	285, // 46: tenki.sandbox.v1.SandboxSession.runtime_state:type_name -> tenki.sandbox.v1.TemplateRuntimeState
+	286, // 45: tenki.sandbox.v1.SandboxSession.pause_expires_at:type_name -> google.protobuf.Timestamp
+	288, // 46: tenki.sandbox.v1.SandboxSession.runtime_state:type_name -> tenki.sandbox.v1.TemplateRuntimeState
 	60,  // 47: tenki.sandbox.v1.SandboxSession.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
-	258, // 48: tenki.sandbox.v1.SandboxSession.tailnet_status:type_name -> tenki.sandbox.v1.TailnetStatus
+	261, // 48: tenki.sandbox.v1.SandboxSession.tailnet_status:type_name -> tenki.sandbox.v1.TailnetStatus
 	3,   // 49: tenki.sandbox.v1.Snapshot.state:type_name -> tenki.sandbox.v1.SnapshotState
-	283, // 50: tenki.sandbox.v1.Snapshot.created_at:type_name -> google.protobuf.Timestamp
-	283, // 51: tenki.sandbox.v1.Snapshot.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 50: tenki.sandbox.v1.Snapshot.created_at:type_name -> google.protobuf.Timestamp
+	286, // 51: tenki.sandbox.v1.Snapshot.expires_at:type_name -> google.protobuf.Timestamp
 	4,   // 52: tenki.sandbox.v1.Snapshot.type:type_name -> tenki.sandbox.v1.SnapshotType
-	283, // 53: tenki.sandbox.v1.Snapshot.local_ready_at:type_name -> google.protobuf.Timestamp
-	283, // 54: tenki.sandbox.v1.Snapshot.r2_uploaded_at:type_name -> google.protobuf.Timestamp
-	283, // 55: tenki.sandbox.v1.Snapshot.nfs_uploaded_at:type_name -> google.protobuf.Timestamp
+	286, // 53: tenki.sandbox.v1.Snapshot.local_ready_at:type_name -> google.protobuf.Timestamp
+	286, // 54: tenki.sandbox.v1.Snapshot.r2_uploaded_at:type_name -> google.protobuf.Timestamp
+	286, // 55: tenki.sandbox.v1.Snapshot.nfs_uploaded_at:type_name -> google.protobuf.Timestamp
 	5,   // 56: tenki.sandbox.v1.Snapshot.durability_state:type_name -> tenki.sandbox.v1.SnapshotDurabilityState
-	283, // 57: tenki.sandbox.v1.Snapshot.ceph_ready_at:type_name -> google.protobuf.Timestamp
-	283, // 58: tenki.sandbox.v1.Snapshot.balance_paused_at:type_name -> google.protobuf.Timestamp
+	286, // 57: tenki.sandbox.v1.Snapshot.ceph_ready_at:type_name -> google.protobuf.Timestamp
+	286, // 58: tenki.sandbox.v1.Snapshot.balance_paused_at:type_name -> google.protobuf.Timestamp
 	10,  // 59: tenki.sandbox.v1.WorkspaceSandboxUsageLimit.unit:type_name -> tenki.sandbox.v1.SandboxUsageUnit
-	283, // 60: tenki.sandbox.v1.PreviewUrl.created_at:type_name -> google.protobuf.Timestamp
-	283, // 61: tenki.sandbox.v1.PreviewUrl.updated_at:type_name -> google.protobuf.Timestamp
-	283, // 62: tenki.sandbox.v1.PreviewUrl.last_accessed_at:type_name -> google.protobuf.Timestamp
+	286, // 60: tenki.sandbox.v1.PreviewUrl.created_at:type_name -> google.protobuf.Timestamp
+	286, // 61: tenki.sandbox.v1.PreviewUrl.updated_at:type_name -> google.protobuf.Timestamp
+	286, // 62: tenki.sandbox.v1.PreviewUrl.last_accessed_at:type_name -> google.protobuf.Timestamp
 	12,  // 63: tenki.sandbox.v1.PreviewUrl.wildcard_status:type_name -> tenki.sandbox.v1.WildcardStatus
-	283, // 64: tenki.sandbox.v1.PreviewUrl.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 64: tenki.sandbox.v1.PreviewUrl.expires_at:type_name -> google.protobuf.Timestamp
 	0,   // 65: tenki.sandbox.v1.PreviewUrl.session_state:type_name -> tenki.sandbox.v1.SessionState
 	1,   // 66: tenki.sandbox.v1.CommandExecution.status:type_name -> tenki.sandbox.v1.CommandStatus
-	283, // 67: tenki.sandbox.v1.CommandExecution.started_at:type_name -> google.protobuf.Timestamp
-	283, // 68: tenki.sandbox.v1.CommandExecution.ended_at:type_name -> google.protobuf.Timestamp
-	259, // 69: tenki.sandbox.v1.SessionEgressPolicy.http_rules:type_name -> tenki.sandbox.v1.SessionEgressHttpRule
-	286, // 70: tenki.sandbox.v1.CreateSessionRequest.secret_files:type_name -> tenki.sandbox.v1.RuntimeSecretFile
-	284, // 71: tenki.sandbox.v1.CreateSessionRequest.max_duration:type_name -> google.protobuf.Duration
-	272, // 72: tenki.sandbox.v1.CreateSessionRequest.metadata:type_name -> tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
-	273, // 73: tenki.sandbox.v1.CreateSessionRequest.env:type_name -> tenki.sandbox.v1.CreateSessionRequest.EnvEntry
+	286, // 67: tenki.sandbox.v1.CommandExecution.started_at:type_name -> google.protobuf.Timestamp
+	286, // 68: tenki.sandbox.v1.CommandExecution.ended_at:type_name -> google.protobuf.Timestamp
+	262, // 69: tenki.sandbox.v1.SessionEgressPolicy.http_rules:type_name -> tenki.sandbox.v1.SessionEgressHttpRule
+	289, // 70: tenki.sandbox.v1.CreateSessionRequest.secret_files:type_name -> tenki.sandbox.v1.RuntimeSecretFile
+	287, // 71: tenki.sandbox.v1.CreateSessionRequest.max_duration:type_name -> google.protobuf.Duration
+	275, // 72: tenki.sandbox.v1.CreateSessionRequest.metadata:type_name -> tenki.sandbox.v1.CreateSessionRequest.MetadataEntry
+	276, // 73: tenki.sandbox.v1.CreateSessionRequest.env:type_name -> tenki.sandbox.v1.CreateSessionRequest.EnvEntry
 	25,  // 74: tenki.sandbox.v1.CreateSessionRequest.volumes:type_name -> tenki.sandbox.v1.VolumeMount
-	284, // 75: tenki.sandbox.v1.CreateSessionRequest.pause_retention:type_name -> google.protobuf.Duration
-	274, // 76: tenki.sandbox.v1.CreateSessionRequest.setup_env:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
-	275, // 77: tenki.sandbox.v1.CreateSessionRequest.setup_secrets:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
+	287, // 75: tenki.sandbox.v1.CreateSessionRequest.pause_retention:type_name -> google.protobuf.Duration
+	277, // 76: tenki.sandbox.v1.CreateSessionRequest.setup_env:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupEnvEntry
+	278, // 77: tenki.sandbox.v1.CreateSessionRequest.setup_secrets:type_name -> tenki.sandbox.v1.CreateSessionRequest.SetupSecretsEntry
 	60,  // 78: tenki.sandbox.v1.CreateSessionRequest.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
-	287, // 79: tenki.sandbox.v1.CreateSessionRequest.runtime:type_name -> tenki.sandbox.v1.TemplateRuntime
-	276, // 80: tenki.sandbox.v1.CreateSessionRequest.secret_overrides:type_name -> tenki.sandbox.v1.CreateSessionRequest.SecretOverridesEntry
-	256, // 81: tenki.sandbox.v1.CreateSessionRequest.tailnet:type_name -> tenki.sandbox.v1.TailnetAttachment
+	290, // 79: tenki.sandbox.v1.CreateSessionRequest.runtime:type_name -> tenki.sandbox.v1.TemplateRuntime
+	279, // 80: tenki.sandbox.v1.CreateSessionRequest.secret_overrides:type_name -> tenki.sandbox.v1.CreateSessionRequest.SecretOverridesEntry
+	259, // 81: tenki.sandbox.v1.CreateSessionRequest.tailnet:type_name -> tenki.sandbox.v1.TailnetAttachment
 	30,  // 82: tenki.sandbox.v1.CreateSessionRequest.storage_mounts:type_name -> tenki.sandbox.v1.StorageMountSpec
 	55,  // 83: tenki.sandbox.v1.CreateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
 	64,  // 84: tenki.sandbox.v1.CreateSessionResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
 	11,  // 85: tenki.sandbox.v1.CreateSessionResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
-	255, // 86: tenki.sandbox.v1.CreateSessionResponse.warnings:type_name -> tenki.sandbox.v1.SandboxWarning
+	258, // 86: tenki.sandbox.v1.CreateSessionResponse.warnings:type_name -> tenki.sandbox.v1.SandboxWarning
 	55,  // 87: tenki.sandbox.v1.TemplateRuntimeFailure.session:type_name -> tenki.sandbox.v1.SandboxSession
-	283, // 88: tenki.sandbox.v1.SessionCredential.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 88: tenki.sandbox.v1.SessionCredential.expires_at:type_name -> google.protobuf.Timestamp
 	64,  // 89: tenki.sandbox.v1.CreateSessionCredentialResponse.credential:type_name -> tenki.sandbox.v1.SessionCredential
 	11,  // 90: tenki.sandbox.v1.CreateSessionCredentialResponse.route_status:type_name -> tenki.sandbox.v1.DataPlaneRouteStatus
 	12,  // 91: tenki.sandbox.v1.WorkspacePreviewDomain.status:type_name -> tenki.sandbox.v1.WildcardStatus
-	283, // 92: tenki.sandbox.v1.WorkspacePreviewDomain.ready_at:type_name -> google.protobuf.Timestamp
+	286, // 92: tenki.sandbox.v1.WorkspacePreviewDomain.ready_at:type_name -> google.protobuf.Timestamp
 	134, // 93: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest.frame:type_name -> tenki.sandbox.v1.RunRequest
 	137, // 94: tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse.frame:type_name -> tenki.sandbox.v1.RunResponse
 	129, // 95: tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest.frame:type_name -> tenki.sandbox.v1.DialRequest
@@ -19806,16 +20035,16 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	163, // 113: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest.request:type_name -> tenki.sandbox.v1.ListRequest
 	164, // 114: tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse.response:type_name -> tenki.sandbox.v1.ListResponse
 	55,  // 115: tenki.sandbox.v1.GetSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	284, // 116: tenki.sandbox.v1.GetSessionMetricsRequest.window:type_name -> google.protobuf.Duration
-	284, // 117: tenki.sandbox.v1.SessionCPUUsageAverage.observed_duration:type_name -> google.protobuf.Duration
-	283, // 118: tenki.sandbox.v1.SessionCPUUsageAverage.first_sample_at:type_name -> google.protobuf.Timestamp
-	283, // 119: tenki.sandbox.v1.SessionCPUUsageAverage.last_sample_at:type_name -> google.protobuf.Timestamp
-	284, // 120: tenki.sandbox.v1.SessionMemoryUsageAverage.observed_duration:type_name -> google.protobuf.Duration
-	283, // 121: tenki.sandbox.v1.SessionMemoryUsageAverage.first_sample_at:type_name -> google.protobuf.Timestamp
-	283, // 122: tenki.sandbox.v1.SessionMemoryUsageAverage.last_sample_at:type_name -> google.protobuf.Timestamp
-	284, // 123: tenki.sandbox.v1.GetSessionMetricsResponse.requested_window:type_name -> google.protobuf.Duration
-	283, // 124: tenki.sandbox.v1.GetSessionMetricsResponse.window_start:type_name -> google.protobuf.Timestamp
-	283, // 125: tenki.sandbox.v1.GetSessionMetricsResponse.window_end:type_name -> google.protobuf.Timestamp
+	287, // 116: tenki.sandbox.v1.GetSessionMetricsRequest.window:type_name -> google.protobuf.Duration
+	287, // 117: tenki.sandbox.v1.SessionCPUUsageAverage.observed_duration:type_name -> google.protobuf.Duration
+	286, // 118: tenki.sandbox.v1.SessionCPUUsageAverage.first_sample_at:type_name -> google.protobuf.Timestamp
+	286, // 119: tenki.sandbox.v1.SessionCPUUsageAverage.last_sample_at:type_name -> google.protobuf.Timestamp
+	287, // 120: tenki.sandbox.v1.SessionMemoryUsageAverage.observed_duration:type_name -> google.protobuf.Duration
+	286, // 121: tenki.sandbox.v1.SessionMemoryUsageAverage.first_sample_at:type_name -> google.protobuf.Timestamp
+	286, // 122: tenki.sandbox.v1.SessionMemoryUsageAverage.last_sample_at:type_name -> google.protobuf.Timestamp
+	287, // 123: tenki.sandbox.v1.GetSessionMetricsResponse.requested_window:type_name -> google.protobuf.Duration
+	286, // 124: tenki.sandbox.v1.GetSessionMetricsResponse.window_start:type_name -> google.protobuf.Timestamp
+	286, // 125: tenki.sandbox.v1.GetSessionMetricsResponse.window_end:type_name -> google.protobuf.Timestamp
 	93,  // 126: tenki.sandbox.v1.GetSessionMetricsResponse.cpu:type_name -> tenki.sandbox.v1.SessionCPUUsageAverage
 	94,  // 127: tenki.sandbox.v1.GetSessionMetricsResponse.memory:type_name -> tenki.sandbox.v1.SessionMemoryUsageAverage
 	55,  // 128: tenki.sandbox.v1.WaitSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
@@ -19831,9 +20060,9 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	102, // 138: tenki.sandbox.v1.ListWorkspaceSandboxesResponse.search_hits:type_name -> tenki.sandbox.v1.SandboxSearchHit
 	0,   // 139: tenki.sandbox.v1.SandboxStateCount.state:type_name -> tenki.sandbox.v1.SessionState
 	103, // 140: tenki.sandbox.v1.SandboxListFacets.state_counts:type_name -> tenki.sandbox.v1.SandboxStateCount
-	284, // 141: tenki.sandbox.v1.UpdateSessionRequest.max_duration:type_name -> google.protobuf.Duration
+	287, // 141: tenki.sandbox.v1.UpdateSessionRequest.max_duration:type_name -> google.protobuf.Duration
 	55,  // 142: tenki.sandbox.v1.UpdateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	255, // 143: tenki.sandbox.v1.UpdateSessionResponse.warnings:type_name -> tenki.sandbox.v1.SandboxWarning
+	258, // 143: tenki.sandbox.v1.UpdateSessionResponse.warnings:type_name -> tenki.sandbox.v1.SandboxWarning
 	24,  // 144: tenki.sandbox.v1.CreateVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
 	24,  // 145: tenki.sandbox.v1.GetVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
 	54,  // 146: tenki.sandbox.v1.GetVolumeResponse.active_attachments:type_name -> tenki.sandbox.v1.VolumeAttachment
@@ -19847,8 +20076,8 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	24,  // 154: tenki.sandbox.v1.ResizeVolumeResponse.volume:type_name -> tenki.sandbox.v1.Volume
 	25,  // 155: tenki.sandbox.v1.AttachVolumeRequest.volume:type_name -> tenki.sandbox.v1.VolumeMount
 	54,  // 156: tenki.sandbox.v1.AttachVolumeResponse.attachment:type_name -> tenki.sandbox.v1.VolumeAttachment
-	284, // 157: tenki.sandbox.v1.ExecuteCommandRequest.timeout:type_name -> google.protobuf.Duration
-	277, // 158: tenki.sandbox.v1.ExecuteCommandRequest.env:type_name -> tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
+	287, // 157: tenki.sandbox.v1.ExecuteCommandRequest.timeout:type_name -> google.protobuf.Duration
+	280, // 158: tenki.sandbox.v1.ExecuteCommandRequest.env:type_name -> tenki.sandbox.v1.ExecuteCommandRequest.EnvEntry
 	59,  // 159: tenki.sandbox.v1.ExecuteCommandResponse.execution:type_name -> tenki.sandbox.v1.CommandExecution
 	130, // 160: tenki.sandbox.v1.DialRequest.open:type_name -> tenki.sandbox.v1.DialOpen
 	132, // 161: tenki.sandbox.v1.DialResponse.opened:type_name -> tenki.sandbox.v1.DialOpened
@@ -19856,16 +20085,16 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	21,  // 163: tenki.sandbox.v1.DialClosed.reason:type_name -> tenki.sandbox.v1.DialClosed.Reason
 	135, // 164: tenki.sandbox.v1.RunRequest.start:type_name -> tenki.sandbox.v1.RunStart
 	136, // 165: tenki.sandbox.v1.RunRequest.signal:type_name -> tenki.sandbox.v1.RunSignal
-	278, // 166: tenki.sandbox.v1.RunStart.env:type_name -> tenki.sandbox.v1.RunStart.EnvEntry
+	281, // 166: tenki.sandbox.v1.RunStart.env:type_name -> tenki.sandbox.v1.RunStart.EnvEntry
 	22,  // 167: tenki.sandbox.v1.RunSignal.signal:type_name -> tenki.sandbox.v1.RunSignal.Sig
 	138, // 168: tenki.sandbox.v1.RunResponse.started:type_name -> tenki.sandbox.v1.RunStarted
 	139, // 169: tenki.sandbox.v1.RunResponse.exit:type_name -> tenki.sandbox.v1.RunExit
 	140, // 170: tenki.sandbox.v1.RunResponse.flow:type_name -> tenki.sandbox.v1.RunFlowControl
-	279, // 171: tenki.sandbox.v1.OpenCodeProviderConfig.model_prices:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry
-	280, // 172: tenki.sandbox.v1.OpenCodeProviderConfig.headers:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.HeadersEntry
-	281, // 173: tenki.sandbox.v1.OpenCodeProviderConfig.model_fallbacks:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry
+	282, // 171: tenki.sandbox.v1.OpenCodeProviderConfig.model_prices:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry
+	283, // 172: tenki.sandbox.v1.OpenCodeProviderConfig.headers:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.HeadersEntry
+	284, // 173: tenki.sandbox.v1.OpenCodeProviderConfig.model_fallbacks:type_name -> tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry
 	143, // 174: tenki.sandbox.v1.OpenCodeModelPrice.tier:type_name -> tenki.sandbox.v1.OpenCodeModelPriceTier
-	282, // 175: tenki.sandbox.v1.GitOperationRequest.args:type_name -> tenki.sandbox.v1.GitOperationRequest.ArgsEntry
+	285, // 175: tenki.sandbox.v1.GitOperationRequest.args:type_name -> tenki.sandbox.v1.GitOperationRequest.ArgsEntry
 	155, // 176: tenki.sandbox.v1.WriteFileStreamRequest.start:type_name -> tenki.sandbox.v1.WriteFileStreamStart
 	165, // 177: tenki.sandbox.v1.ListResponse.entries:type_name -> tenki.sandbox.v1.ListEntry
 	55,  // 178: tenki.sandbox.v1.PauseSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
@@ -19873,12 +20102,12 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	55,  // 180: tenki.sandbox.v1.TerminateSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
 	55,  // 181: tenki.sandbox.v1.TerminateSessionsResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
 	174, // 182: tenki.sandbox.v1.TerminateSessionsResponse.failures:type_name -> tenki.sandbox.v1.TerminateSessionFailure
-	284, // 183: tenki.sandbox.v1.ExtendSessionRequest.additional_duration:type_name -> google.protobuf.Duration
+	287, // 183: tenki.sandbox.v1.ExtendSessionRequest.additional_duration:type_name -> google.protobuf.Duration
 	55,  // 184: tenki.sandbox.v1.ExtendSessionResponse.session:type_name -> tenki.sandbox.v1.SandboxSession
-	283, // 185: tenki.sandbox.v1.GetArtifactUploadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 186: tenki.sandbox.v1.GetArtifactDownloadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 187: tenki.sandbox.v1.ExposePortRequest.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 188: tenki.sandbox.v1.ExposePortResponse.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 185: tenki.sandbox.v1.GetArtifactUploadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 186: tenki.sandbox.v1.GetArtifactDownloadUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 187: tenki.sandbox.v1.ExposePortRequest.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 188: tenki.sandbox.v1.ExposePortResponse.expires_at:type_name -> google.protobuf.Timestamp
 	12,  // 189: tenki.sandbox.v1.ExposePortResponse.wildcard_status:type_name -> tenki.sandbox.v1.WildcardStatus
 	184, // 190: tenki.sandbox.v1.HostPortTunnelRequest.open:type_name -> tenki.sandbox.v1.HostPortTunnelOpen
 	185, // 191: tenki.sandbox.v1.HostPortTunnelRequest.data:type_name -> tenki.sandbox.v1.HostPortTunnelData
@@ -19893,16 +20122,16 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	192, // 200: tenki.sandbox.v1.HostPortTunnelResponse.ping:type_name -> tenki.sandbox.v1.HostPortTunnelKeepalivePing
 	193, // 201: tenki.sandbox.v1.HostPortTunnelResponse.terminated:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated
 	23,  // 202: tenki.sandbox.v1.HostPortTunnelTerminated.reason:type_name -> tenki.sandbox.v1.HostPortTunnelTerminated.Reason
-	283, // 203: tenki.sandbox.v1.OpenPreviewRequest.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 204: tenki.sandbox.v1.OpenPreviewResponse.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 205: tenki.sandbox.v1.TouchPreviewResponse.last_accessed_at:type_name -> google.protobuf.Timestamp
-	283, // 206: tenki.sandbox.v1.ReportSessionActivityResponse.last_activity_at:type_name -> google.protobuf.Timestamp
-	283, // 207: tenki.sandbox.v1.PortExposure.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 203: tenki.sandbox.v1.OpenPreviewRequest.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 204: tenki.sandbox.v1.OpenPreviewResponse.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 205: tenki.sandbox.v1.TouchPreviewResponse.last_accessed_at:type_name -> google.protobuf.Timestamp
+	286, // 206: tenki.sandbox.v1.ReportSessionActivityResponse.last_activity_at:type_name -> google.protobuf.Timestamp
+	286, // 207: tenki.sandbox.v1.PortExposure.expires_at:type_name -> google.protobuf.Timestamp
 	12,  // 208: tenki.sandbox.v1.PortExposure.wildcard_status:type_name -> tenki.sandbox.v1.WildcardStatus
 	203, // 209: tenki.sandbox.v1.ListExposedPortsResponse.ports:type_name -> tenki.sandbox.v1.PortExposure
-	283, // 210: tenki.sandbox.v1.CreatePreviewUrlRequest.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 210: tenki.sandbox.v1.CreatePreviewUrlRequest.expires_at:type_name -> google.protobuf.Timestamp
 	58,  // 211: tenki.sandbox.v1.CreatePreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	283, // 212: tenki.sandbox.v1.BindPreviewUrlRequest.expires_at:type_name -> google.protobuf.Timestamp
+	286, // 212: tenki.sandbox.v1.BindPreviewUrlRequest.expires_at:type_name -> google.protobuf.Timestamp
 	58,  // 213: tenki.sandbox.v1.BindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
 	58,  // 214: tenki.sandbox.v1.UnbindPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
 	16,  // 215: tenki.sandbox.v1.ListPreviewUrlsRequest.states:type_name -> tenki.sandbox.v1.PreviewUrlBindingState
@@ -19912,268 +20141,271 @@ var file_tenki_sandbox_v1_sandbox_proto_depIdxs = []int32{
 	16,  // 219: tenki.sandbox.v1.PreviewUrlBindingCount.state:type_name -> tenki.sandbox.v1.PreviewUrlBindingState
 	215, // 220: tenki.sandbox.v1.PreviewUrlListFacets.state_counts:type_name -> tenki.sandbox.v1.PreviewUrlBindingCount
 	58,  // 221: tenki.sandbox.v1.GetPreviewUrlResponse.preview_url:type_name -> tenki.sandbox.v1.PreviewUrl
-	283, // 222: tenki.sandbox.v1.ResolvePreviewTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
-	283, // 223: tenki.sandbox.v1.CreateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
-	56,  // 224: tenki.sandbox.v1.CreateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	55,  // 225: tenki.sandbox.v1.ForkSessionResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
-	56,  // 226: tenki.sandbox.v1.GetSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	283, // 227: tenki.sandbox.v1.GetSnapshotDownloadURLResponse.expires_at:type_name -> google.protobuf.Timestamp
-	56,  // 228: tenki.sandbox.v1.ListSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	56,  // 229: tenki.sandbox.v1.ListSessionSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	56,  // 230: tenki.sandbox.v1.ListDanglingSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	56,  // 231: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
-	57,  // 232: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse.limits:type_name -> tenki.sandbox.v1.WorkspaceSandboxUsageLimit
-	67,  // 233: tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse.domains:type_name -> tenki.sandbox.v1.WorkspacePreviewDomain
-	67,  // 234: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse.domains:type_name -> tenki.sandbox.v1.WorkspacePreviewDomain
-	56,  // 235: tenki.sandbox.v1.DeleteSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	283, // 236: tenki.sandbox.v1.UpdateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
-	56,  // 237: tenki.sandbox.v1.UpdateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
-	251, // 238: tenki.sandbox.v1.WhoAmIResponse.workspaces:type_name -> tenki.sandbox.v1.WhoAmIWorkspace
-	254, // 239: tenki.sandbox.v1.ListCIRunnerSizesResponse.sizes:type_name -> tenki.sandbox.v1.CIRunnerSize
-	18,  // 240: tenki.sandbox.v1.SandboxWarning.code:type_name -> tenki.sandbox.v1.SandboxWarningCode
-	257, // 241: tenki.sandbox.v1.TailnetAttachment.federated:type_name -> tenki.sandbox.v1.TailnetFederatedCredential
-	19,  // 242: tenki.sandbox.v1.TailnetAttachment.exit_policy:type_name -> tenki.sandbox.v1.TailnetExitPolicy
-	20,  // 243: tenki.sandbox.v1.TailnetAttachment.ephemeral_pause_policy:type_name -> tenki.sandbox.v1.TailnetEphemeralPausePolicy
-	60,  // 244: tenki.sandbox.v1.EgressPolicy.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
-	283, // 245: tenki.sandbox.v1.EgressPolicy.created_at:type_name -> google.protobuf.Timestamp
-	283, // 246: tenki.sandbox.v1.EgressPolicy.updated_at:type_name -> google.protobuf.Timestamp
-	283, // 247: tenki.sandbox.v1.EgressPolicy.deleted_at:type_name -> google.protobuf.Timestamp
-	60,  // 248: tenki.sandbox.v1.CreateEgressPolicyRequest.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
-	260, // 249: tenki.sandbox.v1.CreateEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
-	60,  // 250: tenki.sandbox.v1.UpdateEgressPolicyRequest.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
-	260, // 251: tenki.sandbox.v1.UpdateEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
-	260, // 252: tenki.sandbox.v1.GetEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
-	260, // 253: tenki.sandbox.v1.ListEgressPoliciesResponse.policies:type_name -> tenki.sandbox.v1.EgressPolicy
-	260, // 254: tenki.sandbox.v1.DeleteEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
-	142, // 255: tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry.value:type_name -> tenki.sandbox.v1.OpenCodeModelPrice
-	144, // 256: tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry.value:type_name -> tenki.sandbox.v1.OpenCodeModelFallbacks
-	288, // 257: tenki.sandbox.v1.SandboxService.GetTailnetDefaults:input_type -> tenki.sandbox.v1.GetTailnetDefaultsRequest
-	289, // 258: tenki.sandbox.v1.SandboxService.SaveTailnetDefaults:input_type -> tenki.sandbox.v1.SaveTailnetDefaultsRequest
-	290, // 259: tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses:input_type -> tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
-	291, // 260: tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration:input_type -> tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
-	292, // 261: tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations:input_type -> tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
-	293, // 262: tenki.sandbox.v1.SandboxService.SaveTailnetConnection:input_type -> tenki.sandbox.v1.SaveTailnetConnectionRequest
-	294, // 263: tenki.sandbox.v1.SandboxService.ListTailnetConnections:input_type -> tenki.sandbox.v1.ListTailnetConnectionsRequest
-	295, // 264: tenki.sandbox.v1.SandboxService.TestTailnetConnection:input_type -> tenki.sandbox.v1.TestTailnetConnectionRequest
-	61,  // 265: tenki.sandbox.v1.SandboxService.CreateSession:input_type -> tenki.sandbox.v1.CreateSessionRequest
-	65,  // 266: tenki.sandbox.v1.SandboxService.CreateSessionCredential:input_type -> tenki.sandbox.v1.CreateSessionCredentialRequest
-	90,  // 267: tenki.sandbox.v1.SandboxService.GetSession:input_type -> tenki.sandbox.v1.GetSessionRequest
-	92,  // 268: tenki.sandbox.v1.SandboxService.GetSessionMetrics:input_type -> tenki.sandbox.v1.GetSessionMetricsRequest
-	96,  // 269: tenki.sandbox.v1.SandboxService.WaitSession:input_type -> tenki.sandbox.v1.WaitSessionRequest
-	98,  // 270: tenki.sandbox.v1.SandboxService.ListSessions:input_type -> tenki.sandbox.v1.ListSessionsRequest
-	100, // 271: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:input_type -> tenki.sandbox.v1.ListWorkspaceSandboxesRequest
-	105, // 272: tenki.sandbox.v1.SandboxService.UpdateSession:input_type -> tenki.sandbox.v1.UpdateSessionRequest
-	107, // 273: tenki.sandbox.v1.SandboxService.CreateVolume:input_type -> tenki.sandbox.v1.CreateVolumeRequest
-	109, // 274: tenki.sandbox.v1.SandboxService.GetVolume:input_type -> tenki.sandbox.v1.GetVolumeRequest
-	111, // 275: tenki.sandbox.v1.SandboxService.ListVolumes:input_type -> tenki.sandbox.v1.ListVolumesRequest
-	117, // 276: tenki.sandbox.v1.SandboxService.UpdateVolume:input_type -> tenki.sandbox.v1.UpdateVolumeRequest
-	115, // 277: tenki.sandbox.v1.SandboxService.DeleteVolume:input_type -> tenki.sandbox.v1.DeleteVolumeRequest
-	119, // 278: tenki.sandbox.v1.SandboxService.ResizeVolume:input_type -> tenki.sandbox.v1.ResizeVolumeRequest
-	121, // 279: tenki.sandbox.v1.SandboxService.AttachVolume:input_type -> tenki.sandbox.v1.AttachVolumeRequest
-	123, // 280: tenki.sandbox.v1.SandboxService.DetachVolume:input_type -> tenki.sandbox.v1.DetachVolumeRequest
-	38,  // 281: tenki.sandbox.v1.SandboxService.CreateStorageConnection:input_type -> tenki.sandbox.v1.CreateStorageConnectionRequest
-	40,  // 282: tenki.sandbox.v1.SandboxService.TestStorageConnection:input_type -> tenki.sandbox.v1.TestStorageConnectionRequest
-	42,  // 283: tenki.sandbox.v1.SandboxService.ListStorageConnections:input_type -> tenki.sandbox.v1.ListStorageConnectionsRequest
-	44,  // 284: tenki.sandbox.v1.SandboxService.UpdateStorageConnection:input_type -> tenki.sandbox.v1.UpdateStorageConnectionRequest
-	46,  // 285: tenki.sandbox.v1.SandboxService.DeleteStorageConnection:input_type -> tenki.sandbox.v1.DeleteStorageConnectionRequest
-	48,  // 286: tenki.sandbox.v1.SandboxService.ListStorageMounts:input_type -> tenki.sandbox.v1.ListStorageMountsRequest
-	50,  // 287: tenki.sandbox.v1.SandboxService.AttachStorageMount:input_type -> tenki.sandbox.v1.AttachStorageMountRequest
-	52,  // 288: tenki.sandbox.v1.SandboxService.DetachStorageMount:input_type -> tenki.sandbox.v1.DetachStorageMountRequest
-	34,  // 289: tenki.sandbox.v1.SandboxService.GetStorageDefaults:input_type -> tenki.sandbox.v1.GetStorageDefaultsRequest
-	36,  // 290: tenki.sandbox.v1.SandboxService.SaveStorageDefaults:input_type -> tenki.sandbox.v1.SaveStorageDefaultsRequest
-	125, // 291: tenki.sandbox.v1.SandboxService.ExecuteCommand:input_type -> tenki.sandbox.v1.ExecuteCommandRequest
-	127, // 292: tenki.sandbox.v1.SandboxService.StreamCommandOutput:input_type -> tenki.sandbox.v1.StreamCommandOutputRequest
-	146, // 293: tenki.sandbox.v1.SandboxService.GitOperation:input_type -> tenki.sandbox.v1.GitOperationRequest
-	166, // 294: tenki.sandbox.v1.SandboxService.PauseSession:input_type -> tenki.sandbox.v1.PauseSessionRequest
-	168, // 295: tenki.sandbox.v1.SandboxService.ResumeSession:input_type -> tenki.sandbox.v1.ResumeSessionRequest
-	170, // 296: tenki.sandbox.v1.SandboxService.TerminateSession:input_type -> tenki.sandbox.v1.TerminateSessionRequest
-	172, // 297: tenki.sandbox.v1.SandboxService.TerminateSessions:input_type -> tenki.sandbox.v1.TerminateSessionsRequest
-	175, // 298: tenki.sandbox.v1.SandboxService.ExtendSession:input_type -> tenki.sandbox.v1.ExtendSessionRequest
-	177, // 299: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:input_type -> tenki.sandbox.v1.GetArtifactUploadUrlRequest
-	179, // 300: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:input_type -> tenki.sandbox.v1.GetArtifactDownloadUrlRequest
-	181, // 301: tenki.sandbox.v1.SandboxService.ExposePort:input_type -> tenki.sandbox.v1.ExposePortRequest
-	194, // 302: tenki.sandbox.v1.SandboxService.OpenPreview:input_type -> tenki.sandbox.v1.OpenPreviewRequest
-	196, // 303: tenki.sandbox.v1.SandboxService.TouchPreview:input_type -> tenki.sandbox.v1.TouchPreviewRequest
-	198, // 304: tenki.sandbox.v1.SandboxService.ReportSessionActivity:input_type -> tenki.sandbox.v1.ReportSessionActivityRequest
-	200, // 305: tenki.sandbox.v1.SandboxService.UnexposePort:input_type -> tenki.sandbox.v1.UnexposePortRequest
-	202, // 306: tenki.sandbox.v1.SandboxService.ListExposedPorts:input_type -> tenki.sandbox.v1.ListExposedPortsRequest
-	205, // 307: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:input_type -> tenki.sandbox.v1.CreatePreviewUrlRequest
-	207, // 308: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:input_type -> tenki.sandbox.v1.DeletePreviewUrlRequest
-	209, // 309: tenki.sandbox.v1.SandboxService.BindPreviewUrl:input_type -> tenki.sandbox.v1.BindPreviewUrlRequest
-	211, // 310: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:input_type -> tenki.sandbox.v1.UnbindPreviewUrlRequest
-	213, // 311: tenki.sandbox.v1.SandboxService.ListPreviewUrls:input_type -> tenki.sandbox.v1.ListPreviewUrlsRequest
-	217, // 312: tenki.sandbox.v1.SandboxService.GetPreviewUrl:input_type -> tenki.sandbox.v1.GetPreviewUrlRequest
-	219, // 313: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:input_type -> tenki.sandbox.v1.ResolvePreviewTokenRequest
-	221, // 314: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:input_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest
-	223, // 315: tenki.sandbox.v1.SandboxService.CreateSnapshot:input_type -> tenki.sandbox.v1.CreateSnapshotRequest
-	225, // 316: tenki.sandbox.v1.SandboxService.ForkSession:input_type -> tenki.sandbox.v1.ForkSessionRequest
-	227, // 317: tenki.sandbox.v1.SandboxService.GetSnapshot:input_type -> tenki.sandbox.v1.GetSnapshotRequest
-	229, // 318: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:input_type -> tenki.sandbox.v1.GetSnapshotDownloadURLRequest
-	231, // 319: tenki.sandbox.v1.SandboxService.ListSnapshots:input_type -> tenki.sandbox.v1.ListSnapshotsRequest
-	233, // 320: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:input_type -> tenki.sandbox.v1.ListSessionSnapshotsRequest
-	235, // 321: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:input_type -> tenki.sandbox.v1.ListDanglingSnapshotsRequest
-	237, // 322: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:input_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
-	239, // 323: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
-	241, // 324: tenki.sandbox.v1.SandboxService.GetWorkspacePreviewDomains:input_type -> tenki.sandbox.v1.GetWorkspacePreviewDomainsRequest
-	243, // 325: tenki.sandbox.v1.SandboxService.UpdateWorkspacePreviewDomains:input_type -> tenki.sandbox.v1.UpdateWorkspacePreviewDomainsRequest
-	247, // 326: tenki.sandbox.v1.SandboxService.UpdateSnapshot:input_type -> tenki.sandbox.v1.UpdateSnapshotRequest
-	245, // 327: tenki.sandbox.v1.SandboxService.DeleteSnapshot:input_type -> tenki.sandbox.v1.DeleteSnapshotRequest
-	296, // 328: tenki.sandbox.v1.SandboxService.CreateTemplate:input_type -> tenki.sandbox.v1.CreateTemplateRequest
-	297, // 329: tenki.sandbox.v1.SandboxService.GetTemplate:input_type -> tenki.sandbox.v1.GetTemplateRequest
-	298, // 330: tenki.sandbox.v1.SandboxService.ListTemplates:input_type -> tenki.sandbox.v1.ListTemplatesRequest
-	299, // 331: tenki.sandbox.v1.SandboxService.UpdateTemplate:input_type -> tenki.sandbox.v1.UpdateTemplateRequest
-	300, // 332: tenki.sandbox.v1.SandboxService.DeleteTemplate:input_type -> tenki.sandbox.v1.DeleteTemplateRequest
-	301, // 333: tenki.sandbox.v1.SandboxService.BuildTemplate:input_type -> tenki.sandbox.v1.BuildTemplateRequest
-	302, // 334: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:input_type -> tenki.sandbox.v1.CancelTemplateBuildRequest
-	303, // 335: tenki.sandbox.v1.SandboxService.GetTemplateBuild:input_type -> tenki.sandbox.v1.GetTemplateBuildRequest
-	304, // 336: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:input_type -> tenki.sandbox.v1.ListActiveTemplateBuildsRequest
-	305, // 337: tenki.sandbox.v1.SandboxService.ListTemplateBuilds:input_type -> tenki.sandbox.v1.ListTemplateBuildsRequest
-	306, // 338: tenki.sandbox.v1.SandboxService.DeleteTemplateBuild:input_type -> tenki.sandbox.v1.DeleteTemplateBuildRequest
-	307, // 339: tenki.sandbox.v1.SandboxService.PublishRegistryImage:input_type -> tenki.sandbox.v1.PublishRegistryImageRequest
-	308, // 340: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:input_type -> tenki.sandbox.v1.SetRegistryImageVisibilityRequest
-	309, // 341: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:input_type -> tenki.sandbox.v1.DeleteRegistryImageRequest
-	310, // 342: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:input_type -> tenki.sandbox.v1.DeleteRegistryImageVersionRequest
-	311, // 343: tenki.sandbox.v1.SandboxService.ListRegistryImages:input_type -> tenki.sandbox.v1.ListRegistryImagesRequest
-	312, // 344: tenki.sandbox.v1.SandboxService.GetRegistryImage:input_type -> tenki.sandbox.v1.GetRegistryImageRequest
-	313, // 345: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:input_type -> tenki.sandbox.v1.ResolveRegistryRefRequest
-	314, // 346: tenki.sandbox.v1.SandboxService.ShareImage:input_type -> tenki.sandbox.v1.ShareImageRequest
-	315, // 347: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:input_type -> tenki.sandbox.v1.RevokeRegistryShareGrantRequest
-	316, // 348: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:input_type -> tenki.sandbox.v1.ListRegistryShareGrantsRequest
-	317, // 349: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:input_type -> tenki.sandbox.v1.UnshareRegistryImageRequest
-	261, // 350: tenki.sandbox.v1.SandboxService.CreateEgressPolicy:input_type -> tenki.sandbox.v1.CreateEgressPolicyRequest
-	263, // 351: tenki.sandbox.v1.SandboxService.UpdateEgressPolicy:input_type -> tenki.sandbox.v1.UpdateEgressPolicyRequest
-	265, // 352: tenki.sandbox.v1.SandboxService.GetEgressPolicy:input_type -> tenki.sandbox.v1.GetEgressPolicyRequest
-	267, // 353: tenki.sandbox.v1.SandboxService.ListEgressPolicies:input_type -> tenki.sandbox.v1.ListEgressPoliciesRequest
-	269, // 354: tenki.sandbox.v1.SandboxService.DeleteEgressPolicy:input_type -> tenki.sandbox.v1.DeleteEgressPolicyRequest
-	249, // 355: tenki.sandbox.v1.SandboxService.WhoAmI:input_type -> tenki.sandbox.v1.WhoAmIRequest
-	252, // 356: tenki.sandbox.v1.SandboxService.ListCIRunnerSizes:input_type -> tenki.sandbox.v1.ListCIRunnerSizesRequest
-	68,  // 357: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest
-	70,  // 358: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest
-	72,  // 359: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest
-	74,  // 360: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest
-	76,  // 361: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest
-	78,  // 362: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest
-	80,  // 363: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest
-	82,  // 364: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest
-	84,  // 365: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest
-	86,  // 366: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest
-	88,  // 367: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest
-	318, // 368: tenki.sandbox.v1.SandboxService.GetTailnetDefaults:output_type -> tenki.sandbox.v1.GetTailnetDefaultsResponse
-	319, // 369: tenki.sandbox.v1.SandboxService.SaveTailnetDefaults:output_type -> tenki.sandbox.v1.SaveTailnetDefaultsResponse
-	320, // 370: tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses:output_type -> tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
-	321, // 371: tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration:output_type -> tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
-	322, // 372: tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations:output_type -> tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
-	323, // 373: tenki.sandbox.v1.SandboxService.SaveTailnetConnection:output_type -> tenki.sandbox.v1.SaveTailnetConnectionResponse
-	324, // 374: tenki.sandbox.v1.SandboxService.ListTailnetConnections:output_type -> tenki.sandbox.v1.ListTailnetConnectionsResponse
-	325, // 375: tenki.sandbox.v1.SandboxService.TestTailnetConnection:output_type -> tenki.sandbox.v1.TestTailnetConnectionResponse
-	62,  // 376: tenki.sandbox.v1.SandboxService.CreateSession:output_type -> tenki.sandbox.v1.CreateSessionResponse
-	66,  // 377: tenki.sandbox.v1.SandboxService.CreateSessionCredential:output_type -> tenki.sandbox.v1.CreateSessionCredentialResponse
-	91,  // 378: tenki.sandbox.v1.SandboxService.GetSession:output_type -> tenki.sandbox.v1.GetSessionResponse
-	95,  // 379: tenki.sandbox.v1.SandboxService.GetSessionMetrics:output_type -> tenki.sandbox.v1.GetSessionMetricsResponse
-	97,  // 380: tenki.sandbox.v1.SandboxService.WaitSession:output_type -> tenki.sandbox.v1.WaitSessionResponse
-	99,  // 381: tenki.sandbox.v1.SandboxService.ListSessions:output_type -> tenki.sandbox.v1.ListSessionsResponse
-	101, // 382: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:output_type -> tenki.sandbox.v1.ListWorkspaceSandboxesResponse
-	106, // 383: tenki.sandbox.v1.SandboxService.UpdateSession:output_type -> tenki.sandbox.v1.UpdateSessionResponse
-	108, // 384: tenki.sandbox.v1.SandboxService.CreateVolume:output_type -> tenki.sandbox.v1.CreateVolumeResponse
-	110, // 385: tenki.sandbox.v1.SandboxService.GetVolume:output_type -> tenki.sandbox.v1.GetVolumeResponse
-	112, // 386: tenki.sandbox.v1.SandboxService.ListVolumes:output_type -> tenki.sandbox.v1.ListVolumesResponse
-	118, // 387: tenki.sandbox.v1.SandboxService.UpdateVolume:output_type -> tenki.sandbox.v1.UpdateVolumeResponse
-	116, // 388: tenki.sandbox.v1.SandboxService.DeleteVolume:output_type -> tenki.sandbox.v1.DeleteVolumeResponse
-	120, // 389: tenki.sandbox.v1.SandboxService.ResizeVolume:output_type -> tenki.sandbox.v1.ResizeVolumeResponse
-	122, // 390: tenki.sandbox.v1.SandboxService.AttachVolume:output_type -> tenki.sandbox.v1.AttachVolumeResponse
-	124, // 391: tenki.sandbox.v1.SandboxService.DetachVolume:output_type -> tenki.sandbox.v1.DetachVolumeResponse
-	39,  // 392: tenki.sandbox.v1.SandboxService.CreateStorageConnection:output_type -> tenki.sandbox.v1.CreateStorageConnectionResponse
-	41,  // 393: tenki.sandbox.v1.SandboxService.TestStorageConnection:output_type -> tenki.sandbox.v1.TestStorageConnectionResponse
-	43,  // 394: tenki.sandbox.v1.SandboxService.ListStorageConnections:output_type -> tenki.sandbox.v1.ListStorageConnectionsResponse
-	45,  // 395: tenki.sandbox.v1.SandboxService.UpdateStorageConnection:output_type -> tenki.sandbox.v1.UpdateStorageConnectionResponse
-	47,  // 396: tenki.sandbox.v1.SandboxService.DeleteStorageConnection:output_type -> tenki.sandbox.v1.DeleteStorageConnectionResponse
-	49,  // 397: tenki.sandbox.v1.SandboxService.ListStorageMounts:output_type -> tenki.sandbox.v1.ListStorageMountsResponse
-	51,  // 398: tenki.sandbox.v1.SandboxService.AttachStorageMount:output_type -> tenki.sandbox.v1.AttachStorageMountResponse
-	53,  // 399: tenki.sandbox.v1.SandboxService.DetachStorageMount:output_type -> tenki.sandbox.v1.DetachStorageMountResponse
-	35,  // 400: tenki.sandbox.v1.SandboxService.GetStorageDefaults:output_type -> tenki.sandbox.v1.GetStorageDefaultsResponse
-	37,  // 401: tenki.sandbox.v1.SandboxService.SaveStorageDefaults:output_type -> tenki.sandbox.v1.SaveStorageDefaultsResponse
-	126, // 402: tenki.sandbox.v1.SandboxService.ExecuteCommand:output_type -> tenki.sandbox.v1.ExecuteCommandResponse
-	128, // 403: tenki.sandbox.v1.SandboxService.StreamCommandOutput:output_type -> tenki.sandbox.v1.StreamCommandOutputResponse
-	147, // 404: tenki.sandbox.v1.SandboxService.GitOperation:output_type -> tenki.sandbox.v1.GitOperationResponse
-	167, // 405: tenki.sandbox.v1.SandboxService.PauseSession:output_type -> tenki.sandbox.v1.PauseSessionResponse
-	169, // 406: tenki.sandbox.v1.SandboxService.ResumeSession:output_type -> tenki.sandbox.v1.ResumeSessionResponse
-	171, // 407: tenki.sandbox.v1.SandboxService.TerminateSession:output_type -> tenki.sandbox.v1.TerminateSessionResponse
-	173, // 408: tenki.sandbox.v1.SandboxService.TerminateSessions:output_type -> tenki.sandbox.v1.TerminateSessionsResponse
-	176, // 409: tenki.sandbox.v1.SandboxService.ExtendSession:output_type -> tenki.sandbox.v1.ExtendSessionResponse
-	178, // 410: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:output_type -> tenki.sandbox.v1.GetArtifactUploadUrlResponse
-	180, // 411: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:output_type -> tenki.sandbox.v1.GetArtifactDownloadUrlResponse
-	182, // 412: tenki.sandbox.v1.SandboxService.ExposePort:output_type -> tenki.sandbox.v1.ExposePortResponse
-	195, // 413: tenki.sandbox.v1.SandboxService.OpenPreview:output_type -> tenki.sandbox.v1.OpenPreviewResponse
-	197, // 414: tenki.sandbox.v1.SandboxService.TouchPreview:output_type -> tenki.sandbox.v1.TouchPreviewResponse
-	199, // 415: tenki.sandbox.v1.SandboxService.ReportSessionActivity:output_type -> tenki.sandbox.v1.ReportSessionActivityResponse
-	201, // 416: tenki.sandbox.v1.SandboxService.UnexposePort:output_type -> tenki.sandbox.v1.UnexposePortResponse
-	204, // 417: tenki.sandbox.v1.SandboxService.ListExposedPorts:output_type -> tenki.sandbox.v1.ListExposedPortsResponse
-	206, // 418: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:output_type -> tenki.sandbox.v1.CreatePreviewUrlResponse
-	208, // 419: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:output_type -> tenki.sandbox.v1.DeletePreviewUrlResponse
-	210, // 420: tenki.sandbox.v1.SandboxService.BindPreviewUrl:output_type -> tenki.sandbox.v1.BindPreviewUrlResponse
-	212, // 421: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:output_type -> tenki.sandbox.v1.UnbindPreviewUrlResponse
-	214, // 422: tenki.sandbox.v1.SandboxService.ListPreviewUrls:output_type -> tenki.sandbox.v1.ListPreviewUrlsResponse
-	218, // 423: tenki.sandbox.v1.SandboxService.GetPreviewUrl:output_type -> tenki.sandbox.v1.GetPreviewUrlResponse
-	220, // 424: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:output_type -> tenki.sandbox.v1.ResolvePreviewTokenResponse
-	222, // 425: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:output_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse
-	224, // 426: tenki.sandbox.v1.SandboxService.CreateSnapshot:output_type -> tenki.sandbox.v1.CreateSnapshotResponse
-	226, // 427: tenki.sandbox.v1.SandboxService.ForkSession:output_type -> tenki.sandbox.v1.ForkSessionResponse
-	228, // 428: tenki.sandbox.v1.SandboxService.GetSnapshot:output_type -> tenki.sandbox.v1.GetSnapshotResponse
-	230, // 429: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:output_type -> tenki.sandbox.v1.GetSnapshotDownloadURLResponse
-	232, // 430: tenki.sandbox.v1.SandboxService.ListSnapshots:output_type -> tenki.sandbox.v1.ListSnapshotsResponse
-	234, // 431: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:output_type -> tenki.sandbox.v1.ListSessionSnapshotsResponse
-	236, // 432: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:output_type -> tenki.sandbox.v1.ListDanglingSnapshotsResponse
-	238, // 433: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:output_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
-	240, // 434: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
-	242, // 435: tenki.sandbox.v1.SandboxService.GetWorkspacePreviewDomains:output_type -> tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse
-	244, // 436: tenki.sandbox.v1.SandboxService.UpdateWorkspacePreviewDomains:output_type -> tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse
-	248, // 437: tenki.sandbox.v1.SandboxService.UpdateSnapshot:output_type -> tenki.sandbox.v1.UpdateSnapshotResponse
-	246, // 438: tenki.sandbox.v1.SandboxService.DeleteSnapshot:output_type -> tenki.sandbox.v1.DeleteSnapshotResponse
-	326, // 439: tenki.sandbox.v1.SandboxService.CreateTemplate:output_type -> tenki.sandbox.v1.CreateTemplateResponse
-	327, // 440: tenki.sandbox.v1.SandboxService.GetTemplate:output_type -> tenki.sandbox.v1.GetTemplateResponse
-	328, // 441: tenki.sandbox.v1.SandboxService.ListTemplates:output_type -> tenki.sandbox.v1.ListTemplatesResponse
-	329, // 442: tenki.sandbox.v1.SandboxService.UpdateTemplate:output_type -> tenki.sandbox.v1.UpdateTemplateResponse
-	330, // 443: tenki.sandbox.v1.SandboxService.DeleteTemplate:output_type -> tenki.sandbox.v1.DeleteTemplateResponse
-	331, // 444: tenki.sandbox.v1.SandboxService.BuildTemplate:output_type -> tenki.sandbox.v1.BuildTemplateResponse
-	332, // 445: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:output_type -> tenki.sandbox.v1.CancelTemplateBuildResponse
-	333, // 446: tenki.sandbox.v1.SandboxService.GetTemplateBuild:output_type -> tenki.sandbox.v1.GetTemplateBuildResponse
-	334, // 447: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:output_type -> tenki.sandbox.v1.ListActiveTemplateBuildsResponse
-	335, // 448: tenki.sandbox.v1.SandboxService.ListTemplateBuilds:output_type -> tenki.sandbox.v1.ListTemplateBuildsResponse
-	336, // 449: tenki.sandbox.v1.SandboxService.DeleteTemplateBuild:output_type -> tenki.sandbox.v1.DeleteTemplateBuildResponse
-	337, // 450: tenki.sandbox.v1.SandboxService.PublishRegistryImage:output_type -> tenki.sandbox.v1.PublishRegistryImageResponse
-	338, // 451: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:output_type -> tenki.sandbox.v1.SetRegistryImageVisibilityResponse
-	339, // 452: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:output_type -> tenki.sandbox.v1.DeleteRegistryImageResponse
-	340, // 453: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:output_type -> tenki.sandbox.v1.DeleteRegistryImageVersionResponse
-	341, // 454: tenki.sandbox.v1.SandboxService.ListRegistryImages:output_type -> tenki.sandbox.v1.ListRegistryImagesResponse
-	342, // 455: tenki.sandbox.v1.SandboxService.GetRegistryImage:output_type -> tenki.sandbox.v1.GetRegistryImageResponse
-	343, // 456: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:output_type -> tenki.sandbox.v1.ResolveRegistryRefResponse
-	344, // 457: tenki.sandbox.v1.SandboxService.ShareImage:output_type -> tenki.sandbox.v1.ShareImageResponse
-	345, // 458: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:output_type -> tenki.sandbox.v1.RevokeRegistryShareGrantResponse
-	346, // 459: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:output_type -> tenki.sandbox.v1.ListRegistryShareGrantsResponse
-	347, // 460: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:output_type -> tenki.sandbox.v1.UnshareRegistryImageResponse
-	262, // 461: tenki.sandbox.v1.SandboxService.CreateEgressPolicy:output_type -> tenki.sandbox.v1.CreateEgressPolicyResponse
-	264, // 462: tenki.sandbox.v1.SandboxService.UpdateEgressPolicy:output_type -> tenki.sandbox.v1.UpdateEgressPolicyResponse
-	266, // 463: tenki.sandbox.v1.SandboxService.GetEgressPolicy:output_type -> tenki.sandbox.v1.GetEgressPolicyResponse
-	268, // 464: tenki.sandbox.v1.SandboxService.ListEgressPolicies:output_type -> tenki.sandbox.v1.ListEgressPoliciesResponse
-	270, // 465: tenki.sandbox.v1.SandboxService.DeleteEgressPolicy:output_type -> tenki.sandbox.v1.DeleteEgressPolicyResponse
-	250, // 466: tenki.sandbox.v1.SandboxService.WhoAmI:output_type -> tenki.sandbox.v1.WhoAmIResponse
-	253, // 467: tenki.sandbox.v1.SandboxService.ListCIRunnerSizes:output_type -> tenki.sandbox.v1.ListCIRunnerSizesResponse
-	69,  // 468: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse
-	71,  // 469: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse
-	73,  // 470: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse
-	75,  // 471: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse
-	77,  // 472: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse
-	79,  // 473: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse
-	81,  // 474: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse
-	83,  // 475: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse
-	85,  // 476: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse
-	87,  // 477: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse
-	89,  // 478: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse
-	368, // [368:479] is the sub-list for method output_type
-	257, // [257:368] is the sub-list for method input_type
-	257, // [257:257] is the sub-list for extension type_name
-	257, // [257:257] is the sub-list for extension extendee
-	0,   // [0:257] is the sub-list for field type_name
+	286, // 222: tenki.sandbox.v1.ResolvePreviewTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	225, // 223: tenki.sandbox.v1.RefreshSessionSecretsResponse.versions:type_name -> tenki.sandbox.v1.RuntimeSecretVersionRef
+	286, // 224: tenki.sandbox.v1.CreateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
+	56,  // 225: tenki.sandbox.v1.CreateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	55,  // 226: tenki.sandbox.v1.ForkSessionResponse.sessions:type_name -> tenki.sandbox.v1.SandboxSession
+	56,  // 227: tenki.sandbox.v1.GetSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	286, // 228: tenki.sandbox.v1.GetSnapshotDownloadURLResponse.expires_at:type_name -> google.protobuf.Timestamp
+	56,  // 229: tenki.sandbox.v1.ListSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	56,  // 230: tenki.sandbox.v1.ListSessionSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	56,  // 231: tenki.sandbox.v1.ListDanglingSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	56,  // 232: tenki.sandbox.v1.ListWorkspaceSnapshotsResponse.snapshots:type_name -> tenki.sandbox.v1.Snapshot
+	57,  // 233: tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse.limits:type_name -> tenki.sandbox.v1.WorkspaceSandboxUsageLimit
+	67,  // 234: tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse.domains:type_name -> tenki.sandbox.v1.WorkspacePreviewDomain
+	67,  // 235: tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse.domains:type_name -> tenki.sandbox.v1.WorkspacePreviewDomain
+	56,  // 236: tenki.sandbox.v1.DeleteSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	286, // 237: tenki.sandbox.v1.UpdateSnapshotRequest.expires_at:type_name -> google.protobuf.Timestamp
+	56,  // 238: tenki.sandbox.v1.UpdateSnapshotResponse.snapshot:type_name -> tenki.sandbox.v1.Snapshot
+	254, // 239: tenki.sandbox.v1.WhoAmIResponse.workspaces:type_name -> tenki.sandbox.v1.WhoAmIWorkspace
+	257, // 240: tenki.sandbox.v1.ListCIRunnerSizesResponse.sizes:type_name -> tenki.sandbox.v1.CIRunnerSize
+	18,  // 241: tenki.sandbox.v1.SandboxWarning.code:type_name -> tenki.sandbox.v1.SandboxWarningCode
+	260, // 242: tenki.sandbox.v1.TailnetAttachment.federated:type_name -> tenki.sandbox.v1.TailnetFederatedCredential
+	19,  // 243: tenki.sandbox.v1.TailnetAttachment.exit_policy:type_name -> tenki.sandbox.v1.TailnetExitPolicy
+	20,  // 244: tenki.sandbox.v1.TailnetAttachment.ephemeral_pause_policy:type_name -> tenki.sandbox.v1.TailnetEphemeralPausePolicy
+	60,  // 245: tenki.sandbox.v1.EgressPolicy.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
+	286, // 246: tenki.sandbox.v1.EgressPolicy.created_at:type_name -> google.protobuf.Timestamp
+	286, // 247: tenki.sandbox.v1.EgressPolicy.updated_at:type_name -> google.protobuf.Timestamp
+	286, // 248: tenki.sandbox.v1.EgressPolicy.deleted_at:type_name -> google.protobuf.Timestamp
+	60,  // 249: tenki.sandbox.v1.CreateEgressPolicyRequest.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
+	263, // 250: tenki.sandbox.v1.CreateEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
+	60,  // 251: tenki.sandbox.v1.UpdateEgressPolicyRequest.egress:type_name -> tenki.sandbox.v1.SessionEgressPolicy
+	263, // 252: tenki.sandbox.v1.UpdateEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
+	263, // 253: tenki.sandbox.v1.GetEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
+	263, // 254: tenki.sandbox.v1.ListEgressPoliciesResponse.policies:type_name -> tenki.sandbox.v1.EgressPolicy
+	263, // 255: tenki.sandbox.v1.DeleteEgressPolicyResponse.policy:type_name -> tenki.sandbox.v1.EgressPolicy
+	142, // 256: tenki.sandbox.v1.OpenCodeProviderConfig.ModelPricesEntry.value:type_name -> tenki.sandbox.v1.OpenCodeModelPrice
+	144, // 257: tenki.sandbox.v1.OpenCodeProviderConfig.ModelFallbacksEntry.value:type_name -> tenki.sandbox.v1.OpenCodeModelFallbacks
+	291, // 258: tenki.sandbox.v1.SandboxService.GetTailnetDefaults:input_type -> tenki.sandbox.v1.GetTailnetDefaultsRequest
+	292, // 259: tenki.sandbox.v1.SandboxService.SaveTailnetDefaults:input_type -> tenki.sandbox.v1.SaveTailnetDefaultsRequest
+	293, // 260: tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses:input_type -> tenki.sandbox.v1.ListTailnetRunnerStatusesRequest
+	294, // 261: tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration:input_type -> tenki.sandbox.v1.SaveTailnetRunnerConfigurationRequest
+	295, // 262: tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations:input_type -> tenki.sandbox.v1.ListTailnetRunnerConfigurationsRequest
+	296, // 263: tenki.sandbox.v1.SandboxService.SaveTailnetConnection:input_type -> tenki.sandbox.v1.SaveTailnetConnectionRequest
+	297, // 264: tenki.sandbox.v1.SandboxService.ListTailnetConnections:input_type -> tenki.sandbox.v1.ListTailnetConnectionsRequest
+	298, // 265: tenki.sandbox.v1.SandboxService.TestTailnetConnection:input_type -> tenki.sandbox.v1.TestTailnetConnectionRequest
+	61,  // 266: tenki.sandbox.v1.SandboxService.CreateSession:input_type -> tenki.sandbox.v1.CreateSessionRequest
+	65,  // 267: tenki.sandbox.v1.SandboxService.CreateSessionCredential:input_type -> tenki.sandbox.v1.CreateSessionCredentialRequest
+	90,  // 268: tenki.sandbox.v1.SandboxService.GetSession:input_type -> tenki.sandbox.v1.GetSessionRequest
+	92,  // 269: tenki.sandbox.v1.SandboxService.GetSessionMetrics:input_type -> tenki.sandbox.v1.GetSessionMetricsRequest
+	96,  // 270: tenki.sandbox.v1.SandboxService.WaitSession:input_type -> tenki.sandbox.v1.WaitSessionRequest
+	98,  // 271: tenki.sandbox.v1.SandboxService.ListSessions:input_type -> tenki.sandbox.v1.ListSessionsRequest
+	100, // 272: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:input_type -> tenki.sandbox.v1.ListWorkspaceSandboxesRequest
+	105, // 273: tenki.sandbox.v1.SandboxService.UpdateSession:input_type -> tenki.sandbox.v1.UpdateSessionRequest
+	107, // 274: tenki.sandbox.v1.SandboxService.CreateVolume:input_type -> tenki.sandbox.v1.CreateVolumeRequest
+	109, // 275: tenki.sandbox.v1.SandboxService.GetVolume:input_type -> tenki.sandbox.v1.GetVolumeRequest
+	111, // 276: tenki.sandbox.v1.SandboxService.ListVolumes:input_type -> tenki.sandbox.v1.ListVolumesRequest
+	117, // 277: tenki.sandbox.v1.SandboxService.UpdateVolume:input_type -> tenki.sandbox.v1.UpdateVolumeRequest
+	115, // 278: tenki.sandbox.v1.SandboxService.DeleteVolume:input_type -> tenki.sandbox.v1.DeleteVolumeRequest
+	119, // 279: tenki.sandbox.v1.SandboxService.ResizeVolume:input_type -> tenki.sandbox.v1.ResizeVolumeRequest
+	121, // 280: tenki.sandbox.v1.SandboxService.AttachVolume:input_type -> tenki.sandbox.v1.AttachVolumeRequest
+	123, // 281: tenki.sandbox.v1.SandboxService.DetachVolume:input_type -> tenki.sandbox.v1.DetachVolumeRequest
+	38,  // 282: tenki.sandbox.v1.SandboxService.CreateStorageConnection:input_type -> tenki.sandbox.v1.CreateStorageConnectionRequest
+	40,  // 283: tenki.sandbox.v1.SandboxService.TestStorageConnection:input_type -> tenki.sandbox.v1.TestStorageConnectionRequest
+	42,  // 284: tenki.sandbox.v1.SandboxService.ListStorageConnections:input_type -> tenki.sandbox.v1.ListStorageConnectionsRequest
+	44,  // 285: tenki.sandbox.v1.SandboxService.UpdateStorageConnection:input_type -> tenki.sandbox.v1.UpdateStorageConnectionRequest
+	46,  // 286: tenki.sandbox.v1.SandboxService.DeleteStorageConnection:input_type -> tenki.sandbox.v1.DeleteStorageConnectionRequest
+	48,  // 287: tenki.sandbox.v1.SandboxService.ListStorageMounts:input_type -> tenki.sandbox.v1.ListStorageMountsRequest
+	50,  // 288: tenki.sandbox.v1.SandboxService.AttachStorageMount:input_type -> tenki.sandbox.v1.AttachStorageMountRequest
+	52,  // 289: tenki.sandbox.v1.SandboxService.DetachStorageMount:input_type -> tenki.sandbox.v1.DetachStorageMountRequest
+	34,  // 290: tenki.sandbox.v1.SandboxService.GetStorageDefaults:input_type -> tenki.sandbox.v1.GetStorageDefaultsRequest
+	36,  // 291: tenki.sandbox.v1.SandboxService.SaveStorageDefaults:input_type -> tenki.sandbox.v1.SaveStorageDefaultsRequest
+	125, // 292: tenki.sandbox.v1.SandboxService.ExecuteCommand:input_type -> tenki.sandbox.v1.ExecuteCommandRequest
+	127, // 293: tenki.sandbox.v1.SandboxService.StreamCommandOutput:input_type -> tenki.sandbox.v1.StreamCommandOutputRequest
+	146, // 294: tenki.sandbox.v1.SandboxService.GitOperation:input_type -> tenki.sandbox.v1.GitOperationRequest
+	166, // 295: tenki.sandbox.v1.SandboxService.PauseSession:input_type -> tenki.sandbox.v1.PauseSessionRequest
+	168, // 296: tenki.sandbox.v1.SandboxService.ResumeSession:input_type -> tenki.sandbox.v1.ResumeSessionRequest
+	170, // 297: tenki.sandbox.v1.SandboxService.TerminateSession:input_type -> tenki.sandbox.v1.TerminateSessionRequest
+	172, // 298: tenki.sandbox.v1.SandboxService.TerminateSessions:input_type -> tenki.sandbox.v1.TerminateSessionsRequest
+	175, // 299: tenki.sandbox.v1.SandboxService.ExtendSession:input_type -> tenki.sandbox.v1.ExtendSessionRequest
+	177, // 300: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:input_type -> tenki.sandbox.v1.GetArtifactUploadUrlRequest
+	179, // 301: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:input_type -> tenki.sandbox.v1.GetArtifactDownloadUrlRequest
+	181, // 302: tenki.sandbox.v1.SandboxService.ExposePort:input_type -> tenki.sandbox.v1.ExposePortRequest
+	194, // 303: tenki.sandbox.v1.SandboxService.OpenPreview:input_type -> tenki.sandbox.v1.OpenPreviewRequest
+	196, // 304: tenki.sandbox.v1.SandboxService.TouchPreview:input_type -> tenki.sandbox.v1.TouchPreviewRequest
+	198, // 305: tenki.sandbox.v1.SandboxService.ReportSessionActivity:input_type -> tenki.sandbox.v1.ReportSessionActivityRequest
+	200, // 306: tenki.sandbox.v1.SandboxService.UnexposePort:input_type -> tenki.sandbox.v1.UnexposePortRequest
+	202, // 307: tenki.sandbox.v1.SandboxService.ListExposedPorts:input_type -> tenki.sandbox.v1.ListExposedPortsRequest
+	205, // 308: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:input_type -> tenki.sandbox.v1.CreatePreviewUrlRequest
+	207, // 309: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:input_type -> tenki.sandbox.v1.DeletePreviewUrlRequest
+	209, // 310: tenki.sandbox.v1.SandboxService.BindPreviewUrl:input_type -> tenki.sandbox.v1.BindPreviewUrlRequest
+	211, // 311: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:input_type -> tenki.sandbox.v1.UnbindPreviewUrlRequest
+	213, // 312: tenki.sandbox.v1.SandboxService.ListPreviewUrls:input_type -> tenki.sandbox.v1.ListPreviewUrlsRequest
+	217, // 313: tenki.sandbox.v1.SandboxService.GetPreviewUrl:input_type -> tenki.sandbox.v1.GetPreviewUrlRequest
+	219, // 314: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:input_type -> tenki.sandbox.v1.ResolvePreviewTokenRequest
+	221, // 315: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:input_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysRequest
+	223, // 316: tenki.sandbox.v1.SandboxService.RefreshSessionSecrets:input_type -> tenki.sandbox.v1.RefreshSessionSecretsRequest
+	226, // 317: tenki.sandbox.v1.SandboxService.CreateSnapshot:input_type -> tenki.sandbox.v1.CreateSnapshotRequest
+	228, // 318: tenki.sandbox.v1.SandboxService.ForkSession:input_type -> tenki.sandbox.v1.ForkSessionRequest
+	230, // 319: tenki.sandbox.v1.SandboxService.GetSnapshot:input_type -> tenki.sandbox.v1.GetSnapshotRequest
+	232, // 320: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:input_type -> tenki.sandbox.v1.GetSnapshotDownloadURLRequest
+	234, // 321: tenki.sandbox.v1.SandboxService.ListSnapshots:input_type -> tenki.sandbox.v1.ListSnapshotsRequest
+	236, // 322: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:input_type -> tenki.sandbox.v1.ListSessionSnapshotsRequest
+	238, // 323: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:input_type -> tenki.sandbox.v1.ListDanglingSnapshotsRequest
+	240, // 324: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:input_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsRequest
+	242, // 325: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:input_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageRequest
+	244, // 326: tenki.sandbox.v1.SandboxService.GetWorkspacePreviewDomains:input_type -> tenki.sandbox.v1.GetWorkspacePreviewDomainsRequest
+	246, // 327: tenki.sandbox.v1.SandboxService.UpdateWorkspacePreviewDomains:input_type -> tenki.sandbox.v1.UpdateWorkspacePreviewDomainsRequest
+	250, // 328: tenki.sandbox.v1.SandboxService.UpdateSnapshot:input_type -> tenki.sandbox.v1.UpdateSnapshotRequest
+	248, // 329: tenki.sandbox.v1.SandboxService.DeleteSnapshot:input_type -> tenki.sandbox.v1.DeleteSnapshotRequest
+	299, // 330: tenki.sandbox.v1.SandboxService.CreateTemplate:input_type -> tenki.sandbox.v1.CreateTemplateRequest
+	300, // 331: tenki.sandbox.v1.SandboxService.GetTemplate:input_type -> tenki.sandbox.v1.GetTemplateRequest
+	301, // 332: tenki.sandbox.v1.SandboxService.ListTemplates:input_type -> tenki.sandbox.v1.ListTemplatesRequest
+	302, // 333: tenki.sandbox.v1.SandboxService.UpdateTemplate:input_type -> tenki.sandbox.v1.UpdateTemplateRequest
+	303, // 334: tenki.sandbox.v1.SandboxService.DeleteTemplate:input_type -> tenki.sandbox.v1.DeleteTemplateRequest
+	304, // 335: tenki.sandbox.v1.SandboxService.BuildTemplate:input_type -> tenki.sandbox.v1.BuildTemplateRequest
+	305, // 336: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:input_type -> tenki.sandbox.v1.CancelTemplateBuildRequest
+	306, // 337: tenki.sandbox.v1.SandboxService.GetTemplateBuild:input_type -> tenki.sandbox.v1.GetTemplateBuildRequest
+	307, // 338: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:input_type -> tenki.sandbox.v1.ListActiveTemplateBuildsRequest
+	308, // 339: tenki.sandbox.v1.SandboxService.ListTemplateBuilds:input_type -> tenki.sandbox.v1.ListTemplateBuildsRequest
+	309, // 340: tenki.sandbox.v1.SandboxService.DeleteTemplateBuild:input_type -> tenki.sandbox.v1.DeleteTemplateBuildRequest
+	310, // 341: tenki.sandbox.v1.SandboxService.PublishRegistryImage:input_type -> tenki.sandbox.v1.PublishRegistryImageRequest
+	311, // 342: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:input_type -> tenki.sandbox.v1.SetRegistryImageVisibilityRequest
+	312, // 343: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:input_type -> tenki.sandbox.v1.DeleteRegistryImageRequest
+	313, // 344: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:input_type -> tenki.sandbox.v1.DeleteRegistryImageVersionRequest
+	314, // 345: tenki.sandbox.v1.SandboxService.ListRegistryImages:input_type -> tenki.sandbox.v1.ListRegistryImagesRequest
+	315, // 346: tenki.sandbox.v1.SandboxService.GetRegistryImage:input_type -> tenki.sandbox.v1.GetRegistryImageRequest
+	316, // 347: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:input_type -> tenki.sandbox.v1.ResolveRegistryRefRequest
+	317, // 348: tenki.sandbox.v1.SandboxService.ShareImage:input_type -> tenki.sandbox.v1.ShareImageRequest
+	318, // 349: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:input_type -> tenki.sandbox.v1.RevokeRegistryShareGrantRequest
+	319, // 350: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:input_type -> tenki.sandbox.v1.ListRegistryShareGrantsRequest
+	320, // 351: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:input_type -> tenki.sandbox.v1.UnshareRegistryImageRequest
+	264, // 352: tenki.sandbox.v1.SandboxService.CreateEgressPolicy:input_type -> tenki.sandbox.v1.CreateEgressPolicyRequest
+	266, // 353: tenki.sandbox.v1.SandboxService.UpdateEgressPolicy:input_type -> tenki.sandbox.v1.UpdateEgressPolicyRequest
+	268, // 354: tenki.sandbox.v1.SandboxService.GetEgressPolicy:input_type -> tenki.sandbox.v1.GetEgressPolicyRequest
+	270, // 355: tenki.sandbox.v1.SandboxService.ListEgressPolicies:input_type -> tenki.sandbox.v1.ListEgressPoliciesRequest
+	272, // 356: tenki.sandbox.v1.SandboxService.DeleteEgressPolicy:input_type -> tenki.sandbox.v1.DeleteEgressPolicyRequest
+	252, // 357: tenki.sandbox.v1.SandboxService.WhoAmI:input_type -> tenki.sandbox.v1.WhoAmIRequest
+	255, // 358: tenki.sandbox.v1.SandboxService.ListCIRunnerSizes:input_type -> tenki.sandbox.v1.ListCIRunnerSizesRequest
+	68,  // 359: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunRequest
+	70,  // 360: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialRequest
+	72,  // 361: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelRequest
+	74,  // 362: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileRequest
+	76,  // 363: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileRequest
+	78,  // 364: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamRequest
+	80,  // 365: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamRequest
+	82,  // 366: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatRequest
+	84,  // 367: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirRequest
+	86,  // 368: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveRequest
+	88,  // 369: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:input_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListRequest
+	321, // 370: tenki.sandbox.v1.SandboxService.GetTailnetDefaults:output_type -> tenki.sandbox.v1.GetTailnetDefaultsResponse
+	322, // 371: tenki.sandbox.v1.SandboxService.SaveTailnetDefaults:output_type -> tenki.sandbox.v1.SaveTailnetDefaultsResponse
+	323, // 372: tenki.sandbox.v1.SandboxService.ListTailnetRunnerStatuses:output_type -> tenki.sandbox.v1.ListTailnetRunnerStatusesResponse
+	324, // 373: tenki.sandbox.v1.SandboxService.SaveTailnetRunnerConfiguration:output_type -> tenki.sandbox.v1.SaveTailnetRunnerConfigurationResponse
+	325, // 374: tenki.sandbox.v1.SandboxService.ListTailnetRunnerConfigurations:output_type -> tenki.sandbox.v1.ListTailnetRunnerConfigurationsResponse
+	326, // 375: tenki.sandbox.v1.SandboxService.SaveTailnetConnection:output_type -> tenki.sandbox.v1.SaveTailnetConnectionResponse
+	327, // 376: tenki.sandbox.v1.SandboxService.ListTailnetConnections:output_type -> tenki.sandbox.v1.ListTailnetConnectionsResponse
+	328, // 377: tenki.sandbox.v1.SandboxService.TestTailnetConnection:output_type -> tenki.sandbox.v1.TestTailnetConnectionResponse
+	62,  // 378: tenki.sandbox.v1.SandboxService.CreateSession:output_type -> tenki.sandbox.v1.CreateSessionResponse
+	66,  // 379: tenki.sandbox.v1.SandboxService.CreateSessionCredential:output_type -> tenki.sandbox.v1.CreateSessionCredentialResponse
+	91,  // 380: tenki.sandbox.v1.SandboxService.GetSession:output_type -> tenki.sandbox.v1.GetSessionResponse
+	95,  // 381: tenki.sandbox.v1.SandboxService.GetSessionMetrics:output_type -> tenki.sandbox.v1.GetSessionMetricsResponse
+	97,  // 382: tenki.sandbox.v1.SandboxService.WaitSession:output_type -> tenki.sandbox.v1.WaitSessionResponse
+	99,  // 383: tenki.sandbox.v1.SandboxService.ListSessions:output_type -> tenki.sandbox.v1.ListSessionsResponse
+	101, // 384: tenki.sandbox.v1.SandboxService.ListWorkspaceSandboxes:output_type -> tenki.sandbox.v1.ListWorkspaceSandboxesResponse
+	106, // 385: tenki.sandbox.v1.SandboxService.UpdateSession:output_type -> tenki.sandbox.v1.UpdateSessionResponse
+	108, // 386: tenki.sandbox.v1.SandboxService.CreateVolume:output_type -> tenki.sandbox.v1.CreateVolumeResponse
+	110, // 387: tenki.sandbox.v1.SandboxService.GetVolume:output_type -> tenki.sandbox.v1.GetVolumeResponse
+	112, // 388: tenki.sandbox.v1.SandboxService.ListVolumes:output_type -> tenki.sandbox.v1.ListVolumesResponse
+	118, // 389: tenki.sandbox.v1.SandboxService.UpdateVolume:output_type -> tenki.sandbox.v1.UpdateVolumeResponse
+	116, // 390: tenki.sandbox.v1.SandboxService.DeleteVolume:output_type -> tenki.sandbox.v1.DeleteVolumeResponse
+	120, // 391: tenki.sandbox.v1.SandboxService.ResizeVolume:output_type -> tenki.sandbox.v1.ResizeVolumeResponse
+	122, // 392: tenki.sandbox.v1.SandboxService.AttachVolume:output_type -> tenki.sandbox.v1.AttachVolumeResponse
+	124, // 393: tenki.sandbox.v1.SandboxService.DetachVolume:output_type -> tenki.sandbox.v1.DetachVolumeResponse
+	39,  // 394: tenki.sandbox.v1.SandboxService.CreateStorageConnection:output_type -> tenki.sandbox.v1.CreateStorageConnectionResponse
+	41,  // 395: tenki.sandbox.v1.SandboxService.TestStorageConnection:output_type -> tenki.sandbox.v1.TestStorageConnectionResponse
+	43,  // 396: tenki.sandbox.v1.SandboxService.ListStorageConnections:output_type -> tenki.sandbox.v1.ListStorageConnectionsResponse
+	45,  // 397: tenki.sandbox.v1.SandboxService.UpdateStorageConnection:output_type -> tenki.sandbox.v1.UpdateStorageConnectionResponse
+	47,  // 398: tenki.sandbox.v1.SandboxService.DeleteStorageConnection:output_type -> tenki.sandbox.v1.DeleteStorageConnectionResponse
+	49,  // 399: tenki.sandbox.v1.SandboxService.ListStorageMounts:output_type -> tenki.sandbox.v1.ListStorageMountsResponse
+	51,  // 400: tenki.sandbox.v1.SandboxService.AttachStorageMount:output_type -> tenki.sandbox.v1.AttachStorageMountResponse
+	53,  // 401: tenki.sandbox.v1.SandboxService.DetachStorageMount:output_type -> tenki.sandbox.v1.DetachStorageMountResponse
+	35,  // 402: tenki.sandbox.v1.SandboxService.GetStorageDefaults:output_type -> tenki.sandbox.v1.GetStorageDefaultsResponse
+	37,  // 403: tenki.sandbox.v1.SandboxService.SaveStorageDefaults:output_type -> tenki.sandbox.v1.SaveStorageDefaultsResponse
+	126, // 404: tenki.sandbox.v1.SandboxService.ExecuteCommand:output_type -> tenki.sandbox.v1.ExecuteCommandResponse
+	128, // 405: tenki.sandbox.v1.SandboxService.StreamCommandOutput:output_type -> tenki.sandbox.v1.StreamCommandOutputResponse
+	147, // 406: tenki.sandbox.v1.SandboxService.GitOperation:output_type -> tenki.sandbox.v1.GitOperationResponse
+	167, // 407: tenki.sandbox.v1.SandboxService.PauseSession:output_type -> tenki.sandbox.v1.PauseSessionResponse
+	169, // 408: tenki.sandbox.v1.SandboxService.ResumeSession:output_type -> tenki.sandbox.v1.ResumeSessionResponse
+	171, // 409: tenki.sandbox.v1.SandboxService.TerminateSession:output_type -> tenki.sandbox.v1.TerminateSessionResponse
+	173, // 410: tenki.sandbox.v1.SandboxService.TerminateSessions:output_type -> tenki.sandbox.v1.TerminateSessionsResponse
+	176, // 411: tenki.sandbox.v1.SandboxService.ExtendSession:output_type -> tenki.sandbox.v1.ExtendSessionResponse
+	178, // 412: tenki.sandbox.v1.SandboxService.GetArtifactUploadUrl:output_type -> tenki.sandbox.v1.GetArtifactUploadUrlResponse
+	180, // 413: tenki.sandbox.v1.SandboxService.GetArtifactDownloadUrl:output_type -> tenki.sandbox.v1.GetArtifactDownloadUrlResponse
+	182, // 414: tenki.sandbox.v1.SandboxService.ExposePort:output_type -> tenki.sandbox.v1.ExposePortResponse
+	195, // 415: tenki.sandbox.v1.SandboxService.OpenPreview:output_type -> tenki.sandbox.v1.OpenPreviewResponse
+	197, // 416: tenki.sandbox.v1.SandboxService.TouchPreview:output_type -> tenki.sandbox.v1.TouchPreviewResponse
+	199, // 417: tenki.sandbox.v1.SandboxService.ReportSessionActivity:output_type -> tenki.sandbox.v1.ReportSessionActivityResponse
+	201, // 418: tenki.sandbox.v1.SandboxService.UnexposePort:output_type -> tenki.sandbox.v1.UnexposePortResponse
+	204, // 419: tenki.sandbox.v1.SandboxService.ListExposedPorts:output_type -> tenki.sandbox.v1.ListExposedPortsResponse
+	206, // 420: tenki.sandbox.v1.SandboxService.CreatePreviewUrl:output_type -> tenki.sandbox.v1.CreatePreviewUrlResponse
+	208, // 421: tenki.sandbox.v1.SandboxService.DeletePreviewUrl:output_type -> tenki.sandbox.v1.DeletePreviewUrlResponse
+	210, // 422: tenki.sandbox.v1.SandboxService.BindPreviewUrl:output_type -> tenki.sandbox.v1.BindPreviewUrlResponse
+	212, // 423: tenki.sandbox.v1.SandboxService.UnbindPreviewUrl:output_type -> tenki.sandbox.v1.UnbindPreviewUrlResponse
+	214, // 424: tenki.sandbox.v1.SandboxService.ListPreviewUrls:output_type -> tenki.sandbox.v1.ListPreviewUrlsResponse
+	218, // 425: tenki.sandbox.v1.SandboxService.GetPreviewUrl:output_type -> tenki.sandbox.v1.GetPreviewUrlResponse
+	220, // 426: tenki.sandbox.v1.SandboxService.ResolvePreviewToken:output_type -> tenki.sandbox.v1.ResolvePreviewTokenResponse
+	222, // 427: tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys:output_type -> tenki.sandbox.v1.UpdateSSHAuthorizedKeysResponse
+	224, // 428: tenki.sandbox.v1.SandboxService.RefreshSessionSecrets:output_type -> tenki.sandbox.v1.RefreshSessionSecretsResponse
+	227, // 429: tenki.sandbox.v1.SandboxService.CreateSnapshot:output_type -> tenki.sandbox.v1.CreateSnapshotResponse
+	229, // 430: tenki.sandbox.v1.SandboxService.ForkSession:output_type -> tenki.sandbox.v1.ForkSessionResponse
+	231, // 431: tenki.sandbox.v1.SandboxService.GetSnapshot:output_type -> tenki.sandbox.v1.GetSnapshotResponse
+	233, // 432: tenki.sandbox.v1.SandboxService.GetSnapshotDownloadURL:output_type -> tenki.sandbox.v1.GetSnapshotDownloadURLResponse
+	235, // 433: tenki.sandbox.v1.SandboxService.ListSnapshots:output_type -> tenki.sandbox.v1.ListSnapshotsResponse
+	237, // 434: tenki.sandbox.v1.SandboxService.ListSessionSnapshots:output_type -> tenki.sandbox.v1.ListSessionSnapshotsResponse
+	239, // 435: tenki.sandbox.v1.SandboxService.ListDanglingSnapshots:output_type -> tenki.sandbox.v1.ListDanglingSnapshotsResponse
+	241, // 436: tenki.sandbox.v1.SandboxService.ListWorkspaceSnapshots:output_type -> tenki.sandbox.v1.ListWorkspaceSnapshotsResponse
+	243, // 437: tenki.sandbox.v1.SandboxService.GetWorkspaceSandboxUsage:output_type -> tenki.sandbox.v1.GetWorkspaceSandboxUsageResponse
+	245, // 438: tenki.sandbox.v1.SandboxService.GetWorkspacePreviewDomains:output_type -> tenki.sandbox.v1.GetWorkspacePreviewDomainsResponse
+	247, // 439: tenki.sandbox.v1.SandboxService.UpdateWorkspacePreviewDomains:output_type -> tenki.sandbox.v1.UpdateWorkspacePreviewDomainsResponse
+	251, // 440: tenki.sandbox.v1.SandboxService.UpdateSnapshot:output_type -> tenki.sandbox.v1.UpdateSnapshotResponse
+	249, // 441: tenki.sandbox.v1.SandboxService.DeleteSnapshot:output_type -> tenki.sandbox.v1.DeleteSnapshotResponse
+	329, // 442: tenki.sandbox.v1.SandboxService.CreateTemplate:output_type -> tenki.sandbox.v1.CreateTemplateResponse
+	330, // 443: tenki.sandbox.v1.SandboxService.GetTemplate:output_type -> tenki.sandbox.v1.GetTemplateResponse
+	331, // 444: tenki.sandbox.v1.SandboxService.ListTemplates:output_type -> tenki.sandbox.v1.ListTemplatesResponse
+	332, // 445: tenki.sandbox.v1.SandboxService.UpdateTemplate:output_type -> tenki.sandbox.v1.UpdateTemplateResponse
+	333, // 446: tenki.sandbox.v1.SandboxService.DeleteTemplate:output_type -> tenki.sandbox.v1.DeleteTemplateResponse
+	334, // 447: tenki.sandbox.v1.SandboxService.BuildTemplate:output_type -> tenki.sandbox.v1.BuildTemplateResponse
+	335, // 448: tenki.sandbox.v1.SandboxService.CancelTemplateBuild:output_type -> tenki.sandbox.v1.CancelTemplateBuildResponse
+	336, // 449: tenki.sandbox.v1.SandboxService.GetTemplateBuild:output_type -> tenki.sandbox.v1.GetTemplateBuildResponse
+	337, // 450: tenki.sandbox.v1.SandboxService.ListActiveTemplateBuilds:output_type -> tenki.sandbox.v1.ListActiveTemplateBuildsResponse
+	338, // 451: tenki.sandbox.v1.SandboxService.ListTemplateBuilds:output_type -> tenki.sandbox.v1.ListTemplateBuildsResponse
+	339, // 452: tenki.sandbox.v1.SandboxService.DeleteTemplateBuild:output_type -> tenki.sandbox.v1.DeleteTemplateBuildResponse
+	340, // 453: tenki.sandbox.v1.SandboxService.PublishRegistryImage:output_type -> tenki.sandbox.v1.PublishRegistryImageResponse
+	341, // 454: tenki.sandbox.v1.SandboxService.SetRegistryImageVisibility:output_type -> tenki.sandbox.v1.SetRegistryImageVisibilityResponse
+	342, // 455: tenki.sandbox.v1.SandboxService.DeleteRegistryImage:output_type -> tenki.sandbox.v1.DeleteRegistryImageResponse
+	343, // 456: tenki.sandbox.v1.SandboxService.DeleteRegistryImageVersion:output_type -> tenki.sandbox.v1.DeleteRegistryImageVersionResponse
+	344, // 457: tenki.sandbox.v1.SandboxService.ListRegistryImages:output_type -> tenki.sandbox.v1.ListRegistryImagesResponse
+	345, // 458: tenki.sandbox.v1.SandboxService.GetRegistryImage:output_type -> tenki.sandbox.v1.GetRegistryImageResponse
+	346, // 459: tenki.sandbox.v1.SandboxService.ResolveRegistryRef:output_type -> tenki.sandbox.v1.ResolveRegistryRefResponse
+	347, // 460: tenki.sandbox.v1.SandboxService.ShareImage:output_type -> tenki.sandbox.v1.ShareImageResponse
+	348, // 461: tenki.sandbox.v1.SandboxService.RevokeRegistryShareGrant:output_type -> tenki.sandbox.v1.RevokeRegistryShareGrantResponse
+	349, // 462: tenki.sandbox.v1.SandboxService.ListRegistryShareGrants:output_type -> tenki.sandbox.v1.ListRegistryShareGrantsResponse
+	350, // 463: tenki.sandbox.v1.SandboxService.UnshareRegistryImage:output_type -> tenki.sandbox.v1.UnshareRegistryImageResponse
+	265, // 464: tenki.sandbox.v1.SandboxService.CreateEgressPolicy:output_type -> tenki.sandbox.v1.CreateEgressPolicyResponse
+	267, // 465: tenki.sandbox.v1.SandboxService.UpdateEgressPolicy:output_type -> tenki.sandbox.v1.UpdateEgressPolicyResponse
+	269, // 466: tenki.sandbox.v1.SandboxService.GetEgressPolicy:output_type -> tenki.sandbox.v1.GetEgressPolicyResponse
+	271, // 467: tenki.sandbox.v1.SandboxService.ListEgressPolicies:output_type -> tenki.sandbox.v1.ListEgressPoliciesResponse
+	273, // 468: tenki.sandbox.v1.SandboxService.DeleteEgressPolicy:output_type -> tenki.sandbox.v1.DeleteEgressPolicyResponse
+	253, // 469: tenki.sandbox.v1.SandboxService.WhoAmI:output_type -> tenki.sandbox.v1.WhoAmIResponse
+	256, // 470: tenki.sandbox.v1.SandboxService.ListCIRunnerSizes:output_type -> tenki.sandbox.v1.ListCIRunnerSizesResponse
+	69,  // 471: tenki.sandbox.v1.SandboxSessionDataPlaneService.Run:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRunResponse
+	71,  // 472: tenki.sandbox.v1.SandboxSessionDataPlaneService.Dial:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceDialResponse
+	73,  // 473: tenki.sandbox.v1.SandboxSessionDataPlaneService.HostPortTunnel:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceHostPortTunnelResponse
+	75,  // 474: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileResponse
+	77,  // 475: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFile:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileResponse
+	79,  // 476: tenki.sandbox.v1.SandboxSessionDataPlaneService.ReadFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceReadFileStreamResponse
+	81,  // 477: tenki.sandbox.v1.SandboxSessionDataPlaneService.WriteFileStream:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceWriteFileStreamResponse
+	83,  // 478: tenki.sandbox.v1.SandboxSessionDataPlaneService.Stat:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceStatResponse
+	85,  // 479: tenki.sandbox.v1.SandboxSessionDataPlaneService.Mkdir:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceMkdirResponse
+	87,  // 480: tenki.sandbox.v1.SandboxSessionDataPlaneService.Remove:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceRemoveResponse
+	89,  // 481: tenki.sandbox.v1.SandboxSessionDataPlaneService.List:output_type -> tenki.sandbox.v1.SandboxSessionDataPlaneServiceListResponse
+	370, // [370:482] is the sub-list for method output_type
+	258, // [258:370] is the sub-list for method input_type
+	258, // [258:258] is the sub-list for extension type_name
+	258, // [258:258] is the sub-list for extension extendee
+	0,   // [0:258] is the sub-list for field type_name
 }
 
 func init() { file_tenki_sandbox_v1_sandbox_proto_init() }
@@ -20271,31 +20503,31 @@ func file_tenki_sandbox_v1_sandbox_proto_init() {
 		(*GetPreviewUrlRequest_Slug)(nil),
 	}
 	file_tenki_sandbox_v1_sandbox_proto_msgTypes[196].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[199].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[223].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[228].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[232].OneofWrappers = []any{
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[202].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[226].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[231].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[235].OneofWrappers = []any{
 		(*TailnetAttachment_AuthKey)(nil),
 		(*TailnetAttachment_ProfileId)(nil),
 		(*TailnetAttachment_Federated)(nil),
 	}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[235].OneofWrappers = []any{
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[238].OneofWrappers = []any{
 		(*SessionEgressHttpRule_Exact)(nil),
 		(*SessionEgressHttpRule_Prefix)(nil),
 		(*SessionEgressHttpRule_Regex)(nil),
 	}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[237].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[239].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[241].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[243].OneofWrappers = []any{}
-	file_tenki_sandbox_v1_sandbox_proto_msgTypes[245].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[240].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[242].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[244].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[246].OneofWrappers = []any{}
+	file_tenki_sandbox_v1_sandbox_proto_msgTypes[248].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tenki_sandbox_v1_sandbox_proto_rawDesc), len(file_tenki_sandbox_v1_sandbox_proto_rawDesc)),
 			NumEnums:      24,
-			NumMessages:   259,
+			NumMessages:   262,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

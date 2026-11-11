@@ -29,6 +29,8 @@ type WriteStreamOptions struct {
 	Mode     uint32
 	Truncate bool
 	Sync     bool
+	// Privileged writes outside the workdir as root; setuid, setgid and sticky bits are never applied.
+	Privileged bool
 }
 
 func (s *Session) ReadFileStream(ctx context.Context, path string) (io.ReadCloser, error) {
@@ -111,11 +113,12 @@ func (s *Session) WriteStream(ctx context.Context, path string, opts ...WriteStr
 	if err := stream.Send(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamRequest{Frame: &sandboxv1.WriteFileStreamRequest{
 		Payload: &sandboxv1.WriteFileStreamRequest_Start{
 			Start: &sandboxv1.WriteFileStreamStart{
-				SessionId: s.ID,
-				Path:      path,
-				Mode:      cfg.Mode,
-				Truncate:  cfg.Truncate,
-				Sync:      cfg.Sync,
+				SessionId:  s.ID,
+				Path:       path,
+				Mode:       cfg.Mode,
+				Truncate:   cfg.Truncate,
+				Sync:       cfg.Sync,
+				Privileged: cfg.Privileged,
 			},
 		},
 	}}); err != nil {

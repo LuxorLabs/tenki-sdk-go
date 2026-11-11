@@ -1375,9 +1375,10 @@ func (s *Session) Exec(ctx context.Context, command string, opts ...ExecOption) 
 	}
 
 	runHandle, err := s.Command(append([]string{command}, cfg.args...), RunOptions{
-		Env:     cfg.env,
-		Dir:     cfg.dir,
-		Timeout: cfg.timeout,
+		Env:         cfg.env,
+		Dir:         cfg.dir,
+		Timeout:     cfg.timeout,
+		WithSecrets: cfg.secrets,
 	}).Stream(ctx)
 	var stream *Stream
 	if err == nil {
@@ -1437,9 +1438,10 @@ func (s *Session) Stream(ctx context.Context, command string, opts ...ExecOption
 		return nil, errors.New("sandbox: Stream does not support WithOnOutput; use Exec with WithOnOutput instead")
 	}
 	runHandle, err := s.Command(append([]string{command}, cfg.args...), RunOptions{
-		Env:     cfg.env,
-		Dir:     cfg.dir,
-		Timeout: cfg.timeout,
+		Env:         cfg.env,
+		Dir:         cfg.dir,
+		Timeout:     cfg.timeout,
+		WithSecrets: cfg.secrets,
 	}).Stream(ctx)
 	if err != nil {
 		return nil, err
@@ -1734,6 +1736,38 @@ func (s *Session) UpdateSSHAuthorizedKeys(ctx context.Context, keys []string) er
 		SshAuthorizedKeys: append([]string(nil), keys...),
 	}))
 	return mapError(err)
+}
+
+// SecretVersion names one secret binding of a session and the version it now carries.
+type SecretVersion struct {
+	SecretName     string
+	Version        uint32
+	EnvironmentKey string
+	FilePath       string
+}
+
+// SecretsRefresh reports what RefreshSecrets delivered.
+type SecretsRefresh struct {
+	Changed    bool
+	Versions   []SecretVersion
+	WorkflowID string
+}
+
+// RefreshSecrets re-delivers the session's secret bindings at the workspace's current versions
+// and restarts its managed runtime. Processes started before the refresh keep their old values.
+func (s *Session) RefreshSecrets(ctx context.Context) (*SecretsRefresh, error) {
+	resp, err := s.client.sandbox.RefreshSessionSecrets(ctx, connect.NewRequest(&sandboxv1.RefreshSessionSecretsRequest{SessionId: s.ID}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	refresh := &SecretsRefresh{Changed: resp.Msg.GetChanged(), WorkflowID: resp.Msg.GetWorkflowId()}
+	for _, version := range resp.Msg.GetVersions() {
+		refresh.Versions = append(refresh.Versions, SecretVersion{
+			SecretName: version.GetSecretName(), Version: version.GetVersion(),
+			EnvironmentKey: version.GetEnvironmentKey(), FilePath: version.GetFilePath(),
+		})
+	}
+	return refresh, nil
 }
 
 // Update applies mutable session fields.

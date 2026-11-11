@@ -70,6 +70,58 @@ func (SecretScope) EnumDescriptor() ([]byte, []int) {
 	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{0}
 }
 
+// Where a secret applies.
+type SecretAvailability int32
+
+const (
+	SecretAvailability_SECRET_AVAILABILITY_UNSPECIFIED SecretAvailability = 0
+	// Every Tenki CI job in the workspace, and sandboxes.
+	SecretAvailability_SECRET_AVAILABILITY_WORKSPACE SecretAvailability = 1
+	// Only Tenki CI jobs in one repository.
+	SecretAvailability_SECRET_AVAILABILITY_REPOSITORY SecretAvailability = 2
+)
+
+// Enum value maps for SecretAvailability.
+var (
+	SecretAvailability_name = map[int32]string{
+		0: "SECRET_AVAILABILITY_UNSPECIFIED",
+		1: "SECRET_AVAILABILITY_WORKSPACE",
+		2: "SECRET_AVAILABILITY_REPOSITORY",
+	}
+	SecretAvailability_value = map[string]int32{
+		"SECRET_AVAILABILITY_UNSPECIFIED": 0,
+		"SECRET_AVAILABILITY_WORKSPACE":   1,
+		"SECRET_AVAILABILITY_REPOSITORY":  2,
+	}
+)
+
+func (x SecretAvailability) Enum() *SecretAvailability {
+	p := new(SecretAvailability)
+	*p = x
+	return p
+}
+
+func (x SecretAvailability) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SecretAvailability) Descriptor() protoreflect.EnumDescriptor {
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[1].Descriptor()
+}
+
+func (SecretAvailability) Type() protoreflect.EnumType {
+	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[1]
+}
+
+func (x SecretAvailability) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SecretAvailability.Descriptor instead.
+func (SecretAvailability) EnumDescriptor() ([]byte, []int) {
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{1}
+}
+
 type SecretSortField int32
 
 const (
@@ -108,11 +160,11 @@ func (x SecretSortField) String() string {
 }
 
 func (SecretSortField) Descriptor() protoreflect.EnumDescriptor {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[1].Descriptor()
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[2].Descriptor()
 }
 
 func (SecretSortField) Type() protoreflect.EnumType {
-	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[1]
+	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[2]
 }
 
 func (x SecretSortField) Number() protoreflect.EnumNumber {
@@ -121,7 +173,7 @@ func (x SecretSortField) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SecretSortField.Descriptor instead.
 func (SecretSortField) EnumDescriptor() ([]byte, []int) {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{1}
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{2}
 }
 
 type SecretImportState int32
@@ -166,11 +218,11 @@ func (x SecretImportState) String() string {
 }
 
 func (SecretImportState) Descriptor() protoreflect.EnumDescriptor {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[2].Descriptor()
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[3].Descriptor()
 }
 
 func (SecretImportState) Type() protoreflect.EnumType {
-	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[2]
+	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[3]
 }
 
 func (x SecretImportState) Number() protoreflect.EnumNumber {
@@ -179,7 +231,7 @@ func (x SecretImportState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SecretImportState.Descriptor instead.
 func (SecretImportState) EnumDescriptor() ([]byte, []int) {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{2}
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{3}
 }
 
 type SkippedSecretCode int32
@@ -219,11 +271,11 @@ func (x SkippedSecretCode) String() string {
 }
 
 func (SkippedSecretCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[3].Descriptor()
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[4].Descriptor()
 }
 
 func (SkippedSecretCode) Type() protoreflect.EnumType {
-	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[3]
+	return &file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes[4]
 }
 
 func (x SkippedSecretCode) Number() protoreflect.EnumNumber {
@@ -232,7 +284,7 @@ func (x SkippedSecretCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SkippedSecretCode.Descriptor instead.
 func (SkippedSecretCode) EnumDescriptor() ([]byte, []int) {
-	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{3}
+	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP(), []int{4}
 }
 
 // Metadata only. Values and encrypted values are never returned publicly.
@@ -248,8 +300,10 @@ type Secret struct {
 	RevokedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
 	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
 	// Full name (owner/name) of the repository whose CI jobs get this secret; empty for a workspace secret.
-	Repository    string      `protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`
-	Scope         SecretScope `protobuf:"varint,12,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope" json:"scope,omitempty"`
+	Repository string      `protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`
+	Scope      SecretScope `protobuf:"varint,12,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope" json:"scope,omitempty"`
+	// One-line note for the people who manage the secret.
+	Description   string `protobuf:"bytes,13,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -361,6 +415,13 @@ func (x *Secret) GetScope() SecretScope {
 	return SecretScope_SECRET_SCOPE_UNSPECIFIED
 }
 
+func (x *Secret) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type SecretVersion struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -430,7 +491,9 @@ type CreateSecretRequest struct {
 	// Creates a repository secret; must be one of ListSecretRepositories. Empty creates a workspace secret.
 	Repository string `protobuf:"bytes,6,opt,name=repository,proto3" json:"repository,omitempty"`
 	// S3_STORAGE requires an empty repository.
-	Scope         SecretScope `protobuf:"varint,7,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope" json:"scope,omitempty"`
+	Scope SecretScope `protobuf:"varint,7,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope" json:"scope,omitempty"`
+	// One line, at most 256 characters; surrounding spaces are trimmed.
+	Description   string `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -507,6 +570,13 @@ func (x *CreateSecretRequest) GetScope() SecretScope {
 	return SecretScope_SECRET_SCOPE_UNSPECIFIED
 }
 
+func (x *CreateSecretRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type CreateSecretResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Secret        *Secret                `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
@@ -551,17 +621,25 @@ func (x *CreateSecretResponse) GetSecret() *Secret {
 	return nil
 }
 
-// Omitted value retains the active version; present empty bytes creates an empty value.
+// Changes only the fields that are set, at least one. A value or active_version makes that version
+// active and restores a revoked secret; description and availability changes don't.
 type UpdateSecretRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	WorkspaceId      string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	SecretId         string                 `protobuf:"bytes,2,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
-	Value            []byte                 `protobuf:"bytes,3,opt,name=value,proto3,oneof" json:"value,omitempty"`
-	ExpectedRevision uint32                 `protobuf:"varint,5,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
-	RequestId        string                 `protobuf:"bytes,6,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	ActiveVersion    *uint32                `protobuf:"varint,7,opt,name=active_version,json=activeVersion,proto3,oneof" json:"active_version,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	SecretId    string                 `protobuf:"bytes,2,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	// A new version; present empty bytes creates an empty value. Cannot be combined with active_version.
+	Value            []byte  `protobuf:"bytes,3,opt,name=value,proto3,oneof" json:"value,omitempty"`
+	ExpectedRevision uint32  `protobuf:"varint,5,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	RequestId        string  `protobuf:"bytes,6,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	ActiveVersion    *uint32 `protobuf:"varint,7,opt,name=active_version,json=activeVersion,proto3,oneof" json:"active_version,omitempty"`
+	// Empty clears the description.
+	Description *string `protobuf:"bytes,8,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// Unspecified keeps the availability. REPOSITORY moves the secret to repository.
+	Availability SecretAvailability `protobuf:"varint,9,opt,name=availability,proto3,enum=tenki.cloud.workspace.v1beta1.SecretAvailability" json:"availability,omitempty"`
+	// Required with REPOSITORY; must be one of ListSecretRepositories.
+	Repository    string `protobuf:"bytes,10,opt,name=repository,proto3" json:"repository,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateSecretRequest) Reset() {
@@ -634,6 +712,27 @@ func (x *UpdateSecretRequest) GetActiveVersion() uint32 {
 		return *x.ActiveVersion
 	}
 	return 0
+}
+
+func (x *UpdateSecretRequest) GetDescription() string {
+	if x != nil && x.Description != nil {
+		return *x.Description
+	}
+	return ""
+}
+
+func (x *UpdateSecretRequest) GetAvailability() SecretAvailability {
+	if x != nil {
+		return x.Availability
+	}
+	return SecretAvailability_SECRET_AVAILABILITY_UNSPECIFIED
+}
+
+func (x *UpdateSecretRequest) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
 }
 
 type UpdateSecretResponse struct {
@@ -780,7 +879,7 @@ type ListSecretsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	PageSize    uint32                 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// Continues from next_cursor; cannot be combined with search, sort_by or offset.
+	// Continues from next_cursor with the same filters; cannot be combined with search, sort_by or offset.
 	Cursor string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// Case-insensitive substring match on the secret name.
 	Search string          `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
@@ -790,7 +889,12 @@ type ListSecretsRequest struct {
 	// Matching secrets to skip, for numbered pages.
 	Offset uint32 `protobuf:"varint,7,opt,name=offset,proto3" json:"offset,omitempty"`
 	// Unset lists every scope.
-	Scope         *SecretScope `protobuf:"varint,8,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope,oneof" json:"scope,omitempty"`
+	Scope *SecretScope `protobuf:"varint,8,opt,name=scope,proto3,enum=tenki.cloud.workspace.v1beta1.SecretScope,oneof" json:"scope,omitempty"`
+	// Unspecified lists workspace and repository secrets.
+	// WORKSPACE lists what every CI job and sandbox receives, so it leaves out S3 storage secrets and refuses scope S3_STORAGE.
+	Availability SecretAvailability `protobuf:"varint,9,opt,name=availability,proto3,enum=tenki.cloud.workspace.v1beta1.SecretAvailability" json:"availability,omitempty"`
+	// With REPOSITORY, only secrets of this repository, compared without case; empty lists all of them.
+	Repository    string `protobuf:"bytes,10,opt,name=repository,proto3" json:"repository,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -879,6 +983,20 @@ func (x *ListSecretsRequest) GetScope() SecretScope {
 		return *x.Scope
 	}
 	return SecretScope_SECRET_SCOPE_UNSPECIFIED
+}
+
+func (x *ListSecretsRequest) GetAvailability() SecretAvailability {
+	if x != nil {
+		return x.Availability
+	}
+	return SecretAvailability_SECRET_AVAILABILITY_UNSPECIFIED
+}
+
+func (x *ListSecretsRequest) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
 }
 
 type ListSecretsResponse struct {
@@ -2666,7 +2784,7 @@ var File_tenki_cloud_workspace_v1beta1_secrets_proto protoreflect.FileDescriptor
 
 const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\n" +
-	"+tenki/cloud/workspace/v1beta1/secrets.proto\x12\x1dtenki.cloud.workspace.v1beta1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe0\x03\n" +
+	"+tenki/cloud/workspace/v1beta1/secrets.proto\x12\x1dtenki.cloud.workspace.v1beta1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x04\n" +
 	"\x06Secret\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
@@ -2685,13 +2803,14 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\n" +
 	"repository\x18\v \x01(\tR\n" +
 	"repository\x12@\n" +
-	"\x05scope\x18\f \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeR\x05scope\"\x9f\x01\n" +
+	"\x05scope\x18\f \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeR\x05scope\x12 \n" +
+	"\vdescription\x18\r \x01(\tR\vdescription\"\x9f\x01\n" +
 	"\rSecretVersion\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x129\n" +
 	"\n" +
 	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"revoked_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\"\xf2\x01\n" +
+	"revoked_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\"\x94\x02\n" +
 	"\x13CreateSecretRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
@@ -2701,10 +2820,11 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\n" +
 	"repository\x18\x06 \x01(\tR\n" +
 	"repository\x12@\n" +
-	"\x05scope\x18\a \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeR\x05scopeB\b\n" +
+	"\x05scope\x18\a \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeR\x05scope\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescriptionB\b\n" +
 	"\x06_value\"U\n" +
 	"\x14CreateSecretResponse\x12=\n" +
-	"\x06secret\x18\x01 \x01(\v2%.tenki.cloud.workspace.v1beta1.SecretR\x06secret\"\x85\x02\n" +
+	"\x06secret\x18\x01 \x01(\v2%.tenki.cloud.workspace.v1beta1.SecretR\x06secret\"\xb3\x03\n" +
 	"\x13UpdateSecretRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\x12\x19\n" +
@@ -2712,16 +2832,23 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\x11expected_revision\x18\x05 \x01(\rR\x10expectedRevision\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x06 \x01(\tR\trequestId\x12*\n" +
-	"\x0eactive_version\x18\a \x01(\rH\x01R\ractiveVersion\x88\x01\x01B\b\n" +
+	"\x0eactive_version\x18\a \x01(\rH\x01R\ractiveVersion\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\b \x01(\tH\x02R\vdescription\x88\x01\x01\x12U\n" +
+	"\favailability\x18\t \x01(\x0e21.tenki.cloud.workspace.v1beta1.SecretAvailabilityR\favailability\x12\x1e\n" +
+	"\n" +
+	"repository\x18\n" +
+	" \x01(\tR\n" +
+	"repositoryB\b\n" +
 	"\x06_valueB\x11\n" +
-	"\x0f_active_version\"U\n" +
+	"\x0f_active_versionB\x0e\n" +
+	"\f_description\"U\n" +
 	"\x14UpdateSecretResponse\x12=\n" +
 	"\x06secret\x18\x01 \x01(\v2%.tenki.cloud.workspace.v1beta1.SecretR\x06secret\"R\n" +
 	"\x10GetSecretRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1b\n" +
 	"\tsecret_id\x18\x02 \x01(\tR\bsecretId\"R\n" +
 	"\x11GetSecretResponse\x12=\n" +
-	"\x06secret\x18\x01 \x01(\v2%.tenki.cloud.workspace.v1beta1.SecretR\x06secret\"\xd3\x02\n" +
+	"\x06secret\x18\x01 \x01(\v2%.tenki.cloud.workspace.v1beta1.SecretR\x06secret\"\xca\x03\n" +
 	"\x12ListSecretsRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\rR\bpageSize\x12\x16\n" +
@@ -2730,7 +2857,12 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\asort_by\x18\x05 \x01(\x0e2..tenki.cloud.workspace.v1beta1.SecretSortFieldR\x06sortBy\x12\x1b\n" +
 	"\tsort_desc\x18\x06 \x01(\bR\bsortDesc\x12\x16\n" +
 	"\x06offset\x18\a \x01(\rR\x06offset\x12E\n" +
-	"\x05scope\x18\b \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeH\x00R\x05scope\x88\x01\x01B\b\n" +
+	"\x05scope\x18\b \x01(\x0e2*.tenki.cloud.workspace.v1beta1.SecretScopeH\x00R\x05scope\x88\x01\x01\x12U\n" +
+	"\favailability\x18\t \x01(\x0e21.tenki.cloud.workspace.v1beta1.SecretAvailabilityR\favailability\x12\x1e\n" +
+	"\n" +
+	"repository\x18\n" +
+	" \x01(\tR\n" +
+	"repositoryB\b\n" +
 	"\x06_scope\"\x98\x01\n" +
 	"\x13ListSecretsResponse\x12?\n" +
 	"\asecrets\x18\x01 \x03(\v2%.tenki.cloud.workspace.v1beta1.SecretR\asecrets\x12\x1f\n" +
@@ -2880,7 +3012,11 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\asecrets\x18\a \x03(\tR\asecrets*H\n" +
 	"\vSecretScope\x12\x1c\n" +
 	"\x18SECRET_SCOPE_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17SECRET_SCOPE_S3_STORAGE\x10\x01*\x90\x01\n" +
+	"\x17SECRET_SCOPE_S3_STORAGE\x10\x01*\x80\x01\n" +
+	"\x12SecretAvailability\x12#\n" +
+	"\x1fSECRET_AVAILABILITY_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dSECRET_AVAILABILITY_WORKSPACE\x10\x01\x12\"\n" +
+	"\x1eSECRET_AVAILABILITY_REPOSITORY\x10\x02*\x90\x01\n" +
 	"\x0fSecretSortField\x12!\n" +
 	"\x1dSECRET_SORT_FIELD_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16SECRET_SORT_FIELD_NAME\x10\x01\x12\x1c\n" +
@@ -2927,124 +3063,127 @@ func file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescGZIP() []byte {
 	return file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescData
 }
 
-var file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_tenki_cloud_workspace_v1beta1_secrets_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_tenki_cloud_workspace_v1beta1_secrets_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_tenki_cloud_workspace_v1beta1_secrets_proto_goTypes = []any{
 	(SecretScope)(0),                       // 0: tenki.cloud.workspace.v1beta1.SecretScope
-	(SecretSortField)(0),                   // 1: tenki.cloud.workspace.v1beta1.SecretSortField
-	(SecretImportState)(0),                 // 2: tenki.cloud.workspace.v1beta1.SecretImportState
-	(SkippedSecretCode)(0),                 // 3: tenki.cloud.workspace.v1beta1.SkippedSecretCode
-	(*Secret)(nil),                         // 4: tenki.cloud.workspace.v1beta1.Secret
-	(*SecretVersion)(nil),                  // 5: tenki.cloud.workspace.v1beta1.SecretVersion
-	(*CreateSecretRequest)(nil),            // 6: tenki.cloud.workspace.v1beta1.CreateSecretRequest
-	(*CreateSecretResponse)(nil),           // 7: tenki.cloud.workspace.v1beta1.CreateSecretResponse
-	(*UpdateSecretRequest)(nil),            // 8: tenki.cloud.workspace.v1beta1.UpdateSecretRequest
-	(*UpdateSecretResponse)(nil),           // 9: tenki.cloud.workspace.v1beta1.UpdateSecretResponse
-	(*GetSecretRequest)(nil),               // 10: tenki.cloud.workspace.v1beta1.GetSecretRequest
-	(*GetSecretResponse)(nil),              // 11: tenki.cloud.workspace.v1beta1.GetSecretResponse
-	(*ListSecretsRequest)(nil),             // 12: tenki.cloud.workspace.v1beta1.ListSecretsRequest
-	(*ListSecretsResponse)(nil),            // 13: tenki.cloud.workspace.v1beta1.ListSecretsResponse
-	(*ListSecretRepositoriesRequest)(nil),  // 14: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesRequest
-	(*ListSecretRepositoriesResponse)(nil), // 15: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse
-	(*SecretRepository)(nil),               // 16: tenki.cloud.workspace.v1beta1.SecretRepository
-	(*SecretImport)(nil),                   // 17: tenki.cloud.workspace.v1beta1.SecretImport
-	(*SkippedSecret)(nil),                  // 18: tenki.cloud.workspace.v1beta1.SkippedSecret
-	(*StartSecretImportRequest)(nil),       // 19: tenki.cloud.workspace.v1beta1.StartSecretImportRequest
-	(*StartSecretImportResponse)(nil),      // 20: tenki.cloud.workspace.v1beta1.StartSecretImportResponse
-	(*GetSecretImportRequest)(nil),         // 21: tenki.cloud.workspace.v1beta1.GetSecretImportRequest
-	(*GetSecretImportResponse)(nil),        // 22: tenki.cloud.workspace.v1beta1.GetSecretImportResponse
-	(*ListSecretVersionsRequest)(nil),      // 23: tenki.cloud.workspace.v1beta1.ListSecretVersionsRequest
-	(*ListSecretVersionsResponse)(nil),     // 24: tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse
-	(*RevokeSecretRequest)(nil),            // 25: tenki.cloud.workspace.v1beta1.RevokeSecretRequest
-	(*RevokeSecretResponse)(nil),           // 26: tenki.cloud.workspace.v1beta1.RevokeSecretResponse
-	(*DeleteSecretRequest)(nil),            // 27: tenki.cloud.workspace.v1beta1.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),           // 28: tenki.cloud.workspace.v1beta1.DeleteSecretResponse
-	(*SecretAccessPolicy)(nil),             // 29: tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	(*CreateSecretPolicyRequest)(nil),      // 30: tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest
-	(*CreateSecretPolicyResponse)(nil),     // 31: tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse
-	(*UpdateSecretPolicyRequest)(nil),      // 32: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest
-	(*UpdateSecretPolicyResponse)(nil),     // 33: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse
-	(*DeleteSecretPolicyRequest)(nil),      // 34: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyRequest
-	(*DeleteSecretPolicyResponse)(nil),     // 35: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse
-	(*GetSecretPolicyRequest)(nil),         // 36: tenki.cloud.workspace.v1beta1.GetSecretPolicyRequest
-	(*GetSecretPolicyResponse)(nil),        // 37: tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse
-	(*ListSecretPoliciesRequest)(nil),      // 38: tenki.cloud.workspace.v1beta1.ListSecretPoliciesRequest
-	(*ListSecretPoliciesResponse)(nil),     // 39: tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse
-	(*SecretRequestRule)(nil),              // 40: tenki.cloud.workspace.v1beta1.SecretRequestRule
-	(*timestamppb.Timestamp)(nil),          // 41: google.protobuf.Timestamp
+	(SecretAvailability)(0),                // 1: tenki.cloud.workspace.v1beta1.SecretAvailability
+	(SecretSortField)(0),                   // 2: tenki.cloud.workspace.v1beta1.SecretSortField
+	(SecretImportState)(0),                 // 3: tenki.cloud.workspace.v1beta1.SecretImportState
+	(SkippedSecretCode)(0),                 // 4: tenki.cloud.workspace.v1beta1.SkippedSecretCode
+	(*Secret)(nil),                         // 5: tenki.cloud.workspace.v1beta1.Secret
+	(*SecretVersion)(nil),                  // 6: tenki.cloud.workspace.v1beta1.SecretVersion
+	(*CreateSecretRequest)(nil),            // 7: tenki.cloud.workspace.v1beta1.CreateSecretRequest
+	(*CreateSecretResponse)(nil),           // 8: tenki.cloud.workspace.v1beta1.CreateSecretResponse
+	(*UpdateSecretRequest)(nil),            // 9: tenki.cloud.workspace.v1beta1.UpdateSecretRequest
+	(*UpdateSecretResponse)(nil),           // 10: tenki.cloud.workspace.v1beta1.UpdateSecretResponse
+	(*GetSecretRequest)(nil),               // 11: tenki.cloud.workspace.v1beta1.GetSecretRequest
+	(*GetSecretResponse)(nil),              // 12: tenki.cloud.workspace.v1beta1.GetSecretResponse
+	(*ListSecretsRequest)(nil),             // 13: tenki.cloud.workspace.v1beta1.ListSecretsRequest
+	(*ListSecretsResponse)(nil),            // 14: tenki.cloud.workspace.v1beta1.ListSecretsResponse
+	(*ListSecretRepositoriesRequest)(nil),  // 15: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesRequest
+	(*ListSecretRepositoriesResponse)(nil), // 16: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse
+	(*SecretRepository)(nil),               // 17: tenki.cloud.workspace.v1beta1.SecretRepository
+	(*SecretImport)(nil),                   // 18: tenki.cloud.workspace.v1beta1.SecretImport
+	(*SkippedSecret)(nil),                  // 19: tenki.cloud.workspace.v1beta1.SkippedSecret
+	(*StartSecretImportRequest)(nil),       // 20: tenki.cloud.workspace.v1beta1.StartSecretImportRequest
+	(*StartSecretImportResponse)(nil),      // 21: tenki.cloud.workspace.v1beta1.StartSecretImportResponse
+	(*GetSecretImportRequest)(nil),         // 22: tenki.cloud.workspace.v1beta1.GetSecretImportRequest
+	(*GetSecretImportResponse)(nil),        // 23: tenki.cloud.workspace.v1beta1.GetSecretImportResponse
+	(*ListSecretVersionsRequest)(nil),      // 24: tenki.cloud.workspace.v1beta1.ListSecretVersionsRequest
+	(*ListSecretVersionsResponse)(nil),     // 25: tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse
+	(*RevokeSecretRequest)(nil),            // 26: tenki.cloud.workspace.v1beta1.RevokeSecretRequest
+	(*RevokeSecretResponse)(nil),           // 27: tenki.cloud.workspace.v1beta1.RevokeSecretResponse
+	(*DeleteSecretRequest)(nil),            // 28: tenki.cloud.workspace.v1beta1.DeleteSecretRequest
+	(*DeleteSecretResponse)(nil),           // 29: tenki.cloud.workspace.v1beta1.DeleteSecretResponse
+	(*SecretAccessPolicy)(nil),             // 30: tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	(*CreateSecretPolicyRequest)(nil),      // 31: tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest
+	(*CreateSecretPolicyResponse)(nil),     // 32: tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse
+	(*UpdateSecretPolicyRequest)(nil),      // 33: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest
+	(*UpdateSecretPolicyResponse)(nil),     // 34: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse
+	(*DeleteSecretPolicyRequest)(nil),      // 35: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyRequest
+	(*DeleteSecretPolicyResponse)(nil),     // 36: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse
+	(*GetSecretPolicyRequest)(nil),         // 37: tenki.cloud.workspace.v1beta1.GetSecretPolicyRequest
+	(*GetSecretPolicyResponse)(nil),        // 38: tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse
+	(*ListSecretPoliciesRequest)(nil),      // 39: tenki.cloud.workspace.v1beta1.ListSecretPoliciesRequest
+	(*ListSecretPoliciesResponse)(nil),     // 40: tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse
+	(*SecretRequestRule)(nil),              // 41: tenki.cloud.workspace.v1beta1.SecretRequestRule
+	(*timestamppb.Timestamp)(nil),          // 42: google.protobuf.Timestamp
 }
 var file_tenki_cloud_workspace_v1beta1_secrets_proto_depIdxs = []int32{
-	41, // 0: tenki.cloud.workspace.v1beta1.Secret.created_at:type_name -> google.protobuf.Timestamp
-	41, // 1: tenki.cloud.workspace.v1beta1.Secret.updated_at:type_name -> google.protobuf.Timestamp
-	41, // 2: tenki.cloud.workspace.v1beta1.Secret.revoked_at:type_name -> google.protobuf.Timestamp
-	41, // 3: tenki.cloud.workspace.v1beta1.Secret.deleted_at:type_name -> google.protobuf.Timestamp
+	42, // 0: tenki.cloud.workspace.v1beta1.Secret.created_at:type_name -> google.protobuf.Timestamp
+	42, // 1: tenki.cloud.workspace.v1beta1.Secret.updated_at:type_name -> google.protobuf.Timestamp
+	42, // 2: tenki.cloud.workspace.v1beta1.Secret.revoked_at:type_name -> google.protobuf.Timestamp
+	42, // 3: tenki.cloud.workspace.v1beta1.Secret.deleted_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: tenki.cloud.workspace.v1beta1.Secret.scope:type_name -> tenki.cloud.workspace.v1beta1.SecretScope
-	41, // 5: tenki.cloud.workspace.v1beta1.SecretVersion.created_at:type_name -> google.protobuf.Timestamp
-	41, // 6: tenki.cloud.workspace.v1beta1.SecretVersion.revoked_at:type_name -> google.protobuf.Timestamp
+	42, // 5: tenki.cloud.workspace.v1beta1.SecretVersion.created_at:type_name -> google.protobuf.Timestamp
+	42, // 6: tenki.cloud.workspace.v1beta1.SecretVersion.revoked_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: tenki.cloud.workspace.v1beta1.CreateSecretRequest.scope:type_name -> tenki.cloud.workspace.v1beta1.SecretScope
-	4,  // 8: tenki.cloud.workspace.v1beta1.CreateSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	4,  // 9: tenki.cloud.workspace.v1beta1.UpdateSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	4,  // 10: tenki.cloud.workspace.v1beta1.GetSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	1,  // 11: tenki.cloud.workspace.v1beta1.ListSecretsRequest.sort_by:type_name -> tenki.cloud.workspace.v1beta1.SecretSortField
-	0,  // 12: tenki.cloud.workspace.v1beta1.ListSecretsRequest.scope:type_name -> tenki.cloud.workspace.v1beta1.SecretScope
-	4,  // 13: tenki.cloud.workspace.v1beta1.ListSecretsResponse.secrets:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	16, // 14: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse.repositories:type_name -> tenki.cloud.workspace.v1beta1.SecretRepository
-	2,  // 15: tenki.cloud.workspace.v1beta1.SecretImport.state:type_name -> tenki.cloud.workspace.v1beta1.SecretImportState
-	41, // 16: tenki.cloud.workspace.v1beta1.SecretImport.created_at:type_name -> google.protobuf.Timestamp
-	41, // 17: tenki.cloud.workspace.v1beta1.SecretImport.expires_at:type_name -> google.protobuf.Timestamp
-	18, // 18: tenki.cloud.workspace.v1beta1.SecretImport.skipped:type_name -> tenki.cloud.workspace.v1beta1.SkippedSecret
-	3,  // 19: tenki.cloud.workspace.v1beta1.SkippedSecret.code:type_name -> tenki.cloud.workspace.v1beta1.SkippedSecretCode
-	17, // 20: tenki.cloud.workspace.v1beta1.StartSecretImportResponse.secret_import:type_name -> tenki.cloud.workspace.v1beta1.SecretImport
-	17, // 21: tenki.cloud.workspace.v1beta1.GetSecretImportResponse.secret_import:type_name -> tenki.cloud.workspace.v1beta1.SecretImport
-	5,  // 22: tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse.versions:type_name -> tenki.cloud.workspace.v1beta1.SecretVersion
-	4,  // 23: tenki.cloud.workspace.v1beta1.RevokeSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	4,  // 24: tenki.cloud.workspace.v1beta1.DeleteSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
-	40, // 25: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
-	41, // 26: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.created_at:type_name -> google.protobuf.Timestamp
-	41, // 27: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.updated_at:type_name -> google.protobuf.Timestamp
-	41, // 28: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.deleted_at:type_name -> google.protobuf.Timestamp
-	40, // 29: tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
-	29, // 30: tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	40, // 31: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
-	29, // 32: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	29, // 33: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	29, // 34: tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	29, // 35: tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse.policies:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
-	30, // 36: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest
-	32, // 37: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest
-	36, // 38: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.GetSecretPolicyRequest
-	38, // 39: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies:input_type -> tenki.cloud.workspace.v1beta1.ListSecretPoliciesRequest
-	34, // 40: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.DeleteSecretPolicyRequest
-	6,  // 41: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret:input_type -> tenki.cloud.workspace.v1beta1.CreateSecretRequest
-	8,  // 42: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecret:input_type -> tenki.cloud.workspace.v1beta1.UpdateSecretRequest
-	10, // 43: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecret:input_type -> tenki.cloud.workspace.v1beta1.GetSecretRequest
-	12, // 44: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecrets:input_type -> tenki.cloud.workspace.v1beta1.ListSecretsRequest
-	14, // 45: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretRepositories:input_type -> tenki.cloud.workspace.v1beta1.ListSecretRepositoriesRequest
-	19, // 46: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport:input_type -> tenki.cloud.workspace.v1beta1.StartSecretImportRequest
-	21, // 47: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport:input_type -> tenki.cloud.workspace.v1beta1.GetSecretImportRequest
-	23, // 48: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretVersions:input_type -> tenki.cloud.workspace.v1beta1.ListSecretVersionsRequest
-	25, // 49: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.RevokeSecret:input_type -> tenki.cloud.workspace.v1beta1.RevokeSecretRequest
-	27, // 50: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecret:input_type -> tenki.cloud.workspace.v1beta1.DeleteSecretRequest
-	31, // 51: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse
-	33, // 52: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse
-	37, // 53: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse
-	39, // 54: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies:output_type -> tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse
-	35, // 55: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse
-	7,  // 56: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret:output_type -> tenki.cloud.workspace.v1beta1.CreateSecretResponse
-	9,  // 57: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecret:output_type -> tenki.cloud.workspace.v1beta1.UpdateSecretResponse
-	11, // 58: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecret:output_type -> tenki.cloud.workspace.v1beta1.GetSecretResponse
-	13, // 59: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecrets:output_type -> tenki.cloud.workspace.v1beta1.ListSecretsResponse
-	15, // 60: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretRepositories:output_type -> tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse
-	20, // 61: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport:output_type -> tenki.cloud.workspace.v1beta1.StartSecretImportResponse
-	22, // 62: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport:output_type -> tenki.cloud.workspace.v1beta1.GetSecretImportResponse
-	24, // 63: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretVersions:output_type -> tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse
-	26, // 64: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.RevokeSecret:output_type -> tenki.cloud.workspace.v1beta1.RevokeSecretResponse
-	28, // 65: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecret:output_type -> tenki.cloud.workspace.v1beta1.DeleteSecretResponse
-	51, // [51:66] is the sub-list for method output_type
-	36, // [36:51] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	5,  // 8: tenki.cloud.workspace.v1beta1.CreateSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	1,  // 9: tenki.cloud.workspace.v1beta1.UpdateSecretRequest.availability:type_name -> tenki.cloud.workspace.v1beta1.SecretAvailability
+	5,  // 10: tenki.cloud.workspace.v1beta1.UpdateSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	5,  // 11: tenki.cloud.workspace.v1beta1.GetSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	2,  // 12: tenki.cloud.workspace.v1beta1.ListSecretsRequest.sort_by:type_name -> tenki.cloud.workspace.v1beta1.SecretSortField
+	0,  // 13: tenki.cloud.workspace.v1beta1.ListSecretsRequest.scope:type_name -> tenki.cloud.workspace.v1beta1.SecretScope
+	1,  // 14: tenki.cloud.workspace.v1beta1.ListSecretsRequest.availability:type_name -> tenki.cloud.workspace.v1beta1.SecretAvailability
+	5,  // 15: tenki.cloud.workspace.v1beta1.ListSecretsResponse.secrets:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	17, // 16: tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse.repositories:type_name -> tenki.cloud.workspace.v1beta1.SecretRepository
+	3,  // 17: tenki.cloud.workspace.v1beta1.SecretImport.state:type_name -> tenki.cloud.workspace.v1beta1.SecretImportState
+	42, // 18: tenki.cloud.workspace.v1beta1.SecretImport.created_at:type_name -> google.protobuf.Timestamp
+	42, // 19: tenki.cloud.workspace.v1beta1.SecretImport.expires_at:type_name -> google.protobuf.Timestamp
+	19, // 20: tenki.cloud.workspace.v1beta1.SecretImport.skipped:type_name -> tenki.cloud.workspace.v1beta1.SkippedSecret
+	4,  // 21: tenki.cloud.workspace.v1beta1.SkippedSecret.code:type_name -> tenki.cloud.workspace.v1beta1.SkippedSecretCode
+	18, // 22: tenki.cloud.workspace.v1beta1.StartSecretImportResponse.secret_import:type_name -> tenki.cloud.workspace.v1beta1.SecretImport
+	18, // 23: tenki.cloud.workspace.v1beta1.GetSecretImportResponse.secret_import:type_name -> tenki.cloud.workspace.v1beta1.SecretImport
+	6,  // 24: tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse.versions:type_name -> tenki.cloud.workspace.v1beta1.SecretVersion
+	5,  // 25: tenki.cloud.workspace.v1beta1.RevokeSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	5,  // 26: tenki.cloud.workspace.v1beta1.DeleteSecretResponse.secret:type_name -> tenki.cloud.workspace.v1beta1.Secret
+	41, // 27: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
+	42, // 28: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.created_at:type_name -> google.protobuf.Timestamp
+	42, // 29: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.updated_at:type_name -> google.protobuf.Timestamp
+	42, // 30: tenki.cloud.workspace.v1beta1.SecretAccessPolicy.deleted_at:type_name -> google.protobuf.Timestamp
+	41, // 31: tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
+	30, // 32: tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	41, // 33: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest.rules:type_name -> tenki.cloud.workspace.v1beta1.SecretRequestRule
+	30, // 34: tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	30, // 35: tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	30, // 36: tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse.policy:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	30, // 37: tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse.policies:type_name -> tenki.cloud.workspace.v1beta1.SecretAccessPolicy
+	31, // 38: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.CreateSecretPolicyRequest
+	33, // 39: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.UpdateSecretPolicyRequest
+	37, // 40: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.GetSecretPolicyRequest
+	39, // 41: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies:input_type -> tenki.cloud.workspace.v1beta1.ListSecretPoliciesRequest
+	35, // 42: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy:input_type -> tenki.cloud.workspace.v1beta1.DeleteSecretPolicyRequest
+	7,  // 43: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret:input_type -> tenki.cloud.workspace.v1beta1.CreateSecretRequest
+	9,  // 44: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecret:input_type -> tenki.cloud.workspace.v1beta1.UpdateSecretRequest
+	11, // 45: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecret:input_type -> tenki.cloud.workspace.v1beta1.GetSecretRequest
+	13, // 46: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecrets:input_type -> tenki.cloud.workspace.v1beta1.ListSecretsRequest
+	15, // 47: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretRepositories:input_type -> tenki.cloud.workspace.v1beta1.ListSecretRepositoriesRequest
+	20, // 48: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport:input_type -> tenki.cloud.workspace.v1beta1.StartSecretImportRequest
+	22, // 49: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport:input_type -> tenki.cloud.workspace.v1beta1.GetSecretImportRequest
+	24, // 50: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretVersions:input_type -> tenki.cloud.workspace.v1beta1.ListSecretVersionsRequest
+	26, // 51: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.RevokeSecret:input_type -> tenki.cloud.workspace.v1beta1.RevokeSecretRequest
+	28, // 52: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecret:input_type -> tenki.cloud.workspace.v1beta1.DeleteSecretRequest
+	32, // 53: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.CreateSecretPolicyResponse
+	34, // 54: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.UpdateSecretPolicyResponse
+	38, // 55: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.GetSecretPolicyResponse
+	40, // 56: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretPolicies:output_type -> tenki.cloud.workspace.v1beta1.ListSecretPoliciesResponse
+	36, // 57: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecretPolicy:output_type -> tenki.cloud.workspace.v1beta1.DeleteSecretPolicyResponse
+	8,  // 58: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.CreateSecret:output_type -> tenki.cloud.workspace.v1beta1.CreateSecretResponse
+	10, // 59: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.UpdateSecret:output_type -> tenki.cloud.workspace.v1beta1.UpdateSecretResponse
+	12, // 60: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecret:output_type -> tenki.cloud.workspace.v1beta1.GetSecretResponse
+	14, // 61: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecrets:output_type -> tenki.cloud.workspace.v1beta1.ListSecretsResponse
+	16, // 62: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretRepositories:output_type -> tenki.cloud.workspace.v1beta1.ListSecretRepositoriesResponse
+	21, // 63: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.StartSecretImport:output_type -> tenki.cloud.workspace.v1beta1.StartSecretImportResponse
+	23, // 64: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.GetSecretImport:output_type -> tenki.cloud.workspace.v1beta1.GetSecretImportResponse
+	25, // 65: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.ListSecretVersions:output_type -> tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse
+	27, // 66: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.RevokeSecret:output_type -> tenki.cloud.workspace.v1beta1.RevokeSecretResponse
+	29, // 67: tenki.cloud.workspace.v1beta1.WorkspaceSecretsService.DeleteSecret:output_type -> tenki.cloud.workspace.v1beta1.DeleteSecretResponse
+	53, // [53:68] is the sub-list for method output_type
+	38, // [38:53] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_tenki_cloud_workspace_v1beta1_secrets_proto_init() }
@@ -3061,7 +3200,7 @@ func file_tenki_cloud_workspace_v1beta1_secrets_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc), len(file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,

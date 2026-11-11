@@ -1079,6 +1079,7 @@ type execConfig struct {
 	env      map[string]string
 	dir      string
 	onOutput func(Output)
+	secrets  bool
 }
 
 func defaultExecConfig() execConfig {
@@ -1169,6 +1170,14 @@ func WithEnvs(env map[string]string) interface {
 func WithOnOutput(fn func(Output)) ExecOption {
 	return execOptionFunc(func(cfg *execConfig) {
 		cfg.onOutput = fn
+	})
+}
+
+// WithSecrets adds the secrets delivered to the session to the command environment.
+// Values set with WithEnv or WithEnvs still win.
+func WithSecrets() ExecOption {
+	return execOptionFunc(func(cfg *execConfig) {
+		cfg.secrets = true
 	})
 }
 

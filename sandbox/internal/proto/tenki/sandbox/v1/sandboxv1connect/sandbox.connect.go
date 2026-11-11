@@ -215,6 +215,9 @@ const (
 	// SandboxServiceUpdateSSHAuthorizedKeysProcedure is the fully-qualified name of the
 	// SandboxService's UpdateSSHAuthorizedKeys RPC.
 	SandboxServiceUpdateSSHAuthorizedKeysProcedure = "/tenki.sandbox.v1.SandboxService/UpdateSSHAuthorizedKeys"
+	// SandboxServiceRefreshSessionSecretsProcedure is the fully-qualified name of the SandboxService's
+	// RefreshSessionSecrets RPC.
+	SandboxServiceRefreshSessionSecretsProcedure = "/tenki.sandbox.v1.SandboxService/RefreshSessionSecrets"
 	// SandboxServiceCreateSnapshotProcedure is the fully-qualified name of the SandboxService's
 	// CreateSnapshot RPC.
 	SandboxServiceCreateSnapshotProcedure = "/tenki.sandbox.v1.SandboxService/CreateSnapshot"
@@ -447,6 +450,8 @@ type SandboxServiceClient interface {
 	GetPreviewUrl(context.Context, *connect.Request[v1.GetPreviewUrlRequest]) (*connect.Response[v1.GetPreviewUrlResponse], error)
 	ResolvePreviewToken(context.Context, *connect.Request[v1.ResolvePreviewTokenRequest]) (*connect.Response[v1.ResolvePreviewTokenResponse], error)
 	UpdateSSHAuthorizedKeys(context.Context, *connect.Request[v1.UpdateSSHAuthorizedKeysRequest]) (*connect.Response[v1.UpdateSSHAuthorizedKeysResponse], error)
+	// Re-delivers a RUNNING session's secret bindings at the workspace's current versions and restarts its managed runtime.
+	RefreshSessionSecrets(context.Context, *connect.Request[v1.RefreshSessionSecretsRequest]) (*connect.Response[v1.RefreshSessionSecretsResponse], error)
 	CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error)
 	// Snapshots a RUNNING session and starts children from it while the source keeps running.
 	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
@@ -858,6 +863,12 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("UpdateSSHAuthorizedKeys")),
 			connect.WithClientOptions(opts...),
 		),
+		refreshSessionSecrets: connect.NewClient[v1.RefreshSessionSecretsRequest, v1.RefreshSessionSecretsResponse](
+			httpClient,
+			baseURL+SandboxServiceRefreshSessionSecretsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("RefreshSessionSecrets")),
+			connect.WithClientOptions(opts...),
+		),
 		createSnapshot: connect.NewClient[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse](
 			httpClient,
 			baseURL+SandboxServiceCreateSnapshotProcedure,
@@ -1173,6 +1184,7 @@ type sandboxServiceClient struct {
 	getPreviewUrl                   *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
 	resolvePreviewToken             *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
 	updateSSHAuthorizedKeys         *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
+	refreshSessionSecrets           *connect.Client[v1.RefreshSessionSecretsRequest, v1.RefreshSessionSecretsResponse]
 	createSnapshot                  *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
 	forkSession                     *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
 	getSnapshot                     *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
@@ -1521,6 +1533,11 @@ func (c *sandboxServiceClient) UpdateSSHAuthorizedKeys(ctx context.Context, req 
 	return c.updateSSHAuthorizedKeys.CallUnary(ctx, req)
 }
 
+// RefreshSessionSecrets calls tenki.sandbox.v1.SandboxService.RefreshSessionSecrets.
+func (c *sandboxServiceClient) RefreshSessionSecrets(ctx context.Context, req *connect.Request[v1.RefreshSessionSecretsRequest]) (*connect.Response[v1.RefreshSessionSecretsResponse], error) {
+	return c.refreshSessionSecrets.CallUnary(ctx, req)
+}
+
 // CreateSnapshot calls tenki.sandbox.v1.SandboxService.CreateSnapshot.
 func (c *sandboxServiceClient) CreateSnapshot(ctx context.Context, req *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error) {
 	return c.createSnapshot.CallUnary(ctx, req)
@@ -1806,6 +1823,8 @@ type SandboxServiceHandler interface {
 	GetPreviewUrl(context.Context, *connect.Request[v1.GetPreviewUrlRequest]) (*connect.Response[v1.GetPreviewUrlResponse], error)
 	ResolvePreviewToken(context.Context, *connect.Request[v1.ResolvePreviewTokenRequest]) (*connect.Response[v1.ResolvePreviewTokenResponse], error)
 	UpdateSSHAuthorizedKeys(context.Context, *connect.Request[v1.UpdateSSHAuthorizedKeysRequest]) (*connect.Response[v1.UpdateSSHAuthorizedKeysResponse], error)
+	// Re-delivers a RUNNING session's secret bindings at the workspace's current versions and restarts its managed runtime.
+	RefreshSessionSecrets(context.Context, *connect.Request[v1.RefreshSessionSecretsRequest]) (*connect.Response[v1.RefreshSessionSecretsResponse], error)
 	CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error)
 	// Snapshots a RUNNING session and starts children from it while the source keeps running.
 	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
@@ -2213,6 +2232,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("UpdateSSHAuthorizedKeys")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sandboxServiceRefreshSessionSecretsHandler := connect.NewUnaryHandler(
+		SandboxServiceRefreshSessionSecretsProcedure,
+		svc.RefreshSessionSecrets,
+		connect.WithSchema(sandboxServiceMethods.ByName("RefreshSessionSecrets")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sandboxServiceCreateSnapshotHandler := connect.NewUnaryHandler(
 		SandboxServiceCreateSnapshotProcedure,
 		svc.CreateSnapshot,
@@ -2583,6 +2608,8 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceResolvePreviewTokenHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateSSHAuthorizedKeysProcedure:
 			sandboxServiceUpdateSSHAuthorizedKeysHandler.ServeHTTP(w, r)
+		case SandboxServiceRefreshSessionSecretsProcedure:
+			sandboxServiceRefreshSessionSecretsHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSnapshotProcedure:
 			sandboxServiceCreateSnapshotHandler.ServeHTTP(w, r)
 		case SandboxServiceForkSessionProcedure:
@@ -2906,6 +2933,10 @@ func (UnimplementedSandboxServiceHandler) ResolvePreviewToken(context.Context, *
 
 func (UnimplementedSandboxServiceHandler) UpdateSSHAuthorizedKeys(context.Context, *connect.Request[v1.UpdateSSHAuthorizedKeysRequest]) (*connect.Response[v1.UpdateSSHAuthorizedKeysResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateSSHAuthorizedKeys is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) RefreshSessionSecrets(context.Context, *connect.Request[v1.RefreshSessionSecretsRequest]) (*connect.Response[v1.RefreshSessionSecretsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.RefreshSessionSecrets is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) CreateSnapshot(context.Context, *connect.Request[v1.CreateSnapshotRequest]) (*connect.Response[v1.CreateSnapshotResponse], error) {

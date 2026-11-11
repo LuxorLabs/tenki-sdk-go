@@ -34,6 +34,7 @@ func (h *secretsHandler) CreateSecret(_ context.Context, request *connect.Reques
 	}
 	secret := metadataFixture()
 	secret.Repository = request.Msg.Repository
+	secret.Description = request.Msg.Description
 	return connect.NewResponse(&pb.CreateSecretResponse{Secret: secret}), nil
 }
 func (h *secretsHandler) UpdateSecret(_ context.Context, request *connect.Request[pb.UpdateSecretRequest]) (*connect.Response[pb.UpdateSecretResponse], error) {
@@ -110,11 +111,11 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 	c := testClient(t, h, "workspace")
 	ctx := context.Background()
 	value := []byte{0, 255, 10, 128}
-	secret, err := c.Secrets.Create(ctx, "TOKEN", value, "00000000-0000-4000-8000-000000000001")
+	secret, err := c.Secrets.Create(ctx, "TOKEN", value, CreateSecretOptions{RequestID: "00000000-0000-4000-8000-000000000001"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = c.Secrets.Create(ctx, "EMPTY", []byte{}, ""); err != nil {
+	if _, err = c.Secrets.Create(ctx, "EMPTY", []byte{}, CreateSecretOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: SecretMutationOptions{ExpectedRevision: 2}}); err != nil {
@@ -190,33 +191,86 @@ func TestWorkspaceSecretsWireContract(t *testing.T) {
 		t.Fatal("retired access policy exposed")
 	}
 }
-func TestWorkspaceSecretsRepositoryScope(t *testing.T) {
+func TestWorkspaceSecretsAvailabilityAndDescription(t *testing.T) {
 	h := &secretsHandler{}
 	c := testClient(t, h, "workspace")
-	secret, err := c.Secrets.CreateForRepository(context.Background(), "acme/api", "TOKEN", []byte("value"), "")
+	ctx := context.Background()
+	secret, err := c.Secrets.Create(ctx, "TOKEN", []byte("value"), CreateSecretOptions{Repository: "acme/api", Description: "Deploy token"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	create := h.requests[0].(*pb.CreateSecretRequest)
-	if create.Repository != "acme/api" || create.Name != "TOKEN" || create.WorkspaceId != "workspace" || len(create.RequestId) != 36 {
+	if create.Repository != "acme/api" || create.Description != "Deploy token" || create.Name != "TOKEN" || len(create.RequestId) != 36 {
 		t.Fatal("repository create contract")
 	}
-	if secret.Repository != "acme/api" {
-		t.Fatalf("repository %q", secret.Repository)
+	if secret.Repository != "acme/api" || secret.Description != "Deploy token" {
+		t.Fatalf("metadata %+v", secret)
 	}
-	for _, repository := range []string{"", "acme", "acme/api/extra", "/api"} {
-		if _, err := c.Secrets.CreateForRepository(context.Background(), repository, "TOKEN", []byte("value"), ""); err == nil {
+	revision := SecretMutationOptions{ExpectedRevision: 2}
+	cleared := ""
+	if _, err = c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Description: &cleared, Availability: SecretAvailabilityRepository, Repository: "acme/web"}); err != nil {
+		t.Fatal(err)
+	}
+	update := h.requests[1].(*pb.UpdateSecretRequest)
+	if update.Description == nil || *update.Description != "" || update.Availability != pb.SecretAvailability_SECRET_AVAILABILITY_REPOSITORY || update.Repository != "acme/web" || update.Value != nil {
+		t.Fatal("update contract")
+	}
+	if _, err = c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Availability: SecretAvailabilityWorkspace}); err != nil {
+		t.Fatal(err)
+	}
+	if moved := h.requests[2].(*pb.UpdateSecretRequest); moved.Availability != pb.SecretAvailability_SECRET_AVAILABILITY_WORKSPACE || moved.Description != nil {
+		t.Fatal("workspace move contract")
+	}
+	if _, err = c.Secrets.List(ctx, SecretPageOptions{Cursor: "current", Availability: SecretAvailabilityRepository, Repository: "acme/api"}); err != nil {
+		t.Fatal(err)
+	}
+	if list := h.requests[3].(*pb.ListSecretsRequest); list.Availability != pb.SecretAvailability_SECRET_AVAILABILITY_REPOSITORY || list.Repository != "acme/api" || list.Cursor != "current" {
+		t.Fatal("list filter contract")
+	}
+	if _, err = c.Secrets.List(ctx, SecretPageOptions{Repository: "acme/api"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Repository: "acme/web"}); err != nil {
+		t.Fatal(err)
+	}
+	listed, moved := h.requests[4].(*pb.ListSecretsRequest), h.requests[5].(*pb.UpdateSecretRequest)
+	if listed.Availability != pb.SecretAvailability_SECRET_AVAILABILITY_REPOSITORY || moved.Availability != pb.SecretAvailability_SECRET_AVAILABILITY_REPOSITORY || moved.Repository != "acme/web" {
+		t.Fatal("a repository alone must mean repository availability, as in the CLI")
+	}
+	if _, err := c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Repository: "acme"}); err == nil {
+		t.Fatal("malformed repository accepted without availability")
+	}
+	if _, err := c.Secrets.List(ctx, SecretPageOptions{Repository: "acme"}); err == nil {
+		t.Fatal("malformed repository accepted on list")
+	}
+	if _, err := c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Availability: SecretAvailabilityWorkspace, Repository: "acme/api"}); err == nil {
+		t.Fatal("workspace availability with a repository accepted on update")
+	}
+	if _, err := c.Secrets.List(ctx, SecretPageOptions{Availability: SecretAvailabilityWorkspace, Repository: "acme/api"}); err == nil {
+		t.Fatal("workspace availability with a repository accepted on list")
+	}
+	for _, repository := range []string{"acme", "acme/api/extra", "/api"} {
+		if _, err := c.Secrets.Create(ctx, "TOKEN", []byte("value"), CreateSecretOptions{Repository: repository}); err == nil {
 			t.Fatalf("repository %q accepted", repository)
 		}
 	}
-	if len(h.requests) != 1 {
-		t.Fatal("a malformed repository reached the API")
+	if _, err := c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Availability: SecretAvailabilityRepository, Repository: "acme"}); err == nil {
+		t.Fatal("malformed repository accepted on update")
 	}
-	page, err := c.Secrets.ListRepositories(context.Background(), SecretRepositoryPageOptions{SecretPageOptions: SecretPageOptions{PageSize: 1, Cursor: "acme/a"}, Search: "acme"})
+	if _, err := c.Secrets.Update(ctx, "secret", UpdateSecretOptions{SecretMutationOptions: revision, Availability: "everywhere"}); err == nil {
+		t.Fatal("unknown availability accepted on update")
+	}
+	if _, err := c.Secrets.List(ctx, SecretPageOptions{Availability: "everywhere"}); err == nil {
+		t.Fatal("unknown availability accepted on list")
+	}
+	if len(h.requests) != 6 {
+		t.Fatal("an invalid request reached the API")
+	}
+	page, err := c.Secrets.ListRepositories(ctx, SecretRepositoryPageOptions{SecretPageOptions: SecretPageOptions{PageSize: 1, Cursor: "acme/a"}, Search: "acme"})
 	if err != nil || !reflect.DeepEqual(page.Repositories, []string{"acme/api"}) || page.NextCursor != "acme/api" {
 		t.Fatalf("repositories: %+v %v", page, err)
 	}
-	list := h.requests[1].(*pb.ListSecretRepositoriesRequest)
+	list := h.requests[6].(*pb.ListSecretRepositoriesRequest)
 	if list.WorkspaceId != "workspace" || list.PageSize != 1 || list.Cursor != "acme/a" || list.Search != "acme" {
 		t.Fatal("repositories request contract")
 	}

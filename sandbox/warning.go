@@ -15,6 +15,7 @@ const (
 	SandboxWarningCodeStickyOverridesMaxDuration SandboxWarningCode = "STICKY_OVERRIDES_MAX_DURATION"
 	SandboxWarningCodeStickyOverridesIdleTimeout SandboxWarningCode = "STICKY_OVERRIDES_IDLE_TIMEOUT"
 	SandboxWarningCodeMaxDurationCapped          SandboxWarningCode = "MAX_DURATION_CAPPED"
+	SandboxWarningCodeRestoreSecretsSkipped      SandboxWarningCode = "RESTORE_SECRETS_SKIPPED"
 )
 
 type SandboxWarning struct {
