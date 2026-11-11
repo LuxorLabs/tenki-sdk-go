@@ -1,12 +1,20 @@
-# Tenki Sandbox Go SDK
+# Luxor Sandbox Go SDK
 
-Go client for `tenki.sandbox.v1.SandboxService`.
+Go client for [Luxor Sandbox](https://luxor.ai/docs/sandbox/sdk) on Luxor Agent Cloud (`tenki.sandbox.v1.SandboxService`).
 
 ## Install
 
 ```bash
 go get go.luxor.ai/sandbox
 ```
+
+```go
+import "go.luxor.ai/sandbox"
+```
+
+> Versions before 1.5.0 were published as `github.com/LuxorLabs/tenki-sdk-go/sandbox`, and
+> builds pinned to them keep working. 1.5.0 and later are published only as
+> `go.luxor.ai/sandbox`, so update the import path when you upgrade.
 
 ## Streaming without retaining output
 
@@ -30,8 +38,8 @@ More runnable snippets live under `examples/`.
 ### Zero-config (env vars)
 
 ```bash
-export TENKI_API_KEY=lx_your_api_key
-# TENKI_API_URL defaults to https://api.tenki.cloud
+export LUXORAI_API_KEY=lx_your_api_key
+# Optional: LUXORAI_API_URL=https://api.luxor.ai (TENKI_API_KEY and TENKI_API_URL are still read)
 ```
 
 ```go
@@ -43,13 +51,13 @@ import (
 	"log"
 	"time"
 
-	tenkisandbox "go.luxor.ai/sandbox"
+	"go.luxor.ai/sandbox"
 )
 
 func main() {
 	ctx := context.Background()
 
-	client, err := tenkisandbox.New()
+	client, err := sandbox.New()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,7 +65,7 @@ func main() {
 
 	// create waits by default: the server holds the response until the sandbox
 	// is RUNNING with data-plane access primed, so it is exec-ready on return.
-	session, err := client.Create(ctx, tenkisandbox.WithWaitTimeout(2*time.Minute))
+	session, err := client.Create(ctx, sandbox.WithWaitTimeout(2*time.Minute))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,8 +74,8 @@ func main() {
 	result, err := session.Exec(
 		ctx,
 		"echo",
-		tenkisandbox.WithArgs("hello"),
-		tenkisandbox.WithTimeout(5*time.Second),
+		sandbox.WithArgs("hello"),
+		sandbox.WithTimeout(5*time.Second),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -80,10 +88,10 @@ func main() {
 ### Explicit config
 
 ```go
-client, err := tenkisandbox.New(
-	tenkisandbox.WithAuthToken("lx_your_api_key"),
-	tenkisandbox.WithBaseURL("https://api.tenki.cloud"),
-	tenkisandbox.WithHTTPTimeout(10*time.Second),
+client, err := sandbox.New(
+	sandbox.WithAuthToken("lx_your_api_key"),
+	sandbox.WithBaseURL("https://api.luxor.ai"),
+	sandbox.WithHTTPTimeout(10*time.Second),
 )
 ```
 
@@ -91,8 +99,8 @@ Creation warnings are retained on `session.Warnings` and emitted to stderr by de
 Replace or suppress emission with `WithWarningHandler`:
 
 ```go
-client, err := tenkisandbox.New(
-	tenkisandbox.WithWarningHandler(func(warning tenkisandbox.SandboxWarning) {
+client, err := sandbox.New(
+	sandbox.WithWarningHandler(func(warning sandbox.SandboxWarning) {
 		log.Printf("sandbox warning [%s]: %s", warning.Code, warning.Message)
 	}),
 )
@@ -105,11 +113,11 @@ Sticky disables automatic idle pause and remains enabled across manual pause and
 ### Tailnet attachment
 
 Wrap a direct auth key so normal string and debug formatting redact it.
-`WaitForOnline` keeps the session in creation until Tenki verifies the registered node.
+`WaitForOnline` keeps the session in creation until Luxor verifies the registered node.
 
 ```go
-session, err := client.Create(ctx, tenkisandbox.WithTailnet(tenkisandbox.TailnetAttachment{
-	AuthKey:       tenkisandbox.NewTailnetAuthKey(os.Getenv("TAILNET_AUTH_KEY")),
+session, err := client.Create(ctx, sandbox.WithTailnet(sandbox.TailnetAttachment{
+	AuthKey:       sandbox.NewTailnetAuthKey(os.Getenv("TAILNET_AUTH_KEY")),
 	Tags:          []string{"tag:sandbox"},
 	ExposePorts:   []uint32{3000},
 	AcceptRoutes:  true,
@@ -138,7 +146,7 @@ Workspace-scoped fields and RPCs instead.
 ### Migrating to v0.6.0
 
 Version 0.6.0 removes `WithCookieName` and support for Ory session tokens and
-browser cookie values. Use a `tk_` API key or service token with
+browser cookie values. Use an `lx_` API key or service token with
 `WithAuthToken`; the SDK sends it as an `Authorization: Bearer` credential.
 
 | Env Var              | Description                                           |
@@ -150,7 +158,7 @@ browser cookie values. Use a `tk_` API key or service token with
 | `TENKI_API_KEY`      | Auth token fallback when no `LUXORAI_*` token is set  |
 | `TENKI_API_URL`      | Base URL fallback when no `LUXORAI_*` URL is set      |
 
-Use an API key or service token (`lx_*` or `tk_*`), sent as `Authorization: Bearer <token>`.
+Use an API key or service token (`lx_*`; `tk_*` is still accepted), sent as `Authorization: Bearer <token>`.
 Workspace API keys determine Sandbox scope automatically; ordinary calls do not require a Workspace ID.
 
 ## API
@@ -243,8 +251,8 @@ recover after resume, so reconnect rather than retry on it. A fresh
 connection succeeds as soon as the session is `RUNNING` again.
 
 ```go
-sh := func(line string) (*tenkisandbox.Result, error) {
-	return session.Exec(ctx, "bash", tenkisandbox.WithArgs("-lc", line))
+sh := func(line string) (*sandbox.Result, error) {
+	return session.Exec(ctx, "bash", sandbox.WithArgs("-lc", line))
 }
 
 sh("echo hello > ~/marker")
@@ -348,8 +356,8 @@ Children are named `<NamePrefix>-1` to `<NamePrefix>-N`, and an empty prefix der
 `Wait` returns once every child is `RUNNING`.
 
 ```go
-children, err := session.Fork(ctx, tenkisandbox.ForkOptions{Count: 3, NamePrefix: "trial", Wait: true})
-var forkErr *tenkisandbox.ForkFailedError
+children, err := session.Fork(ctx, sandbox.ForkOptions{Count: 3, NamePrefix: "trial", Wait: true})
+var forkErr *sandbox.ForkFailedError
 if errors.As(err, &forkErr) {
 	// forkErr.Sessions were created before the failure and keep running.
 	log.Printf("fork stopped after %d children from snapshot %s: %v", len(forkErr.Sessions), forkErr.SnapshotID, forkErr.Err)
@@ -459,7 +467,7 @@ A session that may only reach PyPI:
 
 ```go
 session, err := client.Create(ctx,
-	tenkisandbox.WithAllowDomains("pypi.org", "*.pypi.org", "files.pythonhosted.org"),
+	sandbox.WithAllowDomains("pypi.org", "*.pypi.org", "files.pythonhosted.org"),
 )
 ```
 
@@ -484,14 +492,14 @@ Read-only access to package registries, plus `git clone` (but not `git push`) fr
 
 ```go
 session, err := client.Create(ctx,
-	tenkisandbox.WithAllowDomains("github.com", "codeload.github.com", "pypi.org", "files.pythonhosted.org"),
-	tenkisandbox.WithEgressInterceptHTTPS(),
-	tenkisandbox.WithEgressHTTPRules(
-		tenkisandbox.EgressHTTPRule{
+	sandbox.WithAllowDomains("github.com", "codeload.github.com", "pypi.org", "files.pythonhosted.org"),
+	sandbox.WithEgressInterceptHTTPS(),
+	sandbox.WithEgressHTTPRules(
+		sandbox.EgressHTTPRule{
 			Domains: []string{"github.com", "codeload.github.com", "pypi.org", "files.pythonhosted.org"},
 			Methods: []string{"GET", "HEAD"},
 		},
-		tenkisandbox.EgressHTTPRule{
+		sandbox.EgressHTTPRule{
 			Domains:   []string{"github.com"},
 			Methods:   []string{"POST"},
 			PathRegex: `^/[^/]+/[^/]+(\.git)?/git-upload-pack$`,
@@ -517,21 +525,21 @@ Tailnet traffic and internal services keep their existing access rules.
 
 ```go
 session, err := client.Create(ctx,
-	tenkisandbox.WithAllowDomains("github.com"),
-	tenkisandbox.WithEgressInterceptHTTPS(),
-	tenkisandbox.WithAllowedPorts(22),
+	sandbox.WithAllowDomains("github.com"),
+	sandbox.WithEgressInterceptHTTPS(),
+	sandbox.WithAllowedPorts(22),
 )
 ```
 
 ### Named egress policies
 
-Save a policy once per workspace, from the SDK or with `tenki sandbox egress-policies create`:
+Save a policy once per workspace, from the SDK or with `luxor sandbox egress-policies create`:
 
 ```go
-policy, err := client.CreateEgressPolicy(ctx, "registries", tenkisandbox.SessionEgressPolicy{
+policy, err := client.CreateEgressPolicy(ctx, "registries", sandbox.SessionEgressPolicy{
 	AllowDomains:   []string{"github.com", "pypi.org", "files.pythonhosted.org"},
 	InterceptHTTPS: true,
-	HTTPRules: []tenkisandbox.EgressHTTPRule{
+	HTTPRules: []sandbox.EgressHTTPRule{
 		{Domains: []string{"*"}, Methods: []string{"GET", "HEAD"}},
 	},
 })
@@ -542,8 +550,8 @@ Then pin policies by name:
 
 ```go
 session, err := client.Create(ctx,
-	tenkisandbox.WithEgressPolicies("registries", "github-read"),
-	tenkisandbox.WithAllowDomains("api.example.com"),
+	sandbox.WithEgressPolicies("registries", "github-read"),
+	sandbox.WithAllowDomains("api.example.com"),
 )
 ```
 
@@ -571,8 +579,8 @@ A timeout is **not** a Go error — it comes back as an ordinary result with
 
 ```go
 result, err := session.Exec(ctx, "bash",
-	tenkisandbox.WithArgs("-lc", "npm ci"),
-	tenkisandbox.WithTimeout(2*time.Minute),
+	sandbox.WithArgs("-lc", "npm ci"),
+	sandbox.WithTimeout(2*time.Minute),
 )
 if err != nil {
 	return err // transport or session failure, not a timeout
@@ -595,14 +603,14 @@ waits for the server rather than the shell:
 
 ```go
 // Hangs: the server inherits stdout/stderr.
-session.Exec(ctx, "sh", tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 &"))
+session.Exec(ctx, "sh", sandbox.WithArgs("-lc", "python3 -m http.server 3000 &"))
 ```
 
 Redirect **both** streams to detach it:
 
 ```go
 session.Exec(ctx, "sh",
-	tenkisandbox.WithArgs("-lc", "python3 -m http.server 3000 >/home/tenki/http.log 2>&1 &"))
+	sandbox.WithArgs("-lc", "python3 -m http.server 3000 >/home/tenki/http.log 2>&1 &"))
 ```
 
 Redirecting only stdout is not enough — stderr still holds the stream open — and
@@ -625,19 +633,19 @@ command with a readiness probe.
 SDK maps Connect errors to typed errors. Use `errors.Is`:
 
 ```go
-if errors.Is(err, tenkisandbox.ErrSessionNotFound) { ... }
-if errors.Is(err, tenkisandbox.ErrPermissionDenied) { ... }
-if errors.Is(err, tenkisandbox.ErrCommandTimeout) { ... }
-if errors.Is(err, tenkisandbox.ErrMissingAuthToken) { ... }
+if errors.Is(err, sandbox.ErrSessionNotFound) { ... }
+if errors.Is(err, sandbox.ErrPermissionDenied) { ... }
+if errors.Is(err, sandbox.ErrCommandTimeout) { ... }
+if errors.Is(err, sandbox.ErrMissingAuthToken) { ... }
 ```
 
 ## Size helpers
 
 ```go
-tenkisandbox.GB   // 1,000,000,000
-tenkisandbox.GiB  // 1,073,741,824
-tenkisandbox.MB   // 1,000,000
-tenkisandbox.MiB  // 1,048,576
+sandbox.GB   // 1,000,000,000
+sandbox.GiB  // 1,073,741,824
+sandbox.MB   // 1,000,000
+sandbox.MiB  // 1,048,576
 ```
 
 ## Timeout constants
@@ -674,8 +682,8 @@ defer client.Close()
 secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes, workspace.CreateSecretOptions{Description: "Deploy token", RequestID: requestID})
 ```
 
-The client uses `TENKI_AUTH_TOKEN` or `TENKI_API_KEY`. Set `BaseURL` or
-`TENKI_CLOUD_API_URL` to override the cloud API endpoint independently of sandbox
+The client uses `LUXORAI_AUTH_TOKEN` or `LUXORAI_API_KEY` (`TENKI_AUTH_TOKEN` and `TENKI_API_KEY` are still accepted).
+Set `BaseURL` or `LUXORAI_CLOUD_API_URL` (or `TENKI_CLOUD_API_URL`) to override the cloud API endpoint independently of sandbox
 configuration. Set `WorkspaceID` once in the client options. Leave it empty to use the authenticated workspace key's
 scope; other callers must specify one.
 
@@ -688,7 +696,7 @@ to `""` clears the description. A nil revoke version revokes every version. Revo
 version revokes the secret until a new value or an unrevoked version is made active.
 
 `Create(ctx, "TOKEN", valueBytes, workspace.CreateSecretOptions{Repository: "acme/api"})` creates a
-secret that only Tenki CI jobs in that repository receive, replacing a workspace secret with the same
+secret that only Luxor CI jobs in that repository receive, replacing a workspace secret with the same
 name. The repository must be connected to the workspace; `ListRepositories` pages through the
 connected repositories and can filter them with `Search`. `Update` moves a secret with
 `Availability: workspace.SecretAvailabilityWorkspace`, or with `workspace.SecretAvailabilityRepository` and a
