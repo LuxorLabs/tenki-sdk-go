@@ -12,13 +12,17 @@ import (
 	"time"
 	"unicode/utf8"
 
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
 // TemplateSpecVersion is the canonical template build spec version emitted by this SDK.
 const TemplateSpecVersion = "tenki.template.v1"
+
+// TemplateSpecVersionLuxor is the successor of TemplateSpecVersion. Servers accept it once enabled for the
+// environment; it defaults workdir to /home/sandbox.
+const TemplateSpecVersionLuxor = "luxor.template.v1"
 
 const defaultReadyWhenTimeout = 60 * time.Second
 
@@ -894,8 +898,8 @@ func (s TemplateSpec) Validate() error {
 		violations = append(violations, TemplateSpecViolation{Field: field, Rule: rule, Message: message})
 	}
 
-	if spec.SpecVersion != TemplateSpecVersion {
-		add("specVersion", "const", fmt.Sprintf("specVersion must be %q", TemplateSpecVersion))
+	if spec.SpecVersion != TemplateSpecVersion && spec.SpecVersion != TemplateSpecVersionLuxor {
+		add("specVersion", "in", fmt.Sprintf("specVersion must be %q or %q", TemplateSpecVersion, TemplateSpecVersionLuxor))
 	}
 	validateTemplateSpecBase(spec.Base, add)
 	validateOptionalAbsolutePath("workdir", spec.Workdir, add)

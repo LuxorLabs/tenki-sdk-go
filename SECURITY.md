@@ -14,7 +14,7 @@ Send it privately regardless of whether we answer.
 
 ## What is in scope
 
-This repository: the `github.com/LuxorLabs/tenki-sdk-go/sandbox` Go client, its transport and credential handling, and the generated protobuf bindings it ships.
+This repository: the `go.luxor.ai/sandbox` Go client, its transport and credential handling, and the generated protobuf bindings it ships.
 
 Two things are out of scope because they are not ours to fix here, though we would still like to hear about them: the Tenki Cloud service the SDK talks to (report those through Tenki Cloud's own channel), and bugs in your own code that uses the SDK.
 

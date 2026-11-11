@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -78,6 +78,8 @@ type TemplateBuild struct {
 	Events         []TemplateBuildEvent
 	Provenance     *TemplateBuildProvenance
 	Failure        *TemplateBuildFailure
+	// Warnings are returned by the BuildTemplate call that started this build.
+	Warnings []SandboxWarning
 }
 
 type TemplateBuildStepReference struct {
@@ -163,6 +165,8 @@ type Template struct {
 	SpecHash  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Warnings are returned by the CreateTemplate or UpdateTemplate call that produced this value.
+	Warnings []SandboxWarning
 }
 
 // CreateTemplate creates one sandbox template.
@@ -218,7 +222,13 @@ func (c *Client) CreateTemplate(ctx context.Context, opts ...TemplateOption) (*T
 	if err != nil {
 		return nil, mapTemplateSpecError(err)
 	}
-	return templateFromProto(resp.Msg.Template), nil
+	created := templateFromProto(resp.Msg.Template)
+	warnings := templateWarningsFromProto(resp.Msg.GetWarnings())
+	c.emitWarnings(warnings)
+	if created != nil {
+		created.Warnings = warnings
+	}
+	return created, nil
 }
 
 // templateRefID resolves a template resource object or raw ID string.
@@ -284,8 +294,17 @@ func (c *Client) BuildTemplate(ctx context.Context, template any, opts ...Templa
 		return nil, mapTemplateSpecError(err)
 	}
 	build := templateBuildFromProto(resp.Msg.Build)
+	warnings := templateWarningsFromProto(resp.Msg.GetWarnings())
+	c.emitWarnings(warnings)
+	if build != nil {
+		build.Warnings = warnings
+	}
 	if cfg.waitForCompletion {
-		return c.waitForTemplateBuild(ctx, build.ID, cfg.eventHandler)
+		completed, err := c.waitForTemplateBuild(ctx, build.ID, cfg.eventHandler)
+		if completed != nil {
+			completed.Warnings = warnings
+		}
+		return completed, err
 	}
 	return build, nil
 }
@@ -467,7 +486,13 @@ func (c *Client) UpdateTemplate(ctx context.Context, template any, opts ...Templ
 	if err != nil {
 		return nil, mapTemplateSpecError(err)
 	}
-	return templateFromProto(resp.Msg.Template), nil
+	updated := templateFromProto(resp.Msg.Template)
+	warnings := templateWarningsFromProto(resp.Msg.GetWarnings())
+	c.emitWarnings(warnings)
+	if updated != nil {
+		updated.Warnings = warnings
+	}
+	return updated, nil
 }
 
 // DeleteTemplate deletes one template (*Template or ID string). Built images

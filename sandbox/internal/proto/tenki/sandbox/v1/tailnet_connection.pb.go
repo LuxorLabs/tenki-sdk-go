@@ -1546,8 +1546,8 @@ const file_tenki_sandbox_v1_tailnet_connection_proto_rawDesc = "" +
 	"\bstatuses\x18\x01 \x03(\v2%.tenki.sandbox.v1.TailnetRunnerStatusR\bstatuses*\x91\x01\n" +
 	"#TailnetRunnerConfigurationSortField\x127\n" +
 	"3TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_UNSPECIFIED\x10\x00\x121\n" +
-	"-TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL\x10\x01B\xe5\x01\n" +
-	"\x14com.tenki.sandbox.v1B\x16TailnetConnectionProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"-TAILNET_RUNNER_CONFIGURATION_SORT_FIELD_LABEL\x10\x01B\xcf\x01\n" +
+	"\x14com.tenki.sandbox.v1B\x16TailnetConnectionProtoP\x01Z=go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_tailnet_connection_proto_rawDescOnce sync.Once

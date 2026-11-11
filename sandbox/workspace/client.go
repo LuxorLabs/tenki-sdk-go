@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
-	rpc "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
+	"go.luxor.ai/sandbox/internal/clientinfo"
+	rpc "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
+	"go.luxor.ai/sandbox/internal/sdkmeta"
 )
 
 type WorkspaceOptions struct {

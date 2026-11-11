@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1beta1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
+	v1beta1 "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
 	http "net/http"
 	strings "strings"
 )

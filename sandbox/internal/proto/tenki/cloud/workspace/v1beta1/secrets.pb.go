@@ -3048,8 +3048,8 @@ const file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDesc = "" +
 	"\x0fGetSecretImport\x125.tenki.cloud.workspace.v1beta1.GetSecretImportRequest\x1a6.tenki.cloud.workspace.v1beta1.GetSecretImportResponse\x12\x89\x01\n" +
 	"\x12ListSecretVersions\x128.tenki.cloud.workspace.v1beta1.ListSecretVersionsRequest\x1a9.tenki.cloud.workspace.v1beta1.ListSecretVersionsResponse\x12w\n" +
 	"\fRevokeSecret\x122.tenki.cloud.workspace.v1beta1.RevokeSecretRequest\x1a3.tenki.cloud.workspace.v1beta1.RevokeSecretResponse\x12w\n" +
-	"\fDeleteSecret\x122.tenki.cloud.workspace.v1beta1.DeleteSecretRequest\x1a3.tenki.cloud.workspace.v1beta1.DeleteSecretResponseB\xb1\x02\n" +
-	"!com.tenki.cloud.workspace.v1beta1B\fSecretsProtoP\x01Zggithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1;workspacev1beta1\xa2\x02\x03TCW\xaa\x02\x1dTenki.Cloud.Workspace.V1beta1\xca\x02\x1dTenki\\Cloud\\Workspace\\V1beta1\xe2\x02)Tenki\\Cloud\\Workspace\\V1beta1\\GPBMetadata\xea\x02 Tenki::Cloud::Workspace::V1beta1b\x06proto3"
+	"\fDeleteSecret\x122.tenki.cloud.workspace.v1beta1.DeleteSecretRequest\x1a3.tenki.cloud.workspace.v1beta1.DeleteSecretResponseB\x9b\x02\n" +
+	"!com.tenki.cloud.workspace.v1beta1B\fSecretsProtoP\x01ZQgo.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1;workspacev1beta1\xa2\x02\x03TCW\xaa\x02\x1dTenki.Cloud.Workspace.V1beta1\xca\x02\x1dTenki\\Cloud\\Workspace\\V1beta1\xe2\x02)Tenki\\Cloud\\Workspace\\V1beta1\\GPBMetadata\xea\x02 Tenki::Cloud::Workspace::V1beta1b\x06proto3"
 
 var (
 	file_tenki_cloud_workspace_v1beta1_secrets_proto_rawDescOnce sync.Once

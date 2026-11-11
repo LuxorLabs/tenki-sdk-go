@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 )
 
 type TailnetExitPolicy string

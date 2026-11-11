@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	rpc "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
+	rpc "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
 )
 
 type capturedRequest struct{ authorization, clientFamily, userAgent string }

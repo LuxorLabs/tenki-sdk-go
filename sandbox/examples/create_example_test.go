@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	tenkisandbox "go.luxor.ai/sandbox"
 )
 
 func ExampleClient_Create() {

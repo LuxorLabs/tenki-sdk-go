@@ -1,5 +1,4 @@
-// Deprecated: the next release moves this module to go.luxor.ai/sandbox; update your imports when you upgrade.
-module github.com/LuxorLabs/tenki-sdk-go/sandbox
+module go.luxor.ai/sandbox
 
 go 1.25.3
 

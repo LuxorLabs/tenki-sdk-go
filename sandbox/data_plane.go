@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
+	"go.luxor.ai/sandbox/internal/clientinfo"
+	"go.luxor.ai/sandbox/internal/sdkmeta"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"

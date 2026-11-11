@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -26,6 +26,14 @@ func cloneSecretFiles(files []*RuntimeSecretFile) []*RuntimeSecretFile {
 	return out
 }
 
+// secretFileConflictPath folds both guest homes together, since the guest can deliver them into the same directory.
+func secretFileConflictPath(value string) string {
+	if rest, ok := strings.CutPrefix(value, "/home/sandbox/"); ok {
+		return "/home/tenki/" + rest
+	}
+	return value
+}
+
 func validateSecretFiles(files []*RuntimeSecretFile, count int) bool {
 	if len(files) > 32 {
 		return false
@@ -36,14 +44,15 @@ func validateSecretFiles(files []*RuntimeSecretFile, count int) bool {
 			return false
 		}
 		allowed := false
-		for _, root := range []string{"/home/tenki/", "/workspace/", "/app/"} {
+		for _, root := range []string{"/home/tenki/", "/home/sandbox/", "/workspace/", "/app/"} {
 			allowed = allowed || (strings.HasPrefix(target, root) && len(target) > len(root))
 		}
 		if !allowed {
 			return false
 		}
 		for j, other := range files {
-			if i != j && (target == other.GetPath() || strings.HasPrefix(target, other.GetPath()+"/")) {
+			a, b := secretFileConflictPath(target), secretFileConflictPath(other.GetPath())
+			if i != j && (a == b || strings.HasPrefix(a, b+"/")) {
 				return false
 			}
 		}

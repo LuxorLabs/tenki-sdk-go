@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	tenkisandbox "go.luxor.ai/sandbox"
 )
 
 func ExampleSession_Stream() {

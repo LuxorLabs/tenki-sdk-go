@@ -3,7 +3,7 @@ package examples_test
 import (
 	"time"
 
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	tenkisandbox "go.luxor.ai/sandbox"
 )
 
 func ExampleNew() {

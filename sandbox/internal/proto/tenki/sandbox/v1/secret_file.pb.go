@@ -195,8 +195,8 @@ const file_tenki_sandbox_v1_secret_file_proto_rawDesc = "" +
 	"\x03raw\x18\x02 \x01(\v2(.tenki.sandbox.v1.RuntimeSecretReferenceH\x00R\x03raw\x12\x18\n" +
 	"\x06source\x18\x03 \x01(\tH\x00R\x06source\x12\x1a\n" +
 	"\acontent\x18\x04 \x01(\tH\x00R\acontentB\b\n" +
-	"\x06formatB\xde\x01\n" +
-	"\x14com.tenki.sandbox.v1B\x0fSecretFileProtoP\x01ZSgithub.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
+	"\x06formatB\xc8\x01\n" +
+	"\x14com.tenki.sandbox.v1B\x0fSecretFileProtoP\x01Z=go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1;sandboxv1\xa2\x02\x03TSX\xaa\x02\x10Tenki.Sandbox.V1\xca\x02\x10Tenki\\Sandbox\\V1\xe2\x02\x1cTenki\\Sandbox\\V1\\GPBMetadata\xea\x02\x12Tenki::Sandbox::V1b\x06proto3"
 
 var (
 	file_tenki_sandbox_v1_secret_file_proto_rawDescOnce sync.Once

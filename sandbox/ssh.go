@@ -14,7 +14,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/gorilla/websocket"
 
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 )
 
 // SSHOption configures a single SSH() call.

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	pb "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
-	rpc "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
+	pb "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
+	rpc "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1/workspacev1beta1connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

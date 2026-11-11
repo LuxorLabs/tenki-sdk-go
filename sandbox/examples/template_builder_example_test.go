@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	tenkisandbox "go.luxor.ai/sandbox"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
+	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
 )
 
 const (

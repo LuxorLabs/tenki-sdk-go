@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	pb "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
+	pb "go.luxor.ai/sandbox/internal/proto/tenki/cloud/workspace/v1beta1"
 	"google.golang.org/protobuf/proto"
 )
 

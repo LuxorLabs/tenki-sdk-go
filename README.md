@@ -5,7 +5,7 @@ Go client for `tenki.sandbox.v1.SandboxService`.
 ## Install
 
 ```bash
-go get github.com/LuxorLabs/tenki-sdk-go/sandbox
+go get go.luxor.ai/sandbox
 ```
 
 ## Streaming without retaining output
@@ -30,7 +30,7 @@ More runnable snippets live under `examples/`.
 ### Zero-config (env vars)
 
 ```bash
-export TENKI_API_KEY=tk_your_api_key
+export TENKI_API_KEY=lx_your_api_key
 # TENKI_API_URL defaults to https://api.tenki.cloud
 ```
 
@@ -43,7 +43,7 @@ import (
 	"log"
 	"time"
 
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	tenkisandbox "go.luxor.ai/sandbox"
 )
 
 func main() {
@@ -81,7 +81,7 @@ func main() {
 
 ```go
 client, err := tenkisandbox.New(
-	tenkisandbox.WithAuthToken("tk_your_api_key"),
+	tenkisandbox.WithAuthToken("lx_your_api_key"),
 	tenkisandbox.WithBaseURL("https://api.tenki.cloud"),
 	tenkisandbox.WithHTTPTimeout(10*time.Second),
 )
@@ -666,7 +666,7 @@ tenkisandbox.MiB  // 1,048,576
 The workspace client exposes secret management through `client.Secrets` and does not require a sandbox Session:
 
 ```go
-import "github.com/LuxorLabs/tenki-sdk-go/sandbox/workspace"
+import "go.luxor.ai/sandbox/workspace"
 
 client, err := workspace.NewWorkspaceClient(workspace.WorkspaceOptions{WorkspaceID: workspaceID})
 if err != nil { return err }
@@ -747,7 +747,7 @@ session, err := client.Create(ctx,
 
 Rendering performs one literal pass, without YAML/JSON/dotenv escaping, environment expansion, or recursive substitution. A backslash before a marker escapes it. Authors must ensure the actual consumer accepts the result; do not shell-source rendered secret text. Use a raw reference for exact-byte credentials, including binary values.
 
-Allowed destinations are under `/home/tenki/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, and missing references fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
+Allowed destinations are under `/home/tenki/`, `/home/sandbox/`, `/workspace/`, or `/app/`. Files are private, owned by tenki, and replaced atomically. Duplicate destinations, unsafe paths, and missing references fail startup. Limits: 64 KiB per secret, 256 KiB per source/output file, 1 MiB total source/output, 32 files, and 64 references across environment and files.
 
 Guest values remain frozen across retries, restart, and ordinary resume; replacement Sessions adopt updates. Escape a file marker as `\secrets://NAME` to preserve `secrets://NAME` for separately authorized outbound injection; the marker grants no authority by itself. See [the file delivery contract](../../../docs/sandbox-secret-files.md) for lifecycle and path details.
 

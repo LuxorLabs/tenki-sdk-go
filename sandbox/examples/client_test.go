@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	tenkisandbox "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	tenkisandbox "go.luxor.ai/sandbox"
 )
 
 func TestQuickstartSmoke(t *testing.T) {

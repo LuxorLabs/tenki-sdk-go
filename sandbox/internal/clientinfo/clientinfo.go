@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	modulePath = "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	modulePath = "go.luxor.ai/sandbox"
 	generation = "1"
 )
 

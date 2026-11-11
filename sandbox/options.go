@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
+	"go.luxor.ai/sandbox/internal/sdkmeta"
 )
 
 const (

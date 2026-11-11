@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	pb "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
-	rpc "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	pb "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
+	rpc "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
 )
 
 func TestRuntimeSecretReferencesRoundtrip(t *testing.T) {
@@ -132,6 +132,24 @@ func TestRuntimeSecretFilesRoundtrip(t *testing.T) {
 	}
 	if NewTemplateSpec().Start("app", StartOptions{SecretFiles: files}).Validate() == nil {
 		t.Fatal("unsafe destination accepted")
+	}
+}
+
+func TestRuntimeSecretFileGuestHomes(t *testing.T) {
+	for path, want := range map[string]bool{"/home/tenki/.env": true, "/home/sandbox/.env": true, "/home/sandbox": false, "/home/other/.env": false} {
+		files := []*RuntimeSecretFile{{Path: path, Format: &RuntimeSecretFileRaw{Raw: &RuntimeSecretReference{Name: "RAW"}}}}
+		if got := NewTemplateSpec().Start("app", StartOptions{SecretFiles: files}).Validate() == nil; got != want {
+			t.Fatalf("%s: valid=%v, want %v", path, got, want)
+		}
+	}
+	for _, pair := range [][2]string{{"/home/tenki/.env", "/home/sandbox/.env"}, {"/home/sandbox/conf", "/home/tenki/conf/.env"}} {
+		files := []*RuntimeSecretFile{
+			{Path: pair[0], Format: &RuntimeSecretFileRaw{Raw: &RuntimeSecretReference{Name: "A"}}},
+			{Path: pair[1], Format: &RuntimeSecretFileRaw{Raw: &RuntimeSecretReference{Name: "B"}}},
+		}
+		if NewTemplateSpec().Start("app", StartOptions{SecretFiles: files}).Validate() == nil {
+			t.Fatalf("%v: alias-equivalent destinations accepted", pair)
+		}
 	}
 }
 

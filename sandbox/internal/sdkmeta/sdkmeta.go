@@ -25,7 +25,7 @@ const (
 	EnvGatewayURL  = "TENKI_SANDBOX_GATEWAY_URL"
 	EnvCloudAPIURL = "TENKI_CLOUD_API_URL"
 
-	modulePath = "github.com/LuxorLabs/tenki-sdk-go/sandbox"
+	modulePath = "go.luxor.ai/sandbox"
 )
 
 var (

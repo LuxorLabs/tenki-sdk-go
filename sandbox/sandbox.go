@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/clientinfo"
-	sandboxv1 "github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"github.com/LuxorLabs/tenki-sdk-go/sandbox/internal/sdkmeta"
+	"go.luxor.ai/sandbox/internal/clientinfo"
+	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
+	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
+	"go.luxor.ai/sandbox/internal/sdkmeta"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
