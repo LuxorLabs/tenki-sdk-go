@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -141,43 +142,26 @@ func (c *Client) GetSnapshotDownloadURL(ctx context.Context, snapshotID string) 
 
 var snapshotDurablePollInterval = 2 * time.Second
 
+// snapshotNotFoundGrace covers a just-created snapshot that a lagging read replica does not have yet.
+var snapshotNotFoundGrace = 10 * time.Second
+
+func retryableSnapshotNotFound(err error, waitStarted time.Time) bool {
+	return errors.Is(err, ErrSnapshotNotFound) && time.Since(waitStarted) < snapshotNotFoundGrace
+}
+
 // WaitForSnapshotDurable polls until the snapshot's R2 upload is complete.
 // Returns the snapshot when DurabilityState == DURABLE, ErrSnapshotFailed when the snapshot
 // itself failed, or ErrSnapshotNotDurable when durability ended at PROPAGATION_FAILED.
 func (c *Client) WaitForSnapshotDurable(ctx context.Context, snapshotID string) (*Snapshot, error) {
+	started := time.Now()
 	for {
 		snapshot, err := c.GetSnapshot(ctx, snapshotID)
-		if err != nil {
+		if err != nil && !retryableSnapshotNotFound(err, started) {
 			return nil, err
 		}
-		switch snapshot.State {
-		case SnapshotStateFailed:
-			if snapshot.FailureReason != "" {
-				return snapshot, fmt.Errorf("%w: %s", ErrSnapshotFailed, snapshot.FailureReason)
-			}
-			return snapshot, ErrSnapshotFailed
-		case SnapshotStateDeleted, SnapshotStateDeleting:
-			return snapshot, ErrSnapshotNotFound
-		}
-		switch snapshot.DurabilityState {
-		case SnapshotDurabilityStateDurable:
-			return snapshot, nil
-		case SnapshotDurabilityStateDurableCeph:
-			// Cluster-durable in Ceph (cross-node usable) but not yet R2-durable.
-			// Keep polling for full R2 durability, unless the R2 upload has
-			// stalled (propagation_error set) — it will not complete, so don't
-			// spin until the caller's deadline.
-			if snapshot.PropagationError != "" {
-				return snapshot, fmt.Errorf("%w: cluster-durable in Ceph but R2 upload failed: %s", ErrSnapshotNotDurable, snapshot.PropagationError)
-			}
-		case SnapshotDurabilityStatePropagationFailed:
-			return snapshot, ErrSnapshotNotDurable
-		case SnapshotDurabilityStateUnspecified:
-			// READY snapshot with no durability tracking predates the feature
-			// (or the engine never recorded a durability_state). Treat as
-			// non-durable rather than spinning until the caller's deadline.
-			if snapshot.State == SnapshotStateReady {
-				return snapshot, fmt.Errorf("%w: durability state unspecified; snapshot may predate durability tracking", ErrSnapshotNotDurable)
+		if err == nil {
+			if done, outcomeErr := snapshotDurableOutcome(snapshot); done {
+				return snapshot, outcomeErr
 			}
 		}
 
@@ -187,6 +171,40 @@ func (c *Client) WaitForSnapshotDurable(ctx context.Context, snapshotID string) 
 		case <-time.After(snapshotDurablePollInterval):
 		}
 	}
+}
+
+func snapshotDurableOutcome(snapshot *Snapshot) (bool, error) {
+	switch snapshot.State {
+	case SnapshotStateFailed:
+		if snapshot.FailureReason != "" {
+			return true, fmt.Errorf("%w: %s", ErrSnapshotFailed, snapshot.FailureReason)
+		}
+		return true, ErrSnapshotFailed
+	case SnapshotStateDeleted, SnapshotStateDeleting:
+		return true, ErrSnapshotNotFound
+	}
+	switch snapshot.DurabilityState {
+	case SnapshotDurabilityStateDurable:
+		return true, nil
+	case SnapshotDurabilityStateDurableCeph:
+		// Cluster-durable in Ceph (cross-node usable) but not yet R2-durable.
+		// Keep polling for full R2 durability, unless the R2 upload has
+		// stalled (propagation_error set) — it will not complete, so don't
+		// spin until the caller's deadline.
+		if snapshot.PropagationError != "" {
+			return true, fmt.Errorf("%w: cluster-durable in Ceph but R2 upload failed: %s", ErrSnapshotNotDurable, snapshot.PropagationError)
+		}
+	case SnapshotDurabilityStatePropagationFailed:
+		return true, ErrSnapshotNotDurable
+	case SnapshotDurabilityStateUnspecified:
+		// READY snapshot with no durability tracking predates the feature
+		// (or the engine never recorded a durability_state). Treat as
+		// non-durable rather than spinning until the caller's deadline.
+		if snapshot.State == SnapshotStateReady {
+			return true, fmt.Errorf("%w: durability state unspecified; snapshot may predate durability tracking", ErrSnapshotNotDurable)
+		}
+	}
+	return false, nil
 }
 
 // ListSnapshots lists snapshots owned by the Workspace API key.

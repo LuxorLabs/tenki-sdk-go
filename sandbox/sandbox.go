@@ -466,23 +466,23 @@ func (c *Client) heldCreateContext(ctx context.Context, timeout time.Duration) (
 
 // WaitSnapshotReady polls until a snapshot reaches READY or a terminal state.
 func (c *Client) WaitSnapshotReady(ctx context.Context, snapshotID string, timeout time.Duration) (*Snapshot, error) {
-	deadline := time.Now().Add(timeout)
+	started := time.Now()
+	deadline := started.Add(timeout)
 	attempt := 0
 	for time.Now().Before(deadline) {
 		snap, err := c.GetSnapshot(ctx, snapshotID)
-		if err != nil {
+		switch {
+		case retryableSnapshotNotFound(err, started):
+		case err != nil:
 			return nil, err
-		}
-		if snap.State.IsReady() {
+		case snap.State.IsReady():
 			return snap, nil
-		}
-		if snap.State == SnapshotStateFailed {
+		case snap.State == SnapshotStateFailed:
 			if snap.FailureReason != "" {
 				return nil, fmt.Errorf("%w: %s", ErrSnapshotFailed, snap.FailureReason)
 			}
 			return nil, ErrSnapshotFailed
-		}
-		if snap.State.IsTerminal() {
+		case snap.State.IsTerminal():
 			return nil, fmt.Errorf("snapshot entered terminal state: %s", snap.State)
 		}
 		select {

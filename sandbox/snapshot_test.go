@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -260,5 +261,77 @@ func TestListDanglingSnapshots(t *testing.T) {
 	}
 	if len(snapshots) != 1 || snapshots[0].ID != "snap-001" {
 		t.Fatalf("unexpected snapshots: %#v", snapshots)
+	}
+}
+
+// A lagging read replica can answer "snapshot not found" for a snapshot that was just created.
+func notFoundThenSnapshot(misses int32, ready *sandboxv1.Snapshot) (func(*connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error), *atomic.Int32) {
+	var calls atomic.Int32
+	return func(*connect.Request[sandboxv1.GetSnapshotRequest]) (*connect.Response[sandboxv1.GetSnapshotResponse], error) {
+		if calls.Add(1) <= misses {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("snapshot not found"))
+		}
+		if ready == nil {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("snapshot not found"))
+		}
+		return connect.NewResponse(&sandboxv1.GetSnapshotResponse{Snapshot: ready}), nil
+	}, &calls
+}
+
+func TestWaitSnapshotReadyRetriesNotFoundRightAfterCreate(t *testing.T) {
+	t.Parallel()
+
+	h := &snapshotHandler{}
+	var calls *atomic.Int32
+	h.getSnapshotFn, calls = notFoundThenSnapshot(2, &sandboxv1.Snapshot{Id: "snap-001", State: sandboxv1.SnapshotState_SNAPSHOT_STATE_READY})
+
+	snap, err := newSnapshotTestClient(t, h).WaitSnapshotReady(context.Background(), "snap-001", time.Minute)
+	if err != nil {
+		t.Fatalf("WaitSnapshotReady: %v", err)
+	}
+	if snap.ID != "snap-001" || calls.Load() != 3 {
+		t.Fatalf("snapshot = %#v after %d calls, want snap-001 after 3", snap, calls.Load())
+	}
+}
+
+// Not parallel: overrides package-level poll settings.
+func TestSnapshotWaitsFailOnNotFoundAfterTheGrace(t *testing.T) {
+	previousGrace, previousInterval := snapshotNotFoundGrace, snapshotDurablePollInterval
+	snapshotNotFoundGrace, snapshotDurablePollInterval = 300*time.Millisecond, 50*time.Millisecond
+	t.Cleanup(func() { snapshotNotFoundGrace, snapshotDurablePollInterval = previousGrace, previousInterval })
+
+	h := &snapshotHandler{}
+	h.getSnapshotFn, _ = notFoundThenSnapshot(0, nil)
+	client := newSnapshotTestClient(t, h)
+
+	started := time.Now()
+	_, err := client.WaitSnapshotReady(context.Background(), "snap-missing", time.Minute)
+	if !errors.Is(err, ErrSnapshotNotFound) {
+		t.Fatalf("WaitSnapshotReady error = %v, want ErrSnapshotNotFound", err)
+	}
+	if elapsed := time.Since(started); elapsed < snapshotNotFoundGrace || elapsed > 5*time.Second {
+		t.Fatalf("WaitSnapshotReady failed after %s, want just past the %s grace", elapsed, snapshotNotFoundGrace)
+	}
+	_, err = client.WaitForSnapshotDurable(context.Background(), "snap-missing")
+	if !errors.Is(err, ErrSnapshotNotFound) {
+		t.Fatalf("WaitForSnapshotDurable error = %v, want ErrSnapshotNotFound", err)
+	}
+}
+
+// Not parallel: overrides package-level poll settings.
+func TestWaitForSnapshotDurableRetriesNotFoundRightAfterCreate(t *testing.T) {
+	previousInterval := snapshotDurablePollInterval
+	snapshotDurablePollInterval = 10 * time.Millisecond
+	t.Cleanup(func() { snapshotDurablePollInterval = previousInterval })
+
+	h := &snapshotHandler{}
+	h.getSnapshotFn, _ = notFoundThenSnapshot(2, &sandboxv1.Snapshot{
+		Id: "snap-001", State: sandboxv1.SnapshotState_SNAPSHOT_STATE_READY,
+		DurabilityState: sandboxv1.SnapshotDurabilityState_SNAPSHOT_DURABILITY_STATE_DURABLE,
+	})
+
+	snap, err := newSnapshotTestClient(t, h).WaitForSnapshotDurable(context.Background(), "snap-001")
+	if err != nil || snap.DurabilityState != SnapshotDurabilityStateDurable {
+		t.Fatalf("WaitForSnapshotDurable = %#v, %v; want the durable snapshot", snap, err)
 	}
 }
