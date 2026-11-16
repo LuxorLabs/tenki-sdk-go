@@ -231,7 +231,7 @@ type TemplateSpec struct {
 	spec *sandboxv1.TemplateBuildSpec
 }
 
-// NewTemplateSpec returns a spec builder on the default Tenki base image "sandbox".
+// NewTemplateSpec returns a spec builder on the default Luxor base image "sandbox".
 func NewTemplateSpec() TemplateSpec {
 	return TemplateSpec{spec: defaultTemplateSpecProto()}
 }
@@ -256,7 +256,7 @@ func (s TemplateSpec) with(mutate func(*sandboxv1.TemplateBuildSpec)) TemplateSp
 	return TemplateSpec{spec: next}
 }
 
-// FromImage bases the template on a Tenki-managed image ID or registry image ref.
+// FromImage bases the template on a Luxor-managed image ID or registry image ref.
 func (s TemplateSpec) FromImage(image string) TemplateSpec {
 	return s.with(func(spec *sandboxv1.TemplateBuildSpec) {
 		spec.Base = &sandboxv1.TemplateBase{Source: &sandboxv1.TemplateBase_Image{Image: strings.TrimSpace(image)}}
@@ -535,7 +535,7 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 }
 
 // ProcessCompose declares a process-compose runtime supervisor. The config
-// path and env files are workdir-relative; Tenki owns supervisor execution.
+// path and env files are workdir-relative; Luxor owns supervisor execution.
 func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOptions) TemplateSpec {
 	options := firstOption(opts)
 	return s.with(func(spec *sandboxv1.TemplateBuildSpec) {

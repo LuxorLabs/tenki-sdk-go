@@ -884,7 +884,7 @@ var idleTimeoutDeprecationOnce sync.Once
 // a session's lifetime.
 func WithIdleTimeout(time.Duration) CreateOption {
 	idleTimeoutDeprecationOnce.Do(func() {
-		_, _ = fmt.Fprintln(os.Stderr, "tenki sandbox: WithIdleTimeout is deprecated and ignored; sandboxes do not auto-pause on idle. Use WithMaxDuration to bound a session's lifetime.")
+		_, _ = fmt.Fprintln(os.Stderr, "luxor sandbox: WithIdleTimeout is deprecated and ignored; sandboxes do not auto-pause on idle. Use WithMaxDuration to bound a session's lifetime.")
 	})
 	return createOptionFunc(func(*createConfig) {})
 }

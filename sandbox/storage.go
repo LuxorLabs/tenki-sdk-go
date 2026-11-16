@@ -24,9 +24,9 @@ type StorageAuthMethod string
 
 const (
 	StorageAuthMethodUnspecified StorageAuthMethod = "UNSPECIFIED"
-	// StorageAuthMethodAccessKey reads an access key pair (GCS: HMAC keys) from Tenki Secrets.
+	// StorageAuthMethodAccessKey reads an access key pair (GCS: HMAC keys) from Luxor Secrets.
 	StorageAuthMethodAccessKey StorageAuthMethod = "ACCESS_KEY"
-	// StorageAuthMethodAWSOIDCRole assumes an AWS IAM role that trusts Tenki's OIDC issuer; no keys are stored.
+	// StorageAuthMethodAWSOIDCRole assumes an AWS IAM role that trusts Luxor's OIDC issuer; no keys are stored.
 	StorageAuthMethodAWSOIDCRole StorageAuthMethod = "AWS_OIDC_ROLE"
 	// StorageAuthMethodR2Temporary mints scoped short-lived R2 keys from a Cloudflare API token.
 	StorageAuthMethodR2Temporary StorageAuthMethod = "R2_TEMPORARY"
@@ -41,7 +41,7 @@ const (
 	StorageAccessReadWrite StorageAccess = "READ_WRITE"
 )
 
-// StorageSecret is a credential field: an existing s3_storage Tenki Secret, or a value Tenki stores as a new one.
+// StorageSecret is a credential field: an existing s3_storage Luxor Secret, or a value Luxor stores as a new one.
 type StorageSecret struct {
 	Name  string
 	Value string
@@ -60,7 +60,7 @@ type StorageConnectionCredentials struct {
 	RoleARN         string
 }
 
-// StorageConnectionSecrets names the Tenki Secrets a connection reads.
+// StorageConnectionSecrets names the Luxor Secrets a connection reads.
 type StorageConnectionSecrets struct {
 	AccessKeyID     string
 	SecretAccessKey string
@@ -87,7 +87,7 @@ type StorageConnection struct {
 	DefaultMountCount  int32
 	LastTestedAt       *time.Time
 	LastTestReason     string
-	// Disabled means Tenki disabled the connection: it accepts no new mounts and issues no credentials.
+	// Disabled means Luxor disabled the connection: it accepts no new mounts and issues no credentials.
 	Disabled   bool
 	DisabledAt *time.Time
 }

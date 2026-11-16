@@ -38,7 +38,7 @@ type Client struct {
 	// config. When false (i.e. we fell back to deriveGatewayAddress), the
 	// SSH method will first try to discover the SSH WS bridge URL by
 	// calling engine.ListActiveSSHGateways, which lets staging/prod
-	// announce the new Edge-fronted bridge without operator-side config
+	// announce the Edge-fronted bridge without operator-side config
 	// edits. Cached gateway address survives across SSH calls.
 	gatewayAddressExplicit bool
 	httpClient             *http.Client
@@ -61,7 +61,7 @@ var (
 // New creates a new sandbox SDK client.
 //
 // Auth token resolution: WithAuthToken option > LUXORAI_AUTH_TOKEN > LUXORAI_API_KEY > TENKI_AUTH_TOKEN > TENKI_API_KEY > error.
-// Base URL resolution: WithBaseURL option > LUXORAI_API_ENDPOINT > LUXORAI_API_URL > TENKI_API_ENDPOINT > TENKI_API_URL > https://api.tenki.cloud.
+// Base URL resolution: WithBaseURL option > LUXORAI_API_ENDPOINT > LUXORAI_API_URL > TENKI_API_ENDPOINT > TENKI_API_URL > https://api.luxor.ai.
 // Gateway URL resolution: WithGatewayAddress option > LUXORAI_SANDBOX_GATEWAY_URL > TENKI_SANDBOX_GATEWAY_URL > derived from base URL.
 func New(opts ...Option) (*Client, error) {
 	cfg := defaultClientConfig()
@@ -623,21 +623,21 @@ func deriveGatewayAddress(baseURL string) string {
 	return u.String()
 }
 
-// CIRunnerSize is a Linux x64 runner size a Tenki CI job can run on.
+// CIRunnerSize is a Linux x64 runner size a Luxor CI job can run on.
 type CIRunnerSize struct {
 	RunsOnLabel string
 	CPU         int32
 	MemoryGiB   int32
 }
 
-// CIRunnerSizes are the sizes Tenki CI can run for a workspace, within its job-size limits, smallest first.
+// CIRunnerSizes are the sizes Luxor CI can run for a workspace, within its job-size limits, smallest first.
 type CIRunnerSizes struct {
 	Sizes []CIRunnerSize
 	// DefaultRunsOnLabel is the size for a job whose runs-on names none.
 	DefaultRunsOnLabel string
 }
 
-// ListCIRunnerSizes returns the Tenki CI runner sizes for the API key's workspace.
+// ListCIRunnerSizes returns the Luxor CI runner sizes for the API key's workspace.
 func (c *Client) ListCIRunnerSizes(ctx context.Context) (*CIRunnerSizes, error) {
 	resp, err := c.sandbox.ListCIRunnerSizes(ctx, connect.NewRequest(&sandboxv1.ListCIRunnerSizesRequest{}))
 	if err != nil {

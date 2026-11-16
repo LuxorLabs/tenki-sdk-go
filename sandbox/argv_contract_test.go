@@ -9,7 +9,7 @@ import (
 // Go cannot reproduce CLO-4671: Session.Command takes a []string, so there is no
 // variadic form for a list to collapse into, and a non-string argv part does not
 // compile. What is left to pin is the runtime half of the same contract, which
-// the Python and TypeScript SDKs now match.
+// the Python and TypeScript SDKs also enforce.
 
 func TestCommandCarriesArgvVerbatim(t *testing.T) {
 	session := &Session{client: &Client{}, ID: "session-1"}

@@ -49,9 +49,9 @@ type WorkspaceSecret struct {
 type SecretAvailability string
 
 const (
-	// SecretAvailabilityWorkspace secrets reach every Tenki CI job in the workspace, and sandboxes.
+	// SecretAvailabilityWorkspace secrets reach every Luxor CI job in the workspace, and sandboxes.
 	SecretAvailabilityWorkspace SecretAvailability = "workspace"
-	// SecretAvailabilityRepository secrets reach only Tenki CI jobs in one repository.
+	// SecretAvailabilityRepository secrets reach only Luxor CI jobs in one repository.
 	SecretAvailabilityRepository SecretAvailability = "repository"
 )
 

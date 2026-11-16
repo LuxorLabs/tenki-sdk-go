@@ -64,9 +64,14 @@ func TestMapError_TypedMappings(t *testing.T) {
 			want: ErrStorageMountAttachCancelled,
 		},
 		{
-			// The engine's message for a create or attach naming a connection Tenki disabled.
+			// The engine's message for a create or attach naming a disabled connection.
 			name: "storage connection disabled by Tenki",
 			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New(`storage connection "Build cache" was disabled by Tenki; contact support`)),
+			want: ErrStorageConnectionDisabled,
+		},
+		{
+			name: "storage connection disabled by Luxor",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New(`storage connection "Build cache" was disabled by Luxor; contact support`)),
 			want: ErrStorageConnectionDisabled,
 		},
 		{
@@ -175,7 +180,7 @@ func TestMapError_GitOperationFailed(t *testing.T) {
 			if gitErr.Stderr != tc.wantStderr {
 				t.Fatalf("stderr: got %q, want %q", gitErr.Stderr, tc.wantStderr)
 			}
-			// Must no longer collapse into the un-actionable ErrInvalidState.
+			// Must not collapse into the un-actionable ErrInvalidState.
 			if errors.Is(mapped, ErrInvalidState) {
 				t.Fatalf("git failure must not map to ErrInvalidState")
 			}

@@ -135,7 +135,7 @@ The server may reject options from later milestones, including wake-on-connect a
 ## Configuration
 
 Auth token resolution: `WithAuthToken()` > `LUXORAI_AUTH_TOKEN` > `LUXORAI_API_KEY` > `TENKI_AUTH_TOKEN` > `TENKI_API_KEY` > error.
-Base URL resolution: `WithBaseURL()` > `LUXORAI_API_ENDPOINT` > `LUXORAI_API_URL` > `TENKI_API_ENDPOINT` > `TENKI_API_URL` > `https://api.tenki.cloud`.
+Base URL resolution: `WithBaseURL()` > `LUXORAI_API_ENDPOINT` > `LUXORAI_API_URL` > `TENKI_API_ENDPOINT` > `TENKI_API_URL` > `https://api.luxor.ai`.
 
 ### Migrating to v1.0.0
 
@@ -434,7 +434,7 @@ Publish and share sandbox images (templates/snapshots/images).
 ### Client options
 
 - `WithAuthToken(string)` - API key or service token
-- `WithBaseURL(string)` default: `https://api.tenki.cloud`
+- `WithBaseURL(string)` default: `https://api.luxor.ai`
 - `WithHTTPClient(*http.Client)`
 - `WithHTTPTimeout(time.Duration)` default: `30s`
 - `WithConnectClientOptions(...connect.ClientOption)`

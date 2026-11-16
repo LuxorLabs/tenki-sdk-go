@@ -60,8 +60,8 @@ var (
 	ErrStorageMountNotFound      = errors.New("sandbox: storage mount not found")
 	// ErrStorageMountAttachCancelled means a detach of the same mount landed before the attach finished.
 	ErrStorageMountAttachCancelled = errors.New("sandbox: storage mount attach cancelled by a detach")
-	// ErrStorageConnectionDisabled means Tenki disabled the storage connection; contact support to restore it.
-	ErrStorageConnectionDisabled = errors.New("sandbox: storage connection disabled by Tenki")
+	// ErrStorageConnectionDisabled means Luxor disabled the storage connection; contact support to restore it.
+	ErrStorageConnectionDisabled = errors.New("sandbox: storage connection disabled by Luxor")
 )
 
 // WaitReadyFailedError carries a session admitted before its readiness wait failed.
@@ -489,7 +489,7 @@ func mapError(err error) error {
 		return fmt.Errorf("%w: %w", ErrQuotaExceeded, err)
 	case connect.CodeFailedPrecondition:
 		switch {
-		case strings.Contains(msg, "disabled by tenki"):
+		case strings.Contains(msg, "disabled by luxor"), strings.Contains(msg, "disabled by tenki"):
 			return fmt.Errorf("%w: %w", ErrStorageConnectionDisabled, err)
 		case strings.Contains(msg, "snapshot not yet durable"):
 			return fmt.Errorf("%w: %w", ErrSnapshotNotDurable, err)

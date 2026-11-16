@@ -28,7 +28,7 @@ type SandboxWarning struct {
 type WarningHandler func(SandboxWarning)
 
 func defaultWarningHandler(warning SandboxWarning) {
-	_, _ = fmt.Fprintf(os.Stderr, "tenki sandbox warning [%s]: %s\n", warning.Code, warning.Message)
+	_, _ = fmt.Fprintf(os.Stderr, "luxor sandbox warning [%s]: %s\n", warning.Code, warning.Message)
 }
 
 func sandboxWarningsFromProto(protoWarnings []*sandboxv1.SandboxWarning) []SandboxWarning {

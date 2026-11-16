@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://api.tenki.cloud"
+	DefaultBaseURL = "https://api.luxor.ai"
 
 	EnvLuxorAIAuthToken   = "LUXORAI_AUTH_TOKEN"
 	EnvLuxorAIAPIKey      = "LUXORAI_API_KEY"
