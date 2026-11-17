@@ -38,8 +38,8 @@ More runnable snippets live under `examples/`.
 ### Zero-config (env vars)
 
 ```bash
-export LUXORAI_API_KEY=lx_your_api_key
-# Optional: LUXORAI_API_URL=https://api.luxor.ai (TENKI_API_KEY and TENKI_API_URL are still read)
+export LUXOR_API_KEY=lx_your_api_key
+# Optional: LUXOR_API_URL=https://api.luxor.ai (TENKI_API_KEY and TENKI_API_URL are still read)
 ```
 
 ```go
@@ -134,8 +134,8 @@ The server may reject options from later milestones, including wake-on-connect a
 
 ## Configuration
 
-Auth token resolution: `WithAuthToken()` > `LUXORAI_AUTH_TOKEN` > `LUXORAI_API_KEY` > `TENKI_AUTH_TOKEN` > `TENKI_API_KEY` > error.
-Base URL resolution: `WithBaseURL()` > `LUXORAI_API_ENDPOINT` > `LUXORAI_API_URL` > `TENKI_API_ENDPOINT` > `TENKI_API_URL` > `https://api.luxor.ai`.
+Auth token resolution: `WithAuthToken()` > `LUXOR_AUTH_TOKEN` > `LUXOR_API_KEY` > `TENKI_AUTH_TOKEN` > `TENKI_API_KEY` > error.
+Base URL resolution: `WithBaseURL()` > `LUXOR_API_ENDPOINT` > `LUXOR_API_URL` > `TENKI_API_ENDPOINT` > `TENKI_API_URL` > `https://api.luxor.ai`.
 
 ### Migrating to v1.0.0
 
@@ -149,14 +149,16 @@ Version 0.6.0 removes `WithCookieName` and support for Ory session tokens and
 browser cookie values. Use an `lx_` API key or service token with
 `WithAuthToken`; the SDK sends it as an `Authorization: Bearer` credential.
 
-| Env Var              | Description                                           |
-| -------------------- | ----------------------------------------------------- |
-| `LUXORAI_AUTH_TOKEN` | Auth token fallback (API key or service token), first |
-| `LUXORAI_API_KEY`    | Auth token fallback (API key or service token)        |
-| `LUXORAI_API_URL`    | Base URL fallback                                     |
-| `TENKI_AUTH_TOKEN`   | Auth token fallback when no `LUXORAI_*` token is set  |
-| `TENKI_API_KEY`      | Auth token fallback when no `LUXORAI_*` token is set  |
-| `TENKI_API_URL`      | Base URL fallback when no `LUXORAI_*` URL is set      |
+| Env Var            | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| `LUXOR_AUTH_TOKEN` | Auth token fallback (API key or service token), first |
+| `LUXOR_API_KEY`    | Auth token fallback (API key or service token)        |
+| `LUXOR_API_URL`    | Base URL fallback                                     |
+| `TENKI_AUTH_TOKEN` | Auth token fallback when no `LUXOR_*` token is set    |
+| `TENKI_API_KEY`    | Auth token fallback when no `LUXOR_*` token is set    |
+| `TENKI_API_URL`    | Base URL fallback when no `LUXOR_*` URL is set        |
+
+`LUXOR_API_KEY` is only used when it starts with `lx_` or `tk_`; any other value is ignored.
 
 Use an API key or service token (`lx_*`; `tk_*` is still accepted), sent as `Authorization: Bearer <token>`.
 Workspace API keys determine Sandbox scope automatically; ordinary calls do not require a Workspace ID.
@@ -682,8 +684,8 @@ defer client.Close()
 secret, err := client.Secrets.Create(ctx, "TOKEN", valueBytes, workspace.CreateSecretOptions{Description: "Deploy token", RequestID: requestID})
 ```
 
-The client uses `LUXORAI_AUTH_TOKEN` or `LUXORAI_API_KEY` (`TENKI_AUTH_TOKEN` and `TENKI_API_KEY` are still accepted).
-Set `BaseURL` or `LUXORAI_CLOUD_API_URL` (or `TENKI_CLOUD_API_URL`) to override the cloud API endpoint independently of sandbox
+The client uses `LUXOR_AUTH_TOKEN` or `LUXOR_API_KEY` (`TENKI_AUTH_TOKEN` and `TENKI_API_KEY` are still accepted).
+Set `BaseURL` or `LUXOR_CLOUD_API_URL` (or `TENKI_CLOUD_API_URL`) to override the cloud API endpoint independently of sandbox
 configuration. Set `WorkspaceID` once in the client options. Leave it empty to use the authenticated workspace key's
 scope; other callers must specify one.
 

@@ -19,25 +19,35 @@ const (
 	defaultClientTimeout         = DefaultRestoreTimeout + 30*time.Second
 	defaultDataPlaneReadyTimeout = 60 * time.Second
 
-	// EnvLuxorAIAPIEndpoint overrides the default base URL when set; it wins over every TENKI_* base URL.
-	EnvLuxorAIAPIEndpoint = sdkmeta.EnvLuxorAIAPIEndpoint
-	// EnvLuxorAIAPIURL overrides the default base URL when set and LUXORAI_API_ENDPOINT is unset.
-	EnvLuxorAIAPIURL = sdkmeta.EnvLuxorAIAPIURL
-	// EnvLuxorAIGatewayURL overrides the default gateway base URL when set; it wins over TENKI_SANDBOX_GATEWAY_URL.
-	EnvLuxorAIGatewayURL = sdkmeta.EnvLuxorAIGatewayURL
-	// EnvLuxorAIAuthToken provides the auth token when not passed via WithAuthToken; it wins over every TENKI_* token.
-	EnvLuxorAIAuthToken = sdkmeta.EnvLuxorAIAuthToken
-	// EnvLuxorAIAPIKey provides the auth token when not passed via WithAuthToken and LUXORAI_AUTH_TOKEN is unset.
-	EnvLuxorAIAPIKey = sdkmeta.EnvLuxorAIAPIKey
-	// EnvAPIEndpoint overrides the default base URL when no LUXORAI_* base URL is set.
+	// EnvLuxorAPIEndpoint overrides the default base URL when set; it wins over every TENKI_* base URL.
+	EnvLuxorAPIEndpoint = sdkmeta.EnvLuxorAPIEndpoint
+	// EnvLuxorAPIURL overrides the default base URL when set and LUXOR_API_ENDPOINT is unset.
+	EnvLuxorAPIURL = sdkmeta.EnvLuxorAPIURL
+	// EnvLuxorGatewayURL overrides the default gateway base URL when set; it wins over TENKI_SANDBOX_GATEWAY_URL.
+	EnvLuxorGatewayURL = sdkmeta.EnvLuxorGatewayURL
+	// EnvLuxorAuthToken provides the auth token when not passed via WithAuthToken; it wins over every TENKI_* token.
+	EnvLuxorAuthToken = sdkmeta.EnvLuxorAuthToken
+	// EnvLuxorAPIKey provides the auth token when not passed via WithAuthToken and LUXOR_AUTH_TOKEN is unset.
+	EnvLuxorAPIKey = sdkmeta.EnvLuxorAPIKey
+	// Deprecated: use EnvLuxorAPIEndpoint.
+	EnvLuxorAIAPIEndpoint = EnvLuxorAPIEndpoint
+	// Deprecated: use EnvLuxorAPIURL.
+	EnvLuxorAIAPIURL = EnvLuxorAPIURL
+	// Deprecated: use EnvLuxorGatewayURL.
+	EnvLuxorAIGatewayURL = EnvLuxorGatewayURL
+	// Deprecated: use EnvLuxorAuthToken.
+	EnvLuxorAIAuthToken = EnvLuxorAuthToken
+	// Deprecated: use EnvLuxorAPIKey.
+	EnvLuxorAIAPIKey = EnvLuxorAPIKey
+	// EnvAPIEndpoint overrides the default base URL when no LUXOR_* base URL is set.
 	EnvAPIEndpoint = sdkmeta.EnvAPIEndpoint
-	// EnvAPIURL overrides the default base URL when no LUXORAI_* base URL is set.
+	// EnvAPIURL overrides the default base URL when no LUXOR_* base URL is set.
 	EnvAPIURL = sdkmeta.EnvAPIURL
-	// EnvGatewayURL overrides the default gateway base URL when LUXORAI_SANDBOX_GATEWAY_URL is unset.
+	// EnvGatewayURL overrides the default gateway base URL when LUXOR_SANDBOX_GATEWAY_URL is unset.
 	EnvGatewayURL = sdkmeta.EnvGatewayURL
-	// EnvAuthToken provides the auth token when no LUXORAI_* token is set.
+	// EnvAuthToken provides the auth token when no LUXOR_* token is set.
 	EnvAuthToken = sdkmeta.EnvAuthToken
-	// EnvAPIKey provides the auth token when no LUXORAI_* token is set.
+	// EnvAPIKey provides the auth token when no LUXOR_* token is set.
 	EnvAPIKey             = sdkmeta.EnvAPIKey
 	defaultCPUCores       = int32(2)
 	defaultMemoryMB       = int32(4096)

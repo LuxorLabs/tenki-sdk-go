@@ -34,7 +34,7 @@ type Client struct {
 	baseURL        string
 	gatewayAddress string
 	// gatewayAddressExplicit is true when the operator pinned the
-	// gatewayAddress via WithGatewayAddress / LUXORAI_SANDBOX_GATEWAY_URL /
+	// gatewayAddress via WithGatewayAddress / LUXOR_SANDBOX_GATEWAY_URL /
 	// config. When false (i.e. we fell back to deriveGatewayAddress), the
 	// SSH method will first try to discover the SSH WS bridge URL by
 	// calling engine.ListActiveSSHGateways, which lets staging/prod
@@ -53,16 +53,16 @@ type Client struct {
 
 var (
 	// ErrMissingAuthToken is returned when no auth token is provided via WithAuthToken or env vars.
-	ErrMissingAuthToken = errors.New("sandbox: missing auth token - set LUXORAI_AUTH_TOKEN or LUXORAI_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY) or use WithAuthToken")
+	ErrMissingAuthToken = errors.New("sandbox: missing auth token - set LUXOR_AUTH_TOKEN or LUXOR_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY) or use WithAuthToken")
 	// ErrInvalidAuthToken is returned when a nonempty auth token does not start with "lx_" or "tk_".
 	ErrInvalidAuthToken = errors.New("sandbox: invalid auth token - API keys and service tokens must start with lx_ or tk_")
 )
 
 // New creates a new sandbox SDK client.
 //
-// Auth token resolution: WithAuthToken option > LUXORAI_AUTH_TOKEN > LUXORAI_API_KEY > TENKI_AUTH_TOKEN > TENKI_API_KEY > error.
-// Base URL resolution: WithBaseURL option > LUXORAI_API_ENDPOINT > LUXORAI_API_URL > TENKI_API_ENDPOINT > TENKI_API_URL > https://api.luxor.ai.
-// Gateway URL resolution: WithGatewayAddress option > LUXORAI_SANDBOX_GATEWAY_URL > TENKI_SANDBOX_GATEWAY_URL > derived from base URL.
+// Auth token resolution: WithAuthToken option > LUXOR_AUTH_TOKEN > LUXOR_API_KEY > TENKI_AUTH_TOKEN > TENKI_API_KEY > error.
+// Base URL resolution: WithBaseURL option > LUXOR_API_ENDPOINT > LUXOR_API_URL > TENKI_API_ENDPOINT > TENKI_API_URL > https://api.luxor.ai.
+// Gateway URL resolution: WithGatewayAddress option > LUXOR_SANDBOX_GATEWAY_URL > TENKI_SANDBOX_GATEWAY_URL > derived from base URL.
 func New(opts ...Option) (*Client, error) {
 	cfg := defaultClientConfig()
 

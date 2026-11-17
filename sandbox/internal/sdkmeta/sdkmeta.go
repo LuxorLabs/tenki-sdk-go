@@ -11,12 +11,12 @@ import (
 const (
 	DefaultBaseURL = "https://api.luxor.ai"
 
-	EnvLuxorAIAuthToken   = "LUXORAI_AUTH_TOKEN"
-	EnvLuxorAIAPIKey      = "LUXORAI_API_KEY"
-	EnvLuxorAIAPIEndpoint = "LUXORAI_API_ENDPOINT"
-	EnvLuxorAIAPIURL      = "LUXORAI_API_URL"
-	EnvLuxorAIGatewayURL  = "LUXORAI_SANDBOX_GATEWAY_URL"
-	EnvLuxorAICloudAPIURL = "LUXORAI_CLOUD_API_URL"
+	EnvLuxorAuthToken   = "LUXOR_AUTH_TOKEN"
+	EnvLuxorAPIKey      = "LUXOR_API_KEY"
+	EnvLuxorAPIEndpoint = "LUXOR_API_ENDPOINT"
+	EnvLuxorAPIURL      = "LUXOR_API_URL"
+	EnvLuxorGatewayURL  = "LUXOR_SANDBOX_GATEWAY_URL"
+	EnvLuxorCloudAPIURL = "LUXOR_CLOUD_API_URL"
 
 	EnvAuthToken   = "TENKI_AUTH_TOKEN"
 	EnvAPIKey      = "TENKI_API_KEY"
@@ -34,25 +34,33 @@ var (
 )
 
 // AuthTokenEnvs lists auth token variables in precedence order.
-var AuthTokenEnvs = []string{EnvLuxorAIAuthToken, EnvLuxorAIAPIKey, EnvAuthToken, EnvAPIKey}
+var AuthTokenEnvs = []string{EnvLuxorAuthToken, EnvLuxorAPIKey, EnvAuthToken, EnvAPIKey}
 
 // BaseURLEnvs lists sandbox API base URL variables in precedence order.
-var BaseURLEnvs = []string{EnvLuxorAIAPIEndpoint, EnvLuxorAIAPIURL, EnvAPIEndpoint, EnvAPIURL}
+var BaseURLEnvs = []string{EnvLuxorAPIEndpoint, EnvLuxorAPIURL, EnvAPIEndpoint, EnvAPIURL}
 
 // GatewayURLEnvs lists sandbox gateway URL variables in precedence order.
-var GatewayURLEnvs = []string{EnvLuxorAIGatewayURL, EnvGatewayURL}
+var GatewayURLEnvs = []string{EnvLuxorGatewayURL, EnvGatewayURL}
 
 // CloudAPIURLEnvs lists workspace API base URL variables in precedence order.
-var CloudAPIURLEnvs = []string{EnvLuxorAICloudAPIURL, EnvCloudAPIURL}
+var CloudAPIURLEnvs = []string{EnvLuxorCloudAPIURL, EnvCloudAPIURL}
 
-// Getenv returns the first non-blank value among names, trimmed.
+// Getenv returns the first usable value among names, trimmed.
 func Getenv(names []string) string {
 	for _, name := range names {
-		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+		if value := strings.TrimSpace(os.Getenv(name)); usableEnvValue(name, value) {
 			return value
 		}
 	}
 	return ""
+}
+
+// usableEnvValue skips blanks and a LUXOR_API_KEY without an lx_ or tk_ prefix, which may be a Luxor Mining Pool key.
+func usableEnvValue(name, value string) bool {
+	if name == EnvLuxorAPIKey {
+		return HasAPIKeyPrefix(value)
+	}
+	return value != ""
 }
 
 // HasAPIKeyPrefix reports whether token carries an accepted API key or service token prefix.

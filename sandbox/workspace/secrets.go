@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ErrMissingAuthToken = errors.New("workspace: missing auth token; set LUXORAI_AUTH_TOKEN or LUXORAI_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY)")
+	ErrMissingAuthToken = errors.New("workspace: missing auth token; set LUXOR_AUTH_TOKEN or LUXOR_API_KEY (or TENKI_AUTH_TOKEN or TENKI_API_KEY)")
 	ErrInvalidAuthToken = errors.New("workspace: API keys and service tokens must start with lx_ or tk_")
 )
 

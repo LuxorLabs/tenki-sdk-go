@@ -301,8 +301,8 @@ func TestWorkspaceSecretsConflictReplay(t *testing.T) {
 func TestWorkspaceSecretsValidation(t *testing.T) {
 	t.Setenv("TENKI_AUTH_TOKEN", "")
 	t.Setenv("TENKI_API_KEY", "")
-	t.Setenv("LUXORAI_AUTH_TOKEN", "")
-	t.Setenv("LUXORAI_API_KEY", "")
+	t.Setenv("LUXOR_AUTH_TOKEN", "")
+	t.Setenv("LUXOR_API_KEY", "")
 	if _, err := NewWorkspaceClient(WorkspaceOptions{}); !errors.Is(err, ErrMissingAuthToken) {
 		t.Fatal(err)
 	}

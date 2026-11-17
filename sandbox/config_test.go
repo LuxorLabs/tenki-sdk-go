@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func clearLuxorAIEnv(t *testing.T) {
+func clearLuxorEnv(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{EnvLuxorAIAuthToken, EnvLuxorAIAPIKey, EnvLuxorAIAPIEndpoint, EnvLuxorAIAPIURL, EnvLuxorAIGatewayURL} {
+	for _, name := range []string{EnvLuxorAuthToken, EnvLuxorAPIKey, EnvLuxorAPIEndpoint, EnvLuxorAPIURL, EnvLuxorGatewayURL} {
 		t.Setenv(name, "")
 	}
 }
 
 func TestNewUsesCanonicalEnvFallbacks(t *testing.T) {
-	clearLuxorAIEnv(t)
+	clearLuxorEnv(t)
 	t.Setenv(EnvAuthToken, "tk_env_auth")
 	t.Setenv(EnvAPIEndpoint, "https://api.example.com")
 
@@ -32,16 +32,16 @@ func TestNewUsesCanonicalEnvFallbacks(t *testing.T) {
 	}
 }
 
-func TestNewPrefersLuxorAIEnv(t *testing.T) {
+func TestNewPrefersLuxorEnv(t *testing.T) {
 	t.Setenv(EnvAuthToken, "tk_tenki_auth")
 	t.Setenv(EnvAPIKey, "tk_tenki_key")
-	t.Setenv(EnvLuxorAIAPIKey, "lx_luxorai_key")
-	t.Setenv(EnvLuxorAIAuthToken, "")
+	t.Setenv(EnvLuxorAPIKey, "lx_luxor_key")
+	t.Setenv(EnvLuxorAuthToken, "")
 	t.Setenv(EnvAPIEndpoint, "https://api.tenki.example")
-	t.Setenv(EnvLuxorAIAPIURL, "https://api.luxor.example")
-	t.Setenv(EnvLuxorAIAPIEndpoint, "")
+	t.Setenv(EnvLuxorAPIURL, "https://api.luxor.example")
+	t.Setenv(EnvLuxorAPIEndpoint, "")
 	t.Setenv(EnvGatewayURL, "https://gateway.tenki.example")
-	t.Setenv(EnvLuxorAIGatewayURL, "https://gateway.luxor.example")
+	t.Setenv(EnvLuxorGatewayURL, "https://gateway.luxor.example")
 
 	client, err := New()
 	if err != nil {
@@ -49,20 +49,20 @@ func TestNewPrefersLuxorAIEnv(t *testing.T) {
 	}
 	defer func() { _ = client.Close() }()
 
-	if got := client.authToken.reveal(); got != "lx_luxorai_key" {
-		t.Fatalf("auth token = %q, want LUXORAI_API_KEY", got)
+	if got := client.authToken.reveal(); got != "lx_luxor_key" {
+		t.Fatalf("auth token = %q, want LUXOR_API_KEY", got)
 	}
 	if client.baseURL != "https://api.luxor.example" {
-		t.Fatalf("base url = %q, want LUXORAI_API_URL", client.baseURL)
+		t.Fatalf("base url = %q, want LUXOR_API_URL", client.baseURL)
 	}
 	if client.gatewayAddress != "https://gateway.luxor.example" {
-		t.Fatalf("gateway = %q, want LUXORAI_SANDBOX_GATEWAY_URL", client.gatewayAddress)
+		t.Fatalf("gateway = %q, want LUXOR_SANDBOX_GATEWAY_URL", client.gatewayAddress)
 	}
 }
 
-func TestNewWhitespaceLuxorAIAuthTokenFallsBackToTenki(t *testing.T) {
-	clearLuxorAIEnv(t)
-	t.Setenv(EnvLuxorAIAuthToken, " \t ")
+func TestNewWhitespaceLuxorAuthTokenFallsBackToTenki(t *testing.T) {
+	clearLuxorEnv(t)
+	t.Setenv(EnvLuxorAuthToken, " \t ")
 	t.Setenv(EnvAuthToken, "tk_tenki_auth")
 	t.Setenv(EnvAPIEndpoint, "https://api.example.com")
 
@@ -77,12 +77,12 @@ func TestNewWhitespaceLuxorAIAuthTokenFallsBackToTenki(t *testing.T) {
 	}
 }
 
-func TestNewLuxorAIAuthTokenWinsOverAPIKey(t *testing.T) {
-	clearLuxorAIEnv(t)
-	t.Setenv(EnvLuxorAIAuthToken, "lx_auth")
-	t.Setenv(EnvLuxorAIAPIKey, "lx_key")
-	t.Setenv(EnvLuxorAIAPIEndpoint, "https://api.luxor.example")
-	t.Setenv(EnvLuxorAIAPIURL, "https://api-url.luxor.example")
+func TestNewLuxorAuthTokenWinsOverAPIKey(t *testing.T) {
+	clearLuxorEnv(t)
+	t.Setenv(EnvLuxorAuthToken, "lx_auth")
+	t.Setenv(EnvLuxorAPIKey, "lx_key")
+	t.Setenv(EnvLuxorAPIEndpoint, "https://api.luxor.example")
+	t.Setenv(EnvLuxorAPIURL, "https://api-url.luxor.example")
 
 	client, err := New()
 	if err != nil {
@@ -91,17 +91,55 @@ func TestNewLuxorAIAuthTokenWinsOverAPIKey(t *testing.T) {
 	defer func() { _ = client.Close() }()
 
 	if got := client.authToken.reveal(); got != "lx_auth" {
-		t.Fatalf("auth token = %q, want LUXORAI_AUTH_TOKEN", got)
+		t.Fatalf("auth token = %q, want LUXOR_AUTH_TOKEN", got)
 	}
 	if client.baseURL != "https://api.luxor.example" {
-		t.Fatalf("base url = %q, want LUXORAI_API_ENDPOINT", client.baseURL)
+		t.Fatalf("base url = %q, want LUXOR_API_ENDPOINT", client.baseURL)
 	}
 	if client.gatewayAddress != "https://sandbox-gateway.luxor.example" {
-		t.Fatalf("gateway = %q, want derived from LUXORAI_API_ENDPOINT", client.gatewayAddress)
+		t.Fatalf("gateway = %q, want derived from LUXOR_API_ENDPOINT", client.gatewayAddress)
 	}
 }
 
-func TestNewAcceptsLuxorAIKeyPrefixes(t *testing.T) {
+func TestNewLuxorAPIKeyPrefixGuard(t *testing.T) {
+	tests := []struct {
+		name        string
+		luxorAPIKey string
+		tenkiAPIKey string
+		want        string
+		wantErr     error
+	}{
+		{name: "lx prefix is used", luxorAPIKey: "lx_luxor_key", tenkiAPIKey: "tk_tenki_key", want: "lx_luxor_key"},
+		{name: "tk prefix is used", luxorAPIKey: " tk_luxor_key ", tenkiAPIKey: "tk_tenki_key", want: "tk_luxor_key"},
+		{name: "other value falls back to TENKI_API_KEY", luxorAPIKey: "pool-key-123", tenkiAPIKey: "tk_tenki_key", want: "tk_tenki_key"},
+		{name: "other value alone is missing", luxorAPIKey: "pool-key-123", wantErr: ErrMissingAuthToken},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearLuxorEnv(t)
+			t.Setenv(EnvAuthToken, "")
+			t.Setenv(EnvLuxorAPIKey, tt.luxorAPIKey)
+			t.Setenv(EnvAPIKey, tt.tenkiAPIKey)
+
+			client, err := New(WithBaseURL("https://api.example.com"))
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("New error = %v, want %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			defer func() { _ = client.Close() }()
+			if got := client.authToken.reveal(); got != tt.want {
+				t.Fatalf("auth token = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewAcceptsLuxorKeyPrefixes(t *testing.T) {
 	t.Parallel()
 
 	for _, token := range []string{"lx_key", "lx_svc_token", "tk_key", "tk_svc_token"} {
@@ -113,11 +151,11 @@ func TestNewAcceptsLuxorAIKeyPrefixes(t *testing.T) {
 	}
 }
 
-func TestAuthTokenErrorsNameLuxorAIFirst(t *testing.T) {
+func TestAuthTokenErrorsNameLuxorFirst(t *testing.T) {
 	t.Parallel()
 
-	if msg := ErrMissingAuthToken.Error(); !strings.Contains(msg, "LUXORAI_AUTH_TOKEN") || strings.Index(msg, "LUXORAI_") > strings.Index(msg, "TENKI_") {
-		t.Fatalf("ErrMissingAuthToken = %q, want LUXORAI_* before TENKI_*", msg)
+	if msg := ErrMissingAuthToken.Error(); !strings.Contains(msg, "LUXOR_AUTH_TOKEN") || strings.Index(msg, "LUXOR_") > strings.Index(msg, "TENKI_") {
+		t.Fatalf("ErrMissingAuthToken = %q, want LUXOR_* before TENKI_*", msg)
 	}
 	if msg := ErrInvalidAuthToken.Error(); !strings.Contains(msg, "lx_ or tk_") {
 		t.Fatalf("ErrInvalidAuthToken = %q, want both prefixes", msg)
@@ -161,5 +199,20 @@ func TestNewRejectsInvalidAuthTokens(t *testing.T) {
 				t.Fatalf("New error = %v, want ErrInvalidAuthToken", err)
 			}
 		})
+	}
+}
+
+func TestDeprecatedEnvAliasesResolveToLuxorNames(t *testing.T) {
+	aliases := map[string]string{
+		EnvLuxorAIAPIEndpoint: EnvLuxorAPIEndpoint,
+		EnvLuxorAIAPIURL:      EnvLuxorAPIURL,
+		EnvLuxorAIGatewayURL:  EnvLuxorGatewayURL,
+		EnvLuxorAIAuthToken:   EnvLuxorAuthToken,
+		EnvLuxorAIAPIKey:      EnvLuxorAPIKey,
+	}
+	for alias, want := range aliases {
+		if alias != want {
+			t.Errorf("alias = %q, want %q", alias, want)
+		}
 	}
 }
