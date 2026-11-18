@@ -320,21 +320,16 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 	}
 
 	if !cfg.waitReady && !cfg.waitForRuntime {
-		resp, err := c.sandbox.CreateSession(ctx, connect.NewRequest(req))
-		if err != nil {
-			return nil, mapCreateSessionError(c, err)
-		}
-		return newSessionFromCreate(c, resp.Msg), nil
+		return c.createCompatibleSession(ctx, ctx, req)
 	}
 
 	waitTimeout := effectiveCreateWaitTimeout(cfg)
 	createCtx, cancel := c.heldCreateContext(ctx, waitTimeout)
 	defer cancel()
-	resp, err := c.sandbox.CreateSession(createCtx, connect.NewRequest(req))
+	sess, err := c.createCompatibleSession(ctx, createCtx, req)
 	if err != nil {
-		return nil, mapCreateSessionError(c, err)
+		return nil, err
 	}
-	sess := newSessionFromCreate(c, resp.Msg)
 	if sess.State.IsReady() {
 		return sess, nil
 	}
@@ -349,6 +344,33 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		return nil, &WaitReadyFailedError{Session: sess, Err: err}
 	}
 	return sess, nil
+}
+
+func (c *Client) checkTailnetExposure(ctx context.Context, req *sandboxv1.CreateSessionRequest, resp *sandboxv1.CreateSessionResponse) error {
+	if tailnetExposureAccepted(req.GetTailnet(), resp.GetSession().GetTailnetStatus()) {
+		return nil
+	}
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	_, err := c.sandbox.TerminateSession(cleanupCtx, connect.NewRequest(&sandboxv1.TerminateSessionRequest{SessionId: resp.GetSession().GetId()}))
+	if err != nil {
+		return fmt.Errorf("sandbox %s: server did not acknowledge tailnet exposed ports; cleanup failed: %w", resp.GetSession().GetId(), err)
+	}
+	return errors.New("sandbox: server does not support requested tailnet exposed ports; session terminated")
+}
+
+// Allocation uses the call deadline; compatibility cleanup retains the caller context.
+func (c *Client) createCompatibleSession(
+	ctx, callCtx context.Context, req *sandboxv1.CreateSessionRequest,
+) (*Session, error) {
+	resp, err := c.sandbox.CreateSession(callCtx, connect.NewRequest(req))
+	if err != nil {
+		return nil, mapCreateSessionError(c, err)
+	}
+	if err := c.checkTailnetExposure(ctx, req, resp.Msg); err != nil {
+		return nil, err
+	}
+	return newSessionFromCreate(c, resp.Msg), nil
 }
 
 func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {

@@ -120,6 +120,7 @@ session, err := client.Create(ctx, sandbox.WithTailnet(sandbox.TailnetAttachment
 	AuthKey:       sandbox.NewTailnetAuthKey(os.Getenv("TAILNET_AUTH_KEY")),
 	Tags:          []string{"tag:sandbox"},
 	ExposePorts:   []uint32{3000},
+	ExposedPorts: []sandbox.TailnetPort{{Port: 6081, Protocol: "udp"}},
 	AcceptRoutes:  true,
 	WaitForOnline: true,
 }))

@@ -3,6 +3,7 @@ package sandbox
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
@@ -57,6 +58,11 @@ func (TailnetAuthKey) Format(state fmt.State, _ rune) {
 	_, _ = state.Write([]byte("[REDACTED]"))
 }
 
+type TailnetPort struct {
+	Port     uint32
+	Protocol string
+}
+
 type TailnetAttachment struct {
 	ProfileID            string
 	ProfileRevision      uint32
@@ -70,6 +76,7 @@ type TailnetAttachment struct {
 	AcceptRoutes         bool
 	WakeOnConnect        bool
 	ExposePorts          []uint32
+	ExposedPorts         []TailnetPort
 	WaitForOnline        bool
 	ExitPolicy           TailnetExitPolicy
 	EphemeralPausePolicy TailnetEphemeralPausePolicy
@@ -77,9 +84,10 @@ type TailnetAttachment struct {
 
 func (value TailnetAttachment) Format(state fmt.State, _ rune) {
 	_, _ = fmt.Fprintf(state,
-		"TailnetAttachment{AuthKey:[REDACTED] Provider:%q Hostname:%q Tags:%v Ephemeral:%t ControlURL:%q ExitNode:%q AcceptRoutes:%t WakeOnConnect:%t ExposePorts:%v WaitForOnline:%t ExitPolicy:%q EphemeralPausePolicy:%q}",
+		"TailnetAttachment{AuthKey:[REDACTED] Provider:%q Hostname:%q Tags:%v Ephemeral:%t ControlURL:%q ExitNode:%q AcceptRoutes:%t WakeOnConnect:%t ExposePorts:%v ExposedPorts:%v "+
+			"WaitForOnline:%t ExitPolicy:%q EphemeralPausePolicy:%q}",
 		value.Provider, value.Hostname, value.Tags, value.Ephemeral, value.ControlURL, value.ExitNode, value.AcceptRoutes,
-		value.WakeOnConnect, value.ExposePorts, value.WaitForOnline, value.ExitPolicy, value.EphemeralPausePolicy,
+		value.WakeOnConnect, value.ExposePorts, value.ExposedPorts, value.WaitForOnline, value.ExitPolicy, value.EphemeralPausePolicy,
 	)
 }
 
@@ -98,6 +106,7 @@ type TailnetStatus struct {
 func cloneTailnetAttachment(value TailnetAttachment) TailnetAttachment {
 	value.Tags = append([]string(nil), value.Tags...)
 	value.ExposePorts = append([]uint32(nil), value.ExposePorts...)
+	value.ExposedPorts = append([]TailnetPort(nil), value.ExposedPorts...)
 	return value
 }
 
@@ -138,6 +147,21 @@ func tailnetAttachmentProto(value TailnetAttachment) (*sandboxv1.TailnetAttachme
 		ExitPolicy:           exitPolicy,
 		EphemeralPausePolicy: pausePolicy,
 		ProfileRevision:      value.ProfileRevision,
+	}
+	for _, endpoint := range value.ExposedPorts {
+		protocol := sandboxv1.TailnetPortProtocol_TAILNET_PORT_PROTOCOL_UNSPECIFIED
+		switch endpoint.Protocol {
+		case "tcp":
+			protocol = sandboxv1.TailnetPortProtocol_TAILNET_PORT_PROTOCOL_TCP
+		case "udp":
+			protocol = sandboxv1.TailnetPortProtocol_TAILNET_PORT_PROTOCOL_UDP
+		default:
+			return nil, errors.New("sandbox: tailnet exposed port protocol must be tcp or udp")
+		}
+		if endpoint.Port == 0 || endpoint.Port > 65535 {
+			return nil, errors.New("sandbox: invalid tailnet exposed port")
+		}
+		request.ExposedPorts = append(request.ExposedPorts, &sandboxv1.TailnetPort{Port: endpoint.Port, Protocol: protocol})
 	}
 	if value.ProfileID != "" {
 		request.Credential = &sandboxv1.TailnetAttachment_ProfileId{ProfileId: value.ProfileID}
@@ -190,4 +214,15 @@ func tailnetStatusFromProto(value *sandboxv1.TailnetStatus) *TailnetStatus {
 		Error:          value.GetError(),
 		DeviceRetained: value.GetDeviceRetained(),
 	}
+}
+
+func tailnetExposureAccepted(request *sandboxv1.TailnetAttachment, status *sandboxv1.TailnetStatus) bool {
+	for _, endpoint := range request.GetExposedPorts() {
+		if !slices.ContainsFunc(status.GetExposedPorts(), func(accepted *sandboxv1.TailnetPort) bool {
+			return endpoint.GetPort() == accepted.GetPort() && endpoint.GetProtocol() == accepted.GetProtocol()
+		}) {
+			return false
+		}
+	}
+	return true
 }
