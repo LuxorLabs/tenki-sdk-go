@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ func egressPolicyBodyToProto(egress SessionEgressPolicy) (*sandboxv1.SessionEgre
 		AllowCidrs:     append([]string(nil), egress.AllowCIDRs...),
 		InterceptHttps: egress.InterceptHTTPS,
 		AllowedPorts:   append([]uint32(nil), egress.AllowedPorts...),
+		PublicEgress:   publicEgressToProto(egress.PublicEgress),
 		HttpRules:      rules,
 	}, nil
 }
@@ -92,13 +94,25 @@ func (c *Client) CreateEgressPolicy(ctx context.Context, name string, egress Ses
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.sandbox.CreateEgressPolicy(ctx, connect.NewRequest(&sandboxv1.CreateEgressPolicyRequest{
-		WorkspaceId: egressPolicyWorkspace(opts), Name: name, Egress: body,
-	}))
+	request := &sandboxv1.CreateEgressPolicyRequest{WorkspaceId: egressPolicyWorkspace(opts), Name: name, Egress: body}
+	var resp *connect.Response[sandboxv1.CreateEgressPolicyResponse]
+	if egress.PublicEgress != nil {
+		var response *connect.Response[sandboxv1.CreateEgressPolicyWithPublicEgressResponse]
+		response, err = c.sandbox.CreateEgressPolicyWithPublicEgress(ctx, connect.NewRequest(&sandboxv1.CreateEgressPolicyWithPublicEgressRequest{Request: request}))
+		if err == nil {
+			resp = unwrapPublicEgressResponse(response, response.Msg.GetResponse())
+		}
+	} else {
+		resp, err = c.sandbox.CreateEgressPolicy(ctx, connect.NewRequest(request))
+	}
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return egressPolicyFromMessage(resp.Msg.GetPolicy()), nil
+	policy := egressPolicyFromMessage(resp.Msg.GetPolicy())
+	if policy == nil || !publicEgressAcknowledged(egress.PublicEgress, policy.Egress.PublicEgress) {
+		return nil, errors.New("server does not support public egress restrictions")
+	}
+	return policy, nil
 }
 
 // UpdateEgressPolicy replaces the policy body when expectedRevision is current. Sessions created earlier keep the
@@ -110,13 +124,25 @@ func (c *Client) UpdateEgressPolicy(
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.sandbox.UpdateEgressPolicy(ctx, connect.NewRequest(&sandboxv1.UpdateEgressPolicyRequest{
-		WorkspaceId: egressPolicyWorkspace(opts), PolicyId: nameOrID, ExpectedRevision: expectedRevision, Egress: body,
-	}))
+	request := &sandboxv1.UpdateEgressPolicyRequest{WorkspaceId: egressPolicyWorkspace(opts), PolicyId: nameOrID, ExpectedRevision: expectedRevision, Egress: body}
+	var resp *connect.Response[sandboxv1.UpdateEgressPolicyResponse]
+	if egress.PublicEgress != nil {
+		var response *connect.Response[sandboxv1.UpdateEgressPolicyWithPublicEgressResponse]
+		response, err = c.sandbox.UpdateEgressPolicyWithPublicEgress(ctx, connect.NewRequest(&sandboxv1.UpdateEgressPolicyWithPublicEgressRequest{Request: request}))
+		if err == nil {
+			resp = unwrapPublicEgressResponse(response, response.Msg.GetResponse())
+		}
+	} else {
+		resp, err = c.sandbox.UpdateEgressPolicy(ctx, connect.NewRequest(request))
+	}
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return egressPolicyFromMessage(resp.Msg.GetPolicy()), nil
+	policy := egressPolicyFromMessage(resp.Msg.GetPolicy())
+	if policy == nil || !publicEgressAcknowledged(egress.PublicEgress, policy.Egress.PublicEgress) {
+		return nil, errors.New("server does not support public egress restrictions")
+	}
+	return policy, nil
 }
 
 func (c *Client) GetEgressPolicy(ctx context.Context, nameOrID string, opts ...EgressPolicyOption) (*EgressPolicy, error) {

@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -14,7 +15,9 @@ import (
 )
 
 type egressCaptureHandler struct {
+	noPublicSupport bool
 	sandboxv1connect.UnimplementedSandboxServiceHandler
+	terminated         bool
 	lastEgress         *sandboxv1.SessionEgressPolicy
 	lastEgressPolicies []string
 	// expanded stands in for the server's merge of the named policies.
@@ -228,5 +231,58 @@ func TestCreateWithOnlyEgressPolicyNamesOmitsInlineEgress(t *testing.T) {
 	}
 	if want := []string{"registries"}; !reflect.DeepEqual(handler.lastEgressPolicies, want) {
 		t.Fatalf("wire egress_policies = %v, want %v", handler.lastEgressPolicies, want)
+	}
+}
+
+func (h *egressCaptureHandler) TerminateSession(
+	_ context.Context, _ *connect.Request[sandboxv1.TerminateSessionRequest],
+) (*connect.Response[sandboxv1.TerminateSessionResponse], error) {
+	h.terminated = true
+	return connect.NewResponse(&sandboxv1.TerminateSessionResponse{}), nil
+}
+
+func TestCreateCleansUpUnsupportedPublicEgress(t *testing.T) {
+	handler := &egressCaptureHandler{expanded: &sandboxv1.SessionEgressPolicy{}}
+	client := newEgressHarness(t, handler)
+	session, err := client.Create(t.Context(), WithPublicEgress(PublicEgress{}), WithWaitReady(false))
+	if err == nil || session != nil {
+		t.Fatal("unsupported API must not return a session")
+	}
+	if !handler.terminated {
+		t.Fatal("unsupported allocation must be terminated")
+	}
+}
+
+func (h *egressCaptureHandler) CreateSessionWithPublicEgress(
+	ctx context.Context, req *connect.Request[sandboxv1.CreateSessionWithPublicEgressRequest],
+) (*connect.Response[sandboxv1.CreateSessionWithPublicEgressResponse], error) {
+	if h.noPublicSupport {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("unsupported compatibility route"))
+	}
+	response, err := h.CreateSession(ctx, connect.NewRequest(req.Msg.GetRequest()))
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&sandboxv1.CreateSessionWithPublicEgressResponse{Response: response.Msg}), nil
+}
+
+func TestCreateDoesNotAllocateUnsupportedPublicEgress(t *testing.T) {
+	handler := &egressCaptureHandler{noPublicSupport: true}
+	client := newEgressHarness(t, handler)
+	session, err := client.Create(t.Context(), WithPublicEgress(PublicEgress{}), WithWaitReady(false))
+	if err == nil || session != nil || handler.lastEgress != nil || handler.terminated {
+		t.Fatal("unsupported API must not allocate a session")
+	}
+}
+
+func TestCreateAcknowledgesPublicEgress(t *testing.T) {
+	handler := &egressCaptureHandler{expanded: &sandboxv1.SessionEgressPolicy{PublicEgress: &sandboxv1.PublicEgress{TcpPorts: []uint32{443}}}}
+	client := newEgressHarness(t, handler)
+	session, err := client.Create(t.Context(), WithPublicEgress(PublicEgress{TCPPorts: []uint32{443}}), WithWaitReady(false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session == nil || handler.terminated {
+		t.Fatal("supported restriction must return a live handle")
 	}
 }

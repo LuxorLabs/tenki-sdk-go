@@ -178,7 +178,13 @@ type Session struct {
 }
 
 // SessionEgressPolicy uses tailnet policy for empty allowlists when attached; otherwise they are unrestricted.
+type PublicEgress struct {
+	TCPPorts []uint32 `json:"tcp_ports"`
+	UDPPorts []uint32 `json:"udp_ports"`
+}
+
 type SessionEgressPolicy struct {
+	PublicEgress   *PublicEgress
 	AllowDomains   []string
 	AllowCIDRs     []string
 	InterceptHTTPS bool
@@ -203,6 +209,7 @@ func egressPolicyFromProto(p *sandboxv1.SessionEgressPolicy) SessionEgressPolicy
 		return SessionEgressPolicy{}
 	}
 	policy := SessionEgressPolicy{
+		PublicEgress:   publicEgressFromProto(p.GetPublicEgress()),
 		AllowDomains:   append([]string(nil), p.GetAllowDomains()...),
 		AllowCIDRs:     append([]string(nil), p.GetAllowCidrs()...),
 		InterceptHTTPS: p.GetInterceptHttps(),
@@ -1927,5 +1934,38 @@ func (s *Session) isVolumeDetached(volumeID string) bool {
 		}
 	}
 	// A missing attachment is detached because the engine may stop returning it.
+	return true
+}
+
+func publicEgressToProto(policy *PublicEgress) *sandboxv1.PublicEgress {
+	if policy == nil {
+		return nil
+	}
+	return &sandboxv1.PublicEgress{TcpPorts: append([]uint32(nil), policy.TCPPorts...), UdpPorts: append([]uint32(nil), policy.UDPPorts...)}
+}
+func publicEgressFromProto(policy *sandboxv1.PublicEgress) *PublicEgress {
+	if policy == nil {
+		return nil
+	}
+	return &PublicEgress{TCPPorts: append([]uint32(nil), policy.GetTcpPorts()...), UDPPorts: append([]uint32(nil), policy.GetUdpPorts()...)}
+}
+
+func publicEgressAcknowledged(requested, actual *PublicEgress) bool {
+	if requested == nil {
+		return true
+	}
+	if actual == nil {
+		return false
+	}
+	for _, port := range actual.TCPPorts {
+		if !slices.Contains(requested.TCPPorts, port) {
+			return false
+		}
+	}
+	for _, port := range actual.UDPPorts {
+		if !slices.Contains(requested.UDPPorts, port) {
+			return false
+		}
+	}
 	return true
 }

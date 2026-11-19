@@ -1,10 +1,14 @@
 package sandbox
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
+	"time"
+
+	"connectrpc.com/connect"
 
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 )
@@ -73,6 +77,7 @@ type TailnetAttachment struct {
 	Ephemeral            bool
 	ControlURL           string
 	ExitNode             string
+	AcceptDNS            *bool
 	AcceptRoutes         bool
 	WakeOnConnect        bool
 	ExposePorts          []uint32
@@ -101,9 +106,14 @@ type TailnetStatus struct {
 	Owner          string
 	Error          string
 	DeviceRetained bool
+	AcceptDNS      *bool
 }
 
 func cloneTailnetAttachment(value TailnetAttachment) TailnetAttachment {
+	if value.AcceptDNS != nil {
+		enabled := *value.AcceptDNS
+		value.AcceptDNS = &enabled
+	}
 	value.Tags = append([]string(nil), value.Tags...)
 	value.ExposePorts = append([]uint32(nil), value.ExposePorts...)
 	value.ExposedPorts = append([]TailnetPort(nil), value.ExposedPorts...)
@@ -140,6 +150,7 @@ func tailnetAttachmentProto(value TailnetAttachment) (*sandboxv1.TailnetAttachme
 		ControlUrl:           value.ControlURL,
 		ExitNode:             value.ExitNode,
 		AcceptRoutes:         value.AcceptRoutes,
+		AcceptDns:            value.AcceptDNS,
 		WakeOnConnect:        value.WakeOnConnect,
 		ExposePorts:          append([]uint32(nil), value.ExposePorts...),
 		WaitForOnline:        value.WaitForOnline,
@@ -213,6 +224,7 @@ func tailnetStatusFromProto(value *sandboxv1.TailnetStatus) *TailnetStatus {
 		Owner:          value.GetOwner(),
 		Error:          value.GetError(),
 		DeviceRetained: value.GetDeviceRetained(),
+		AcceptDNS:      value.AcceptDns,
 	}
 }
 
@@ -225,4 +237,22 @@ func tailnetExposureAccepted(request *sandboxv1.TailnetAttachment, status *sandb
 		}
 	}
 	return true
+}
+
+func (c *Client) verifyTailnetDNS(ctx context.Context, requested *TailnetAttachment, session *sandboxv1.SandboxSession) error {
+	if requested == nil || requested.AcceptDNS == nil {
+		return nil
+	}
+	actual := session.GetTailnetStatus()
+	if actual != nil && actual.AcceptDns != nil && *actual.AcceptDns == *requested.AcceptDNS {
+		return nil
+	}
+	compatibilityErr := errors.New("sandbox: API did not acknowledge managed tailnet DNS configuration")
+	if session.GetId() == "" {
+		return compatibilityErr
+	}
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	_, err := c.sandbox.TerminateSession(cleanupCtx, connect.NewRequest(&sandboxv1.TerminateSessionRequest{SessionId: session.GetId()}))
+	return errors.Join(compatibilityErr, err)
 }

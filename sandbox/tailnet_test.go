@@ -19,7 +19,7 @@ type tailnetCaptureHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
 	request    *sandboxv1.TailnetAttachment
 	disabled   bool
-	terminated bool
+	terminated string
 }
 
 func (h *tailnetCaptureHandler) CreateSession(
@@ -36,11 +36,6 @@ func (h *tailnetCaptureHandler) CreateSession(
 			Owner: "tag:sandbox", Error: "approval pending", DeviceRetained: true,
 		},
 	}}), nil
-}
-
-func (h *tailnetCaptureHandler) TerminateSession(_ context.Context, _ *connect.Request[sandboxv1.TerminateSessionRequest]) (*connect.Response[sandboxv1.TerminateSessionResponse], error) {
-	h.terminated = true
-	return connect.NewResponse(&sandboxv1.TerminateSessionResponse{}), nil
 }
 
 func TestTypedTailnetExposureTerminatesOldAPIAllocation(t *testing.T) {
@@ -60,8 +55,8 @@ func TestTypedTailnetExposureTerminatesOldAPIAllocation(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 	session, err := client.Create(t.Context(), WithWaitReady(false), WithTailnet(TailnetAttachment{AuthKey: NewTailnetAuthKey("sentinel"), ExposedPorts: []TailnetPort{{Port: 6081, Protocol: "udp"}}}))
-	if err == nil || session != nil || !handler.terminated {
-		t.Fatalf("unsupported API must terminate allocation: session=%v err=%v terminated=%t", session, err, handler.terminated)
+	if err == nil || session != nil || handler.terminated == "" {
+		t.Fatalf("unsupported API must terminate allocation: session=%v err=%v terminated=%q", session, err, handler.terminated)
 	}
 }
 
@@ -240,5 +235,53 @@ func TestTypedTailnetExposureRequiresAcknowledgement(t *testing.T) {
 	}
 	if !tailnetExposureAccepted(request, &sandboxv1.TailnetStatus{ExposedPorts: request.GetExposedPorts()}) {
 		t.Fatal("matching exposure rejected")
+	}
+}
+
+func TestTailnetDNSPresence(t *testing.T) {
+	for _, value := range []*bool{nil, proto.Bool(false), proto.Bool(true)} {
+		request, err := tailnetAttachmentProto(TailnetAttachment{AuthKey: NewTailnetAuthKey("sentinel"), AcceptDNS: value})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if value == nil {
+			if request.AcceptDns != nil {
+				t.Fatal("omitted DNS setting gained presence")
+			}
+			continue
+		}
+		if request.AcceptDns == nil || *request.AcceptDns != *value {
+			t.Fatal("DNS setting lost presence or value")
+		}
+	}
+}
+
+func (h *tailnetCaptureHandler) TerminateSession(_ context.Context, req *connect.Request[sandboxv1.TerminateSessionRequest]) (*connect.Response[sandboxv1.TerminateSessionResponse], error) {
+	h.terminated = req.Msg.GetSessionId()
+	return connect.NewResponse(&sandboxv1.TerminateSessionResponse{}), nil
+}
+
+func TestTailnetOldAPIDNSRejectionCleansUp(t *testing.T) {
+	handler := &tailnetCaptureHandler{}
+	path, endpoint := sandboxv1connect.NewSandboxServiceHandler(handler)
+	mux := http.NewServeMux()
+	mux.Handle(path, endpoint)
+	server := httptest.NewUnstartedServer(mux)
+	server.Config.Protocols = new(http.Protocols)
+	server.Config.Protocols.SetHTTP1(true)
+	server.Config.Protocols.SetUnencryptedHTTP2(true)
+	server.Start()
+	defer server.Close()
+	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	_, err = client.Create(t.Context(), WithTailnet(TailnetAttachment{AuthKey: NewTailnetAuthKey("sentinel"), AcceptDNS: proto.Bool(true)}))
+	if err == nil || !strings.Contains(err.Error(), "did not acknowledge") {
+		t.Fatalf("expected compatibility failure, got %v", err)
+	}
+	if handler.terminated != "session-1" {
+		t.Fatal("unacknowledged allocation was not terminated")
 	}
 }

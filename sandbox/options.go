@@ -199,6 +199,7 @@ type createConfig struct {
 	allowCIDRs      []string
 	interceptHTTPS  bool
 	allowedPorts    []uint32
+	publicEgress    *PublicEgress
 	httpRules       []EgressHTTPRule
 	egressPolicies  []string
 	maxDuration     *time.Duration
@@ -900,6 +901,7 @@ func WithIdleTimeout(time.Duration) CreateOption {
 }
 
 // WithPauseRetention sets how long paused state is retained for the session.
+// It must be at most the workspace's pause retention limit, which is also the default when unset or not positive.
 func WithPauseRetention(retention time.Duration) CreateOption {
 	return createOptionFunc(func(cfg *createConfig) {
 		cfg.pauseRetention = &retention
@@ -1306,4 +1308,10 @@ func normalizeTagList(tags []string) []string {
 		out = append(out, trimmed)
 	}
 	return out
+}
+
+func WithPublicEgress(policy PublicEgress) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) {
+		cfg.publicEgress = &PublicEgress{TCPPorts: append([]uint32(nil), policy.TCPPorts...), UDPPorts: append([]uint32(nil), policy.UDPPorts...)}
+	})
 }

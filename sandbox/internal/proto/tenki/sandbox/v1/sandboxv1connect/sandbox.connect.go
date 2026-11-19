@@ -68,6 +68,9 @@ const (
 	// SandboxServiceCreateSessionProcedure is the fully-qualified name of the SandboxService's
 	// CreateSession RPC.
 	SandboxServiceCreateSessionProcedure = "/tenki.sandbox.v1.SandboxService/CreateSession"
+	// SandboxServiceCreateSessionWithPublicEgressProcedure is the fully-qualified name of the
+	// SandboxService's CreateSessionWithPublicEgress RPC.
+	SandboxServiceCreateSessionWithPublicEgressProcedure = "/tenki.sandbox.v1.SandboxService/CreateSessionWithPublicEgress"
 	// SandboxServiceCreateSessionCredentialProcedure is the fully-qualified name of the
 	// SandboxService's CreateSessionCredential RPC.
 	SandboxServiceCreateSessionCredentialProcedure = "/tenki.sandbox.v1.SandboxService/CreateSessionCredential"
@@ -326,9 +329,15 @@ const (
 	// SandboxServiceCreateEgressPolicyProcedure is the fully-qualified name of the SandboxService's
 	// CreateEgressPolicy RPC.
 	SandboxServiceCreateEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/CreateEgressPolicy"
+	// SandboxServiceCreateEgressPolicyWithPublicEgressProcedure is the fully-qualified name of the
+	// SandboxService's CreateEgressPolicyWithPublicEgress RPC.
+	SandboxServiceCreateEgressPolicyWithPublicEgressProcedure = "/tenki.sandbox.v1.SandboxService/CreateEgressPolicyWithPublicEgress"
 	// SandboxServiceUpdateEgressPolicyProcedure is the fully-qualified name of the SandboxService's
 	// UpdateEgressPolicy RPC.
 	SandboxServiceUpdateEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/UpdateEgressPolicy"
+	// SandboxServiceUpdateEgressPolicyWithPublicEgressProcedure is the fully-qualified name of the
+	// SandboxService's UpdateEgressPolicyWithPublicEgress RPC.
+	SandboxServiceUpdateEgressPolicyWithPublicEgressProcedure = "/tenki.sandbox.v1.SandboxService/UpdateEgressPolicyWithPublicEgress"
 	// SandboxServiceGetEgressPolicyProcedure is the fully-qualified name of the SandboxService's
 	// GetEgressPolicy RPC.
 	SandboxServiceGetEgressPolicyProcedure = "/tenki.sandbox.v1.SandboxService/GetEgressPolicy"
@@ -389,6 +398,7 @@ type SandboxServiceClient interface {
 	ListTailnetConnections(context.Context, *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error)
 	TestTailnetConnection(context.Context, *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	CreateSessionWithPublicEgress(context.Context, *connect.Request[v1.CreateSessionWithPublicEgressRequest]) (*connect.Response[v1.CreateSessionWithPublicEgressResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
@@ -494,7 +504,9 @@ type SandboxServiceClient interface {
 	UnshareRegistryImage(context.Context, *connect.Request[v1.UnshareRegistryImageRequest]) (*connect.Response[v1.UnshareRegistryImageResponse], error)
 	// Named workspace egress policies that sessions pin by name at create.
 	CreateEgressPolicy(context.Context, *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error)
+	CreateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.CreateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.CreateEgressPolicyWithPublicEgressResponse], error)
 	UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error)
+	UpdateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.UpdateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.UpdateEgressPolicyWithPublicEgressResponse], error)
 	GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error)
 	ListEgressPolicies(context.Context, *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error)
 	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
@@ -567,6 +579,12 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceCreateSessionProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("CreateSession")),
+			connect.WithClientOptions(opts...),
+		),
+		createSessionWithPublicEgress: connect.NewClient[v1.CreateSessionWithPublicEgressRequest, v1.CreateSessionWithPublicEgressResponse](
+			httpClient,
+			baseURL+SandboxServiceCreateSessionWithPublicEgressProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("CreateSessionWithPublicEgress")),
 			connect.WithClientOptions(opts...),
 		),
 		createSessionCredential: connect.NewClient[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse](
@@ -1085,10 +1103,22 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicy")),
 			connect.WithClientOptions(opts...),
 		),
+		createEgressPolicyWithPublicEgress: connect.NewClient[v1.CreateEgressPolicyWithPublicEgressRequest, v1.CreateEgressPolicyWithPublicEgressResponse](
+			httpClient,
+			baseURL+SandboxServiceCreateEgressPolicyWithPublicEgressProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicyWithPublicEgress")),
+			connect.WithClientOptions(opts...),
+		),
 		updateEgressPolicy: connect.NewClient[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse](
 			httpClient,
 			baseURL+SandboxServiceUpdateEgressPolicyProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		updateEgressPolicyWithPublicEgress: connect.NewClient[v1.UpdateEgressPolicyWithPublicEgressRequest, v1.UpdateEgressPolicyWithPublicEgressResponse](
+			httpClient,
+			baseURL+SandboxServiceUpdateEgressPolicyWithPublicEgressProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicyWithPublicEgress")),
 			connect.WithClientOptions(opts...),
 		),
 		getEgressPolicy: connect.NewClient[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse](
@@ -1126,107 +1156,110 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // sandboxServiceClient implements SandboxServiceClient.
 type sandboxServiceClient struct {
-	getTailnetDefaults              *connect.Client[v1.GetTailnetDefaultsRequest, v1.GetTailnetDefaultsResponse]
-	saveTailnetDefaults             *connect.Client[v1.SaveTailnetDefaultsRequest, v1.SaveTailnetDefaultsResponse]
-	listTailnetRunnerStatuses       *connect.Client[v1.ListTailnetRunnerStatusesRequest, v1.ListTailnetRunnerStatusesResponse]
-	saveTailnetRunnerConfiguration  *connect.Client[v1.SaveTailnetRunnerConfigurationRequest, v1.SaveTailnetRunnerConfigurationResponse]
-	listTailnetRunnerConfigurations *connect.Client[v1.ListTailnetRunnerConfigurationsRequest, v1.ListTailnetRunnerConfigurationsResponse]
-	saveTailnetConnection           *connect.Client[v1.SaveTailnetConnectionRequest, v1.SaveTailnetConnectionResponse]
-	listTailnetConnections          *connect.Client[v1.ListTailnetConnectionsRequest, v1.ListTailnetConnectionsResponse]
-	testTailnetConnection           *connect.Client[v1.TestTailnetConnectionRequest, v1.TestTailnetConnectionResponse]
-	createSession                   *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	createSessionCredential         *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
-	getSession                      *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	getSessionMetrics               *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
-	waitSession                     *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
-	listSessions                    *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	listWorkspaceSandboxes          *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
-	updateSession                   *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
-	createVolume                    *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
-	getVolume                       *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
-	listVolumes                     *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
-	updateVolume                    *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
-	deleteVolume                    *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
-	resizeVolume                    *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
-	attachVolume                    *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
-	detachVolume                    *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
-	createStorageConnection         *connect.Client[v1.CreateStorageConnectionRequest, v1.CreateStorageConnectionResponse]
-	testStorageConnection           *connect.Client[v1.TestStorageConnectionRequest, v1.TestStorageConnectionResponse]
-	listStorageConnections          *connect.Client[v1.ListStorageConnectionsRequest, v1.ListStorageConnectionsResponse]
-	updateStorageConnection         *connect.Client[v1.UpdateStorageConnectionRequest, v1.UpdateStorageConnectionResponse]
-	deleteStorageConnection         *connect.Client[v1.DeleteStorageConnectionRequest, v1.DeleteStorageConnectionResponse]
-	listStorageMounts               *connect.Client[v1.ListStorageMountsRequest, v1.ListStorageMountsResponse]
-	attachStorageMount              *connect.Client[v1.AttachStorageMountRequest, v1.AttachStorageMountResponse]
-	detachStorageMount              *connect.Client[v1.DetachStorageMountRequest, v1.DetachStorageMountResponse]
-	getStorageDefaults              *connect.Client[v1.GetStorageDefaultsRequest, v1.GetStorageDefaultsResponse]
-	saveStorageDefaults             *connect.Client[v1.SaveStorageDefaultsRequest, v1.SaveStorageDefaultsResponse]
-	executeCommand                  *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
-	streamCommandOutput             *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
-	gitOperation                    *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
-	pauseSession                    *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
-	resumeSession                   *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
-	terminateSession                *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
-	terminateSessions               *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
-	extendSession                   *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
-	getArtifactUploadUrl            *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
-	getArtifactDownloadUrl          *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
-	exposePort                      *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
-	openPreview                     *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
-	touchPreview                    *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
-	reportSessionActivity           *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
-	unexposePort                    *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
-	listExposedPorts                *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
-	createPreviewUrl                *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
-	deletePreviewUrl                *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
-	bindPreviewUrl                  *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
-	unbindPreviewUrl                *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
-	listPreviewUrls                 *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
-	getPreviewUrl                   *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
-	resolvePreviewToken             *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
-	updateSSHAuthorizedKeys         *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
-	refreshSessionSecrets           *connect.Client[v1.RefreshSessionSecretsRequest, v1.RefreshSessionSecretsResponse]
-	createSnapshot                  *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
-	forkSession                     *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
-	getSnapshot                     *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
-	getSnapshotDownloadURL          *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
-	listSnapshots                   *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
-	listSessionSnapshots            *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
-	listDanglingSnapshots           *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
-	listWorkspaceSnapshots          *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
-	getWorkspaceSandboxUsage        *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
-	getWorkspacePreviewDomains      *connect.Client[v1.GetWorkspacePreviewDomainsRequest, v1.GetWorkspacePreviewDomainsResponse]
-	updateWorkspacePreviewDomains   *connect.Client[v1.UpdateWorkspacePreviewDomainsRequest, v1.UpdateWorkspacePreviewDomainsResponse]
-	updateSnapshot                  *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
-	deleteSnapshot                  *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
-	createTemplate                  *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
-	getTemplate                     *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
-	listTemplates                   *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
-	updateTemplate                  *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
-	deleteTemplate                  *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
-	buildTemplate                   *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
-	cancelTemplateBuild             *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
-	getTemplateBuild                *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
-	listActiveTemplateBuilds        *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
-	listTemplateBuilds              *connect.Client[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse]
-	deleteTemplateBuild             *connect.Client[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse]
-	publishRegistryImage            *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
-	setRegistryImageVisibility      *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
-	deleteRegistryImage             *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
-	deleteRegistryImageVersion      *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
-	listRegistryImages              *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
-	getRegistryImage                *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
-	resolveRegistryRef              *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
-	shareImage                      *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
-	revokeRegistryShareGrant        *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
-	listRegistryShareGrants         *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
-	unshareRegistryImage            *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
-	createEgressPolicy              *connect.Client[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse]
-	updateEgressPolicy              *connect.Client[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse]
-	getEgressPolicy                 *connect.Client[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse]
-	listEgressPolicies              *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
-	deleteEgressPolicy              *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
-	whoAmI                          *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
-	listCIRunnerSizes               *connect.Client[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse]
+	getTailnetDefaults                 *connect.Client[v1.GetTailnetDefaultsRequest, v1.GetTailnetDefaultsResponse]
+	saveTailnetDefaults                *connect.Client[v1.SaveTailnetDefaultsRequest, v1.SaveTailnetDefaultsResponse]
+	listTailnetRunnerStatuses          *connect.Client[v1.ListTailnetRunnerStatusesRequest, v1.ListTailnetRunnerStatusesResponse]
+	saveTailnetRunnerConfiguration     *connect.Client[v1.SaveTailnetRunnerConfigurationRequest, v1.SaveTailnetRunnerConfigurationResponse]
+	listTailnetRunnerConfigurations    *connect.Client[v1.ListTailnetRunnerConfigurationsRequest, v1.ListTailnetRunnerConfigurationsResponse]
+	saveTailnetConnection              *connect.Client[v1.SaveTailnetConnectionRequest, v1.SaveTailnetConnectionResponse]
+	listTailnetConnections             *connect.Client[v1.ListTailnetConnectionsRequest, v1.ListTailnetConnectionsResponse]
+	testTailnetConnection              *connect.Client[v1.TestTailnetConnectionRequest, v1.TestTailnetConnectionResponse]
+	createSession                      *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	createSessionWithPublicEgress      *connect.Client[v1.CreateSessionWithPublicEgressRequest, v1.CreateSessionWithPublicEgressResponse]
+	createSessionCredential            *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
+	getSession                         *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	getSessionMetrics                  *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
+	waitSession                        *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
+	listSessions                       *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	listWorkspaceSandboxes             *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
+	updateSession                      *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
+	createVolume                       *connect.Client[v1.CreateVolumeRequest, v1.CreateVolumeResponse]
+	getVolume                          *connect.Client[v1.GetVolumeRequest, v1.GetVolumeResponse]
+	listVolumes                        *connect.Client[v1.ListVolumesRequest, v1.ListVolumesResponse]
+	updateVolume                       *connect.Client[v1.UpdateVolumeRequest, v1.UpdateVolumeResponse]
+	deleteVolume                       *connect.Client[v1.DeleteVolumeRequest, v1.DeleteVolumeResponse]
+	resizeVolume                       *connect.Client[v1.ResizeVolumeRequest, v1.ResizeVolumeResponse]
+	attachVolume                       *connect.Client[v1.AttachVolumeRequest, v1.AttachVolumeResponse]
+	detachVolume                       *connect.Client[v1.DetachVolumeRequest, v1.DetachVolumeResponse]
+	createStorageConnection            *connect.Client[v1.CreateStorageConnectionRequest, v1.CreateStorageConnectionResponse]
+	testStorageConnection              *connect.Client[v1.TestStorageConnectionRequest, v1.TestStorageConnectionResponse]
+	listStorageConnections             *connect.Client[v1.ListStorageConnectionsRequest, v1.ListStorageConnectionsResponse]
+	updateStorageConnection            *connect.Client[v1.UpdateStorageConnectionRequest, v1.UpdateStorageConnectionResponse]
+	deleteStorageConnection            *connect.Client[v1.DeleteStorageConnectionRequest, v1.DeleteStorageConnectionResponse]
+	listStorageMounts                  *connect.Client[v1.ListStorageMountsRequest, v1.ListStorageMountsResponse]
+	attachStorageMount                 *connect.Client[v1.AttachStorageMountRequest, v1.AttachStorageMountResponse]
+	detachStorageMount                 *connect.Client[v1.DetachStorageMountRequest, v1.DetachStorageMountResponse]
+	getStorageDefaults                 *connect.Client[v1.GetStorageDefaultsRequest, v1.GetStorageDefaultsResponse]
+	saveStorageDefaults                *connect.Client[v1.SaveStorageDefaultsRequest, v1.SaveStorageDefaultsResponse]
+	executeCommand                     *connect.Client[v1.ExecuteCommandRequest, v1.ExecuteCommandResponse]
+	streamCommandOutput                *connect.Client[v1.StreamCommandOutputRequest, v1.StreamCommandOutputResponse]
+	gitOperation                       *connect.Client[v1.GitOperationRequest, v1.GitOperationResponse]
+	pauseSession                       *connect.Client[v1.PauseSessionRequest, v1.PauseSessionResponse]
+	resumeSession                      *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
+	terminateSession                   *connect.Client[v1.TerminateSessionRequest, v1.TerminateSessionResponse]
+	terminateSessions                  *connect.Client[v1.TerminateSessionsRequest, v1.TerminateSessionsResponse]
+	extendSession                      *connect.Client[v1.ExtendSessionRequest, v1.ExtendSessionResponse]
+	getArtifactUploadUrl               *connect.Client[v1.GetArtifactUploadUrlRequest, v1.GetArtifactUploadUrlResponse]
+	getArtifactDownloadUrl             *connect.Client[v1.GetArtifactDownloadUrlRequest, v1.GetArtifactDownloadUrlResponse]
+	exposePort                         *connect.Client[v1.ExposePortRequest, v1.ExposePortResponse]
+	openPreview                        *connect.Client[v1.OpenPreviewRequest, v1.OpenPreviewResponse]
+	touchPreview                       *connect.Client[v1.TouchPreviewRequest, v1.TouchPreviewResponse]
+	reportSessionActivity              *connect.Client[v1.ReportSessionActivityRequest, v1.ReportSessionActivityResponse]
+	unexposePort                       *connect.Client[v1.UnexposePortRequest, v1.UnexposePortResponse]
+	listExposedPorts                   *connect.Client[v1.ListExposedPortsRequest, v1.ListExposedPortsResponse]
+	createPreviewUrl                   *connect.Client[v1.CreatePreviewUrlRequest, v1.CreatePreviewUrlResponse]
+	deletePreviewUrl                   *connect.Client[v1.DeletePreviewUrlRequest, v1.DeletePreviewUrlResponse]
+	bindPreviewUrl                     *connect.Client[v1.BindPreviewUrlRequest, v1.BindPreviewUrlResponse]
+	unbindPreviewUrl                   *connect.Client[v1.UnbindPreviewUrlRequest, v1.UnbindPreviewUrlResponse]
+	listPreviewUrls                    *connect.Client[v1.ListPreviewUrlsRequest, v1.ListPreviewUrlsResponse]
+	getPreviewUrl                      *connect.Client[v1.GetPreviewUrlRequest, v1.GetPreviewUrlResponse]
+	resolvePreviewToken                *connect.Client[v1.ResolvePreviewTokenRequest, v1.ResolvePreviewTokenResponse]
+	updateSSHAuthorizedKeys            *connect.Client[v1.UpdateSSHAuthorizedKeysRequest, v1.UpdateSSHAuthorizedKeysResponse]
+	refreshSessionSecrets              *connect.Client[v1.RefreshSessionSecretsRequest, v1.RefreshSessionSecretsResponse]
+	createSnapshot                     *connect.Client[v1.CreateSnapshotRequest, v1.CreateSnapshotResponse]
+	forkSession                        *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
+	getSnapshot                        *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
+	getSnapshotDownloadURL             *connect.Client[v1.GetSnapshotDownloadURLRequest, v1.GetSnapshotDownloadURLResponse]
+	listSnapshots                      *connect.Client[v1.ListSnapshotsRequest, v1.ListSnapshotsResponse]
+	listSessionSnapshots               *connect.Client[v1.ListSessionSnapshotsRequest, v1.ListSessionSnapshotsResponse]
+	listDanglingSnapshots              *connect.Client[v1.ListDanglingSnapshotsRequest, v1.ListDanglingSnapshotsResponse]
+	listWorkspaceSnapshots             *connect.Client[v1.ListWorkspaceSnapshotsRequest, v1.ListWorkspaceSnapshotsResponse]
+	getWorkspaceSandboxUsage           *connect.Client[v1.GetWorkspaceSandboxUsageRequest, v1.GetWorkspaceSandboxUsageResponse]
+	getWorkspacePreviewDomains         *connect.Client[v1.GetWorkspacePreviewDomainsRequest, v1.GetWorkspacePreviewDomainsResponse]
+	updateWorkspacePreviewDomains      *connect.Client[v1.UpdateWorkspacePreviewDomainsRequest, v1.UpdateWorkspacePreviewDomainsResponse]
+	updateSnapshot                     *connect.Client[v1.UpdateSnapshotRequest, v1.UpdateSnapshotResponse]
+	deleteSnapshot                     *connect.Client[v1.DeleteSnapshotRequest, v1.DeleteSnapshotResponse]
+	createTemplate                     *connect.Client[v1.CreateTemplateRequest, v1.CreateTemplateResponse]
+	getTemplate                        *connect.Client[v1.GetTemplateRequest, v1.GetTemplateResponse]
+	listTemplates                      *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
+	updateTemplate                     *connect.Client[v1.UpdateTemplateRequest, v1.UpdateTemplateResponse]
+	deleteTemplate                     *connect.Client[v1.DeleteTemplateRequest, v1.DeleteTemplateResponse]
+	buildTemplate                      *connect.Client[v1.BuildTemplateRequest, v1.BuildTemplateResponse]
+	cancelTemplateBuild                *connect.Client[v1.CancelTemplateBuildRequest, v1.CancelTemplateBuildResponse]
+	getTemplateBuild                   *connect.Client[v1.GetTemplateBuildRequest, v1.GetTemplateBuildResponse]
+	listActiveTemplateBuilds           *connect.Client[v1.ListActiveTemplateBuildsRequest, v1.ListActiveTemplateBuildsResponse]
+	listTemplateBuilds                 *connect.Client[v1.ListTemplateBuildsRequest, v1.ListTemplateBuildsResponse]
+	deleteTemplateBuild                *connect.Client[v1.DeleteTemplateBuildRequest, v1.DeleteTemplateBuildResponse]
+	publishRegistryImage               *connect.Client[v1.PublishRegistryImageRequest, v1.PublishRegistryImageResponse]
+	setRegistryImageVisibility         *connect.Client[v1.SetRegistryImageVisibilityRequest, v1.SetRegistryImageVisibilityResponse]
+	deleteRegistryImage                *connect.Client[v1.DeleteRegistryImageRequest, v1.DeleteRegistryImageResponse]
+	deleteRegistryImageVersion         *connect.Client[v1.DeleteRegistryImageVersionRequest, v1.DeleteRegistryImageVersionResponse]
+	listRegistryImages                 *connect.Client[v1.ListRegistryImagesRequest, v1.ListRegistryImagesResponse]
+	getRegistryImage                   *connect.Client[v1.GetRegistryImageRequest, v1.GetRegistryImageResponse]
+	resolveRegistryRef                 *connect.Client[v1.ResolveRegistryRefRequest, v1.ResolveRegistryRefResponse]
+	shareImage                         *connect.Client[v1.ShareImageRequest, v1.ShareImageResponse]
+	revokeRegistryShareGrant           *connect.Client[v1.RevokeRegistryShareGrantRequest, v1.RevokeRegistryShareGrantResponse]
+	listRegistryShareGrants            *connect.Client[v1.ListRegistryShareGrantsRequest, v1.ListRegistryShareGrantsResponse]
+	unshareRegistryImage               *connect.Client[v1.UnshareRegistryImageRequest, v1.UnshareRegistryImageResponse]
+	createEgressPolicy                 *connect.Client[v1.CreateEgressPolicyRequest, v1.CreateEgressPolicyResponse]
+	createEgressPolicyWithPublicEgress *connect.Client[v1.CreateEgressPolicyWithPublicEgressRequest, v1.CreateEgressPolicyWithPublicEgressResponse]
+	updateEgressPolicy                 *connect.Client[v1.UpdateEgressPolicyRequest, v1.UpdateEgressPolicyResponse]
+	updateEgressPolicyWithPublicEgress *connect.Client[v1.UpdateEgressPolicyWithPublicEgressRequest, v1.UpdateEgressPolicyWithPublicEgressResponse]
+	getEgressPolicy                    *connect.Client[v1.GetEgressPolicyRequest, v1.GetEgressPolicyResponse]
+	listEgressPolicies                 *connect.Client[v1.ListEgressPoliciesRequest, v1.ListEgressPoliciesResponse]
+	deleteEgressPolicy                 *connect.Client[v1.DeleteEgressPolicyRequest, v1.DeleteEgressPolicyResponse]
+	whoAmI                             *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
+	listCIRunnerSizes                  *connect.Client[v1.ListCIRunnerSizesRequest, v1.ListCIRunnerSizesResponse]
 }
 
 // GetTailnetDefaults calls tenki.sandbox.v1.SandboxService.GetTailnetDefaults.
@@ -1274,6 +1307,12 @@ func (c *sandboxServiceClient) TestTailnetConnection(ctx context.Context, req *c
 // CreateSession calls tenki.sandbox.v1.SandboxService.CreateSession.
 func (c *sandboxServiceClient) CreateSession(ctx context.Context, req *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return c.createSession.CallUnary(ctx, req)
+}
+
+// CreateSessionWithPublicEgress calls
+// tenki.sandbox.v1.SandboxService.CreateSessionWithPublicEgress.
+func (c *sandboxServiceClient) CreateSessionWithPublicEgress(ctx context.Context, req *connect.Request[v1.CreateSessionWithPublicEgressRequest]) (*connect.Response[v1.CreateSessionWithPublicEgressResponse], error) {
+	return c.createSessionWithPublicEgress.CallUnary(ctx, req)
 }
 
 // CreateSessionCredential calls tenki.sandbox.v1.SandboxService.CreateSessionCredential.
@@ -1721,9 +1760,21 @@ func (c *sandboxServiceClient) CreateEgressPolicy(ctx context.Context, req *conn
 	return c.createEgressPolicy.CallUnary(ctx, req)
 }
 
+// CreateEgressPolicyWithPublicEgress calls
+// tenki.sandbox.v1.SandboxService.CreateEgressPolicyWithPublicEgress.
+func (c *sandboxServiceClient) CreateEgressPolicyWithPublicEgress(ctx context.Context, req *connect.Request[v1.CreateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.CreateEgressPolicyWithPublicEgressResponse], error) {
+	return c.createEgressPolicyWithPublicEgress.CallUnary(ctx, req)
+}
+
 // UpdateEgressPolicy calls tenki.sandbox.v1.SandboxService.UpdateEgressPolicy.
 func (c *sandboxServiceClient) UpdateEgressPolicy(ctx context.Context, req *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error) {
 	return c.updateEgressPolicy.CallUnary(ctx, req)
+}
+
+// UpdateEgressPolicyWithPublicEgress calls
+// tenki.sandbox.v1.SandboxService.UpdateEgressPolicyWithPublicEgress.
+func (c *sandboxServiceClient) UpdateEgressPolicyWithPublicEgress(ctx context.Context, req *connect.Request[v1.UpdateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.UpdateEgressPolicyWithPublicEgressResponse], error) {
+	return c.updateEgressPolicyWithPublicEgress.CallUnary(ctx, req)
 }
 
 // GetEgressPolicy calls tenki.sandbox.v1.SandboxService.GetEgressPolicy.
@@ -1762,6 +1813,7 @@ type SandboxServiceHandler interface {
 	ListTailnetConnections(context.Context, *connect.Request[v1.ListTailnetConnectionsRequest]) (*connect.Response[v1.ListTailnetConnectionsResponse], error)
 	TestTailnetConnection(context.Context, *connect.Request[v1.TestTailnetConnectionRequest]) (*connect.Response[v1.TestTailnetConnectionResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
+	CreateSessionWithPublicEgress(context.Context, *connect.Request[v1.CreateSessionWithPublicEgressRequest]) (*connect.Response[v1.CreateSessionWithPublicEgressResponse], error)
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
@@ -1867,7 +1919,9 @@ type SandboxServiceHandler interface {
 	UnshareRegistryImage(context.Context, *connect.Request[v1.UnshareRegistryImageRequest]) (*connect.Response[v1.UnshareRegistryImageResponse], error)
 	// Named workspace egress policies that sessions pin by name at create.
 	CreateEgressPolicy(context.Context, *connect.Request[v1.CreateEgressPolicyRequest]) (*connect.Response[v1.CreateEgressPolicyResponse], error)
+	CreateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.CreateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.CreateEgressPolicyWithPublicEgressResponse], error)
 	UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error)
+	UpdateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.UpdateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.UpdateEgressPolicyWithPublicEgressResponse], error)
 	GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error)
 	ListEgressPolicies(context.Context, *connect.Request[v1.ListEgressPoliciesRequest]) (*connect.Response[v1.ListEgressPoliciesResponse], error)
 	DeleteEgressPolicy(context.Context, *connect.Request[v1.DeleteEgressPolicyRequest]) (*connect.Response[v1.DeleteEgressPolicyResponse], error)
@@ -1936,6 +1990,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceCreateSessionProcedure,
 		svc.CreateSession,
 		connect.WithSchema(sandboxServiceMethods.ByName("CreateSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceCreateSessionWithPublicEgressHandler := connect.NewUnaryHandler(
+		SandboxServiceCreateSessionWithPublicEgressProcedure,
+		svc.CreateSessionWithPublicEgress,
+		connect.WithSchema(sandboxServiceMethods.ByName("CreateSessionWithPublicEgress")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceCreateSessionCredentialHandler := connect.NewUnaryHandler(
@@ -2454,10 +2514,22 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicy")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sandboxServiceCreateEgressPolicyWithPublicEgressHandler := connect.NewUnaryHandler(
+		SandboxServiceCreateEgressPolicyWithPublicEgressProcedure,
+		svc.CreateEgressPolicyWithPublicEgress,
+		connect.WithSchema(sandboxServiceMethods.ByName("CreateEgressPolicyWithPublicEgress")),
+		connect.WithHandlerOptions(opts...),
+	)
 	sandboxServiceUpdateEgressPolicyHandler := connect.NewUnaryHandler(
 		SandboxServiceUpdateEgressPolicyProcedure,
 		svc.UpdateEgressPolicy,
 		connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceUpdateEgressPolicyWithPublicEgressHandler := connect.NewUnaryHandler(
+		SandboxServiceUpdateEgressPolicyWithPublicEgressProcedure,
+		svc.UpdateEgressPolicyWithPublicEgress,
+		connect.WithSchema(sandboxServiceMethods.ByName("UpdateEgressPolicyWithPublicEgress")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceGetEgressPolicyHandler := connect.NewUnaryHandler(
@@ -2510,6 +2582,8 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceTestTailnetConnectionHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSessionProcedure:
 			sandboxServiceCreateSessionHandler.ServeHTTP(w, r)
+		case SandboxServiceCreateSessionWithPublicEgressProcedure:
+			sandboxServiceCreateSessionWithPublicEgressHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateSessionCredentialProcedure:
 			sandboxServiceCreateSessionCredentialHandler.ServeHTTP(w, r)
 		case SandboxServiceGetSessionProcedure:
@@ -2682,8 +2756,12 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceUnshareRegistryImageHandler.ServeHTTP(w, r)
 		case SandboxServiceCreateEgressPolicyProcedure:
 			sandboxServiceCreateEgressPolicyHandler.ServeHTTP(w, r)
+		case SandboxServiceCreateEgressPolicyWithPublicEgressProcedure:
+			sandboxServiceCreateEgressPolicyWithPublicEgressHandler.ServeHTTP(w, r)
 		case SandboxServiceUpdateEgressPolicyProcedure:
 			sandboxServiceUpdateEgressPolicyHandler.ServeHTTP(w, r)
+		case SandboxServiceUpdateEgressPolicyWithPublicEgressProcedure:
+			sandboxServiceUpdateEgressPolicyWithPublicEgressHandler.ServeHTTP(w, r)
 		case SandboxServiceGetEgressPolicyProcedure:
 			sandboxServiceGetEgressPolicyHandler.ServeHTTP(w, r)
 		case SandboxServiceListEgressPoliciesProcedure:
@@ -2737,6 +2815,10 @@ func (UnimplementedSandboxServiceHandler) TestTailnetConnection(context.Context,
 
 func (UnimplementedSandboxServiceHandler) CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateSession is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) CreateSessionWithPublicEgress(context.Context, *connect.Request[v1.CreateSessionWithPublicEgressRequest]) (*connect.Response[v1.CreateSessionWithPublicEgressResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateSessionWithPublicEgress is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error) {
@@ -3083,8 +3165,16 @@ func (UnimplementedSandboxServiceHandler) CreateEgressPolicy(context.Context, *c
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateEgressPolicy is not implemented"))
 }
 
+func (UnimplementedSandboxServiceHandler) CreateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.CreateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.CreateEgressPolicyWithPublicEgressResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.CreateEgressPolicyWithPublicEgress is not implemented"))
+}
+
 func (UnimplementedSandboxServiceHandler) UpdateEgressPolicy(context.Context, *connect.Request[v1.UpdateEgressPolicyRequest]) (*connect.Response[v1.UpdateEgressPolicyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateEgressPolicy is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) UpdateEgressPolicyWithPublicEgress(context.Context, *connect.Request[v1.UpdateEgressPolicyWithPublicEgressRequest]) (*connect.Response[v1.UpdateEgressPolicyWithPublicEgressResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.UpdateEgressPolicyWithPublicEgress is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) GetEgressPolicy(context.Context, *connect.Request[v1.GetEgressPolicyRequest]) (*connect.Response[v1.GetEgressPolicyResponse], error) {

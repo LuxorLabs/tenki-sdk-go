@@ -18,7 +18,8 @@ import (
 
 type egressPolicyHandler struct {
 	sandboxv1connect.UnimplementedSandboxServiceHandler
-	requests []proto.Message
+	requests        []proto.Message
+	publicSupported bool
 }
 
 var egressPolicyCreatedAt = time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC)
@@ -218,5 +219,64 @@ func TestMissingPolicyNamesNeverMapToAnotherNotFoundError(t *testing.T) {
 				t.Errorf("%q also matched %v", message, other)
 			}
 		}
+	}
+}
+
+func TestPublicEgressNamedMutationChecksOldAPIBeforeWriting(t *testing.T) {
+	handler := &egressPolicyHandler{}
+	client := newEgressPolicyHarness(t, handler)
+	_, err := client.CreateEgressPolicy(t.Context(), "ports", SessionEgressPolicy{PublicEgress: &PublicEgress{}})
+	if err == nil {
+		t.Fatal("old API must reject new security controls")
+	}
+	_, err = client.UpdateEgressPolicy(t.Context(), "ports", 1, SessionEgressPolicy{PublicEgress: &PublicEgress{}})
+	if err == nil {
+		t.Fatal("old API update must fail before mutation")
+	}
+	if len(handler.requests) != 0 {
+		t.Fatal("unsupported compatibility RPCs must not reach legacy policy mutation handlers")
+	}
+}
+
+func (h *egressPolicyHandler) CreateEgressPolicyWithPublicEgress(
+	ctx context.Context, req *connect.Request[sandboxv1.CreateEgressPolicyWithPublicEgressRequest],
+) (*connect.Response[sandboxv1.CreateEgressPolicyWithPublicEgressResponse], error) {
+	if !h.publicSupported {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("unsupported compatibility route"))
+	}
+	response, err := h.CreateEgressPolicy(ctx, connect.NewRequest(req.Msg.GetRequest()))
+	if err != nil {
+		return nil, err
+	}
+	response.Msg.Policy.Egress.PublicEgress = req.Msg.GetRequest().GetEgress().GetPublicEgress()
+	return connect.NewResponse(&sandboxv1.CreateEgressPolicyWithPublicEgressResponse{Response: response.Msg}), nil
+}
+func (h *egressPolicyHandler) UpdateEgressPolicyWithPublicEgress(
+	ctx context.Context, req *connect.Request[sandboxv1.UpdateEgressPolicyWithPublicEgressRequest],
+) (*connect.Response[sandboxv1.UpdateEgressPolicyWithPublicEgressResponse], error) {
+	if !h.publicSupported {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("unsupported compatibility route"))
+	}
+	response, err := h.UpdateEgressPolicy(ctx, connect.NewRequest(req.Msg.GetRequest()))
+	if err != nil {
+		return nil, err
+	}
+	response.Msg.Policy.Egress.PublicEgress = req.Msg.GetRequest().GetEgress().GetPublicEgress()
+	return connect.NewResponse(&sandboxv1.UpdateEgressPolicyWithPublicEgressResponse{Response: response.Msg}), nil
+}
+func TestPublicEgressPolicyCompatibilityAcknowledgement(t *testing.T) {
+	handler := &egressPolicyHandler{publicSupported: true}
+	client := newEgressPolicyHarness(t, handler)
+	body := SessionEgressPolicy{PublicEgress: &PublicEgress{TCPPorts: []uint32{443}}}
+	created, err := client.CreateEgressPolicy(t.Context(), "ports", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := client.UpdateEgressPolicy(t.Context(), "ports", 3, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(created.Egress.PublicEgress.TCPPorts, []uint32{443}) || !reflect.DeepEqual(updated.Egress.PublicEgress.TCPPorts, []uint32{443}) {
+		t.Fatal("compatibility response lost restriction")
 	}
 }

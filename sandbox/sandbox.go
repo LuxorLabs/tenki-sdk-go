@@ -174,6 +174,8 @@ func (c *Client) Close() error {
 
 // Create creates a sandbox session and returns an SDK Session wrapper.
 // CPU is 1-128 cores and memory 128-524288 MiB (even); the workspace's size limit may be lower.
+// WithPauseRetention must be at most the workspace's pause retention limit, which applies when it is unset or
+// not positive; a larger value is rejected.
 //
 // If readiness fails after admission, the returned *WaitReadyFailedError carries
 // the live session so callers can close it or continue waiting.
@@ -239,7 +241,8 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			}
 		}
 	}
-	if len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.allowedPorts) > 0 || len(cfg.httpRules) > 0 {
+	if cfg.publicEgress != nil || len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.allowedPorts) > 0 ||
+		len(cfg.httpRules) > 0 {
 		httpRules, err := egressHTTPRulesToProto(cfg.httpRules)
 		if err != nil {
 			return nil, err
@@ -249,6 +252,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 			AllowCidrs:     append([]string(nil), cfg.allowCIDRs...),
 			InterceptHttps: cfg.interceptHTTPS,
 			AllowedPorts:   append([]uint32(nil), cfg.allowedPorts...),
+			PublicEgress:   publicEgressToProto(cfg.publicEgress),
 			HttpRules:      httpRules,
 		}
 	}
@@ -318,15 +322,14 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		}
 		req.Tailnet = tailnet
 	}
-
 	if !cfg.waitReady && !cfg.waitForRuntime {
-		return c.createCompatibleSession(ctx, ctx, req)
+		return c.createCompatibleSession(ctx, ctx, cfg, req)
 	}
 
 	waitTimeout := effectiveCreateWaitTimeout(cfg)
 	createCtx, cancel := c.heldCreateContext(ctx, waitTimeout)
 	defer cancel()
-	sess, err := c.createCompatibleSession(ctx, createCtx, req)
+	sess, err := c.createCompatibleSession(ctx, createCtx, cfg, req)
 	if err != nil {
 		return nil, err
 	}
@@ -361,16 +364,23 @@ func (c *Client) checkTailnetExposure(ctx context.Context, req *sandboxv1.Create
 
 // Allocation uses the call deadline; compatibility cleanup retains the caller context.
 func (c *Client) createCompatibleSession(
-	ctx, callCtx context.Context, req *sandboxv1.CreateSessionRequest,
+	ctx, callCtx context.Context, cfg createConfig, req *sandboxv1.CreateSessionRequest,
 ) (*Session, error) {
-	resp, err := c.sandbox.CreateSession(callCtx, connect.NewRequest(req))
+	resp, err := c.createSessionRequest(callCtx, req)
 	if err != nil {
-		return nil, mapCreateSessionError(c, err)
+		return nil, mapCreateSessionError(ctx, c, cfg.publicEgress, err)
 	}
 	if err := c.checkTailnetExposure(ctx, req, resp.Msg); err != nil {
 		return nil, err
 	}
-	return newSessionFromCreate(c, resp.Msg), nil
+	if err := c.verifyTailnetDNS(ctx, cfg.tailnet, resp.Msg.GetSession()); err != nil {
+		return nil, err
+	}
+	session := newSessionFromCreate(c, resp.Msg)
+	if err := verifyPublicEgress(ctx, session, cfg.publicEgress); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {
@@ -380,7 +390,7 @@ func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {
 	return cfg.waitTimeout
 }
 
-func mapCreateSessionError(client *Client, err error) error {
+func mapCreateSessionError(ctx context.Context, client *Client, public *PublicEgress, err error) error {
 	var connectErr *connect.Error
 	if errors.As(err, &connectErr) {
 		for _, rawDetail := range connectErr.Details() {
@@ -392,8 +402,12 @@ func mapCreateSessionError(client *Client, err error) error {
 			if !ok {
 				continue
 			}
+			session := newSession(client, failure.GetSession())
+			if verifyErr := verifyPublicEgress(ctx, session, public); verifyErr != nil {
+				return verifyErr
+			}
 			return &TemplateRuntimeFailedError{
-				Session: newSession(client, failure.GetSession()),
+				Session: session,
 				Reason:  failure.GetReason(),
 				Err:     err,
 			}
@@ -674,4 +688,37 @@ func (c *Client) ListCIRunnerSizes(ctx context.Context) (*CIRunnerSizes, error) 
 		})
 	}
 	return sizes, nil
+}
+
+func verifyPublicEgress(ctx context.Context, session *Session, requested *PublicEgress) error {
+	if publicEgressAcknowledged(requested, session.Egress().PublicEgress) {
+		return nil
+	}
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	return errors.Join(errors.New("server does not support public egress restrictions"), session.Close(cleanupCtx))
+}
+
+// The compatibility route rejects unsupported API pods before allocation.
+func (c *Client) createSessionRequest(ctx context.Context, request *sandboxv1.CreateSessionRequest) (*connect.Response[sandboxv1.CreateSessionResponse], error) {
+	if request.GetEgress().GetPublicEgress() != nil {
+		response, err := c.sandbox.CreateSessionWithPublicEgress(ctx, connect.NewRequest(&sandboxv1.CreateSessionWithPublicEgressRequest{Request: request}))
+		if err != nil {
+			return nil, err
+		}
+		return unwrapPublicEgressResponse(response, response.Msg.GetResponse()), nil
+	}
+	return c.sandbox.CreateSession(ctx, connect.NewRequest(request))
+}
+
+// Unwrap compatibility responses while preserving transport metadata.
+func unwrapPublicEgressResponse[Outer, Inner any](outer *connect.Response[Outer], message *Inner) *connect.Response[Inner] {
+	inner := connect.NewResponse(message)
+	for key, values := range outer.Header() {
+		inner.Header()[key] = append([]string(nil), values...)
+	}
+	for key, values := range outer.Trailer() {
+		inner.Trailer()[key] = append([]string(nil), values...)
+	}
+	return inner
 }

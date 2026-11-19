@@ -453,6 +453,8 @@ Publish and share sandbox images (templates/snapshots/images).
 - `WithEnvs(map[string]string)` session-scoped env defaults
 - `WithMaxDuration(time.Duration)`
 - `WithSticky()`; overrides and discards `WithMaxDuration`
+- `WithPauseRetention(time.Duration)` how long a paused session is kept resumable;
+  at most the workspace's pause retention limit (also the default), larger values are rejected
 - `WithCPUCores(int32)` default: `2`
 - `WithMemoryMB(int32)` default: `4096`
 - `WithMetadata(map[string]string)`
@@ -784,3 +786,8 @@ Policies belong to a workspace and apply only to sessions that select them. Temp
 Every referenced location must match a selected policy before the request is forwarded. Existing egress rules still apply. An unavailable resolver fails closed. Ordinary values and absent fields remain unchanged.
 
 HTTPS interception requires a capable node and guest trust in the managed CA. Permit only trusted origins and paths: an upstream that echoes credentials can expose a value to the guest. See the [workspace secrets guide](../../../docs/src/product/workspace-secrets.md) for location limits and lifecycle behavior.
+
+Set `TailnetAttachment.AcceptDNS` to a pointer to `true` to resolve short MagicDNS names through the attachment.
+This requires a guest with the unchanged Tenki systemd-resolved configuration.
+Omitting the option preserves existing DNS behavior; explicit `false` disables managed short-name search.
+Managed DNS must be enabled for your workspace.

@@ -38,6 +38,91 @@ func TestMapError_TypedMappings(t *testing.T) {
 			want: ErrRateLimited,
 		},
 		{
+			name: "not found registry image before snapshot",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("registry image for snapshot abc not found")),
+			want: ErrRegistryImageNotFound,
+		},
+		{
+			name: "not found file path naming a volume",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("open /mnt/volume/a.txt: no such file or directory")),
+			want: ErrFileNotFound,
+		},
+		{
+			name: "not found file path naming a snapshot",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("stat /data/snapshot/x: no such file or directory")),
+			want: ErrFileNotFound,
+		},
+		{
+			name: "not found snapshot for session",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("snapshot not found for session abc")),
+			want: ErrSessionNotFound,
+		},
+		{
+			name: "not found volume for session",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("volume not found for session abc")),
+			want: ErrSessionNotFound,
+		},
+		{
+			name: "not found volume for snapshot",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("volume for snapshot abc not found")),
+			want: ErrSnapshotNotFound,
+		},
+		{
+			name: "not found template build before template",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("template build 0193 not found")),
+			want: ErrTemplateBuildNotFound,
+		},
+		{
+			name: "not found template",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("template base not found")),
+			want: ErrTemplateNotFound,
+		},
+		{
+			name: "not found empty message",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("")),
+			want: ErrSessionNotFound,
+		},
+		{
+			name: "not found artifact",
+			err:  connect.NewError(connect.CodeNotFound, errors.New("artifact expired")),
+			want: ErrSessionExpired,
+		},
+		{
+			name: "volume limit",
+			err:  connect.NewError(connect.CodeResourceExhausted, errors.New("volume limit reached for workspace")),
+			want: ErrVolumeLimitExceeded,
+		},
+		{
+			name: "capacity unavailable",
+			err:  connect.NewError(connect.CodeResourceExhausted, errors.New("no capacity in region")),
+			want: ErrCapacityUnavailable,
+		},
+		{
+			name: "quota exceeded",
+			err:  connect.NewError(connect.CodeResourceExhausted, errors.New("workspace quota exceeded")),
+			want: ErrQuotaExceeded,
+		},
+		{
+			name: "snapshot not durable",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("snapshot not yet durable")),
+			want: ErrSnapshotNotDurable,
+		},
+		{
+			name: "template build in progress before terminated",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("template build already in progress; session terminated")),
+			want: ErrTemplateBuildInProgress,
+		},
+		{
+			name: "ssh failed precondition",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("ssh is not enabled for this sandbox")),
+			want: ErrSSHUnavailable,
+		},
+		{
+			name: "invalid state",
+			err:  connect.NewError(connect.CodeFailedPrecondition, errors.New("sandbox is not ready")),
+			want: ErrInvalidState,
+		},
+		{
 			name: "template not found",
 			err:  connect.NewError(connect.CodeNotFound, errors.New("template not found")),
 			want: ErrTemplateNotFound,
