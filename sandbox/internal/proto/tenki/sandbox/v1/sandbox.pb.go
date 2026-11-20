@@ -5131,8 +5131,12 @@ type CreateSessionResponse struct {
 	Credential        *SessionCredential     `protobuf:"bytes,3,opt,name=credential,proto3" json:"credential,omitempty"`
 	RouteStatus       DataPlaneRouteStatus   `protobuf:"varint,4,opt,name=route_status,json=routeStatus,proto3,enum=tenki.sandbox.v1.DataPlaneRouteStatus" json:"route_status,omitempty"`
 	Warnings          []*SandboxWarning      `protobuf:"bytes,5,rep,name=warnings,proto3" json:"warnings,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Data-plane endpoints of the hosts most likely to run this session, best first.
+	// Clients may open connections to them while the session is placed; the
+	// session's own endpoint still arrives via data_plane_endpoint or WaitSession.
+	DataPlaneWarmEndpoints []string `protobuf:"bytes,6,rep,name=data_plane_warm_endpoints,json=dataPlaneWarmEndpoints,proto3" json:"data_plane_warm_endpoints,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *CreateSessionResponse) Reset() {
@@ -5196,6 +5200,13 @@ func (x *CreateSessionResponse) GetRouteStatus() DataPlaneRouteStatus {
 func (x *CreateSessionResponse) GetWarnings() []*SandboxWarning {
 	if x != nil {
 		return x.Warnings
+	}
+	return nil
+}
+
+func (x *CreateSessionResponse) GetDataPlaneWarmEndpoints() []string {
+	if x != nil {
+		return x.DataPlaneWarmEndpoints
 	}
 	return nil
 }
@@ -18717,7 +18728,7 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x05_tierB\t\n" +
 	"\a_egressB\v\n" +
 	"\t_platformJ\x04\b\x14\x10\x15R\n" +
-	"project_id\"\xd1\x02\n" +
+	"project_id\"\x8c\x03\n" +
 	"\x15CreateSessionResponse\x12:\n" +
 	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionR\asession\x12.\n" +
 	"\x13data_plane_endpoint\x18\x02 \x01(\tR\x11dataPlaneEndpoint\x12C\n" +
@@ -18725,7 +18736,8 @@ const file_tenki_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"credential\x18\x03 \x01(\v2#.tenki.sandbox.v1.SessionCredentialR\n" +
 	"credential\x12I\n" +
 	"\froute_status\x18\x04 \x01(\x0e2&.tenki.sandbox.v1.DataPlaneRouteStatusR\vrouteStatus\x12<\n" +
-	"\bwarnings\x18\x05 \x03(\v2 .tenki.sandbox.v1.SandboxWarningR\bwarnings\"}\n" +
+	"\bwarnings\x18\x05 \x03(\v2 .tenki.sandbox.v1.SandboxWarningR\bwarnings\x129\n" +
+	"\x19data_plane_warm_endpoints\x18\x06 \x03(\tR\x16dataPlaneWarmEndpoints\"}\n" +
 	"\x16TemplateRuntimeFailure\x12B\n" +
 	"\asession\x18\x01 \x01(\v2 .tenki.sandbox.v1.SandboxSessionB\x06\xbaH\x03\xc8\x01\x01R\asession\x12\x1f\n" +
 	"\x06reason\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06reason\"\x7f\n" +

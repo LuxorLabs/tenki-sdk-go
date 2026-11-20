@@ -60,7 +60,9 @@ func (d consumingWriteDataPlane) WriteFileStream(
 		return nil, err
 	}
 	d.received <- data
-	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse{}), nil
+	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse{
+		Response: &sandboxv1.WriteFileStreamResponse{BytesWritten: int64(len(data))},
+	}), nil
 }
 
 func newTestFileStreamWriter(t *testing.T, handler sandboxv1connect.SandboxSessionDataPlaneServiceHandler) *fileStreamWriter {
@@ -109,8 +111,8 @@ func TestFileStreamWriterReturnsServerErrorAfterEarlyReject(t *testing.T) {
 	if code := connect.CodeOf(err); code != connect.CodeUnavailable {
 		t.Fatalf("code=%v err=%v, want the server's unavailable error instead of a bare EOF", code, err)
 	}
-	if closeErr := writer.Close(); closeErr != nil {
-		t.Fatalf("close after a failed write: %v", closeErr)
+	if closeErr := writer.Close(); connect.CodeOf(closeErr) != connect.CodeUnavailable {
+		t.Fatalf("close after a failed write: %v, want the same server error", closeErr)
 	}
 }
 

@@ -161,6 +161,50 @@ func (c *Client) acquireDataPlaneHTTPClient(endpoint string) (*http.Client, func
 	return shared.client, release, nil
 }
 
+// dataPlaneWarmHold keeps a warmed candidate connection pooled long enough for a session placed on that host to reuse it.
+const dataPlaneWarmHold = 30 * time.Second
+
+// dataPlaneWarmMaxEndpoints bounds the connections one create response can make the client open.
+const dataPlaneWarmMaxEndpoints = 8
+
+// warmDataPlaneEndpoints opens pooled connections to candidate hosts before placement; nothing is sent beyond a HEAD.
+func (c *Client) warmDataPlaneEndpoints(endpoints []string) {
+	if c == nil {
+		return
+	}
+	if len(endpoints) > dataPlaneWarmMaxEndpoints {
+		endpoints = endpoints[:dataPlaneWarmMaxEndpoints]
+	}
+	for _, endpoint := range endpoints {
+		origin, err := dataPlaneOrigin(strings.TrimSpace(endpoint))
+		if err != nil || !strings.HasPrefix(origin, "https://") {
+			continue
+		}
+		c.dataPlanePoolMu.Lock()
+		_, pooled := c.dataPlanePool[origin]
+		c.dataPlanePoolMu.Unlock()
+		if pooled {
+			continue
+		}
+		httpClient, release, err := c.acquireDataPlaneHTTPClient(origin)
+		if err != nil {
+			continue
+		}
+		go func() {
+			defer time.AfterFunc(dataPlaneWarmHold, release)
+			ctx, cancel := context.WithTimeout(context.Background(), dataPlaneWarmTimeout)
+			defer cancel()
+			req, err := http.NewRequestWithContext(ctx, http.MethodHead, origin, nil)
+			if err != nil {
+				return
+			}
+			if resp, err := httpClient.Do(req); err == nil {
+				_ = resp.Body.Close()
+			}
+		}()
+	}
+}
+
 func (c *Client) closeDataPlaneHTTPClients() {
 	c.dataPlanePoolMu.Lock()
 	defer c.dataPlanePoolMu.Unlock()

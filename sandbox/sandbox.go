@@ -380,6 +380,7 @@ func (c *Client) createCompatibleSession(
 	if err := verifyPublicEgress(ctx, session, cfg.publicEgress); err != nil {
 		return nil, err
 	}
+	c.warmDataPlaneEndpoints(resp.Msg.GetDataPlaneWarmEndpoints())
 	return session, nil
 }
 

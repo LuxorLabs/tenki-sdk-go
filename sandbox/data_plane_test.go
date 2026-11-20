@@ -64,6 +64,31 @@ func TestSharedDataPlaneHTTPClientReferenceLifecycle(t *testing.T) {
 	}
 }
 
+func TestWarmDataPlaneEndpointsPoolsCandidateOrigins(t *testing.T) {
+	client := &Client{}
+	client.warmDataPlaneEndpoints([]string{"https://warm.invalid/", "http://plain.invalid", "not a url", "https://warm.invalid"})
+
+	client.dataPlanePoolMu.Lock()
+	shared := client.dataPlanePool["https://warm.invalid"]
+	pooled := len(client.dataPlanePool)
+	client.dataPlanePoolMu.Unlock()
+	if pooled != 1 || shared == nil {
+		t.Fatalf("pool got %d entries, want only the https candidate", pooled)
+	}
+	if shared.references != 1 {
+		t.Fatalf("references got %d, want 1 held by the warm", shared.references)
+	}
+
+	reused, release, err := client.acquireDataPlaneHTTPClient("https://warm.invalid/session")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	defer release()
+	if reused != shared.client {
+		t.Fatal("a session on a warmed host should reuse the pooled client")
+	}
+}
+
 func TestDataPlaneEndpointResolutionIsSingleflight(t *testing.T) {
 	hints := &dataPlaneEndpointHints{}
 	var calls atomic.Int32

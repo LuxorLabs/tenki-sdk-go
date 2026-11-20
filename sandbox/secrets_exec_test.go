@@ -44,6 +44,7 @@ type privilegedWriteHandler struct {
 func (h *privilegedWriteHandler) WriteFileStream(
 	_ context.Context, stream *connect.ClientStream[sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamRequest],
 ) (*connect.Response[sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse], error) {
+	var received int64
 	for stream.Receive() {
 		frame := stream.Msg().GetFrame()
 		h.mu.Lock()
@@ -52,9 +53,10 @@ func (h *privilegedWriteHandler) WriteFileStream(
 		}
 		h.data = append(h.data, frame.GetData()...)
 		h.mu.Unlock()
+		received += int64(len(frame.GetData()))
 	}
 	return connect.NewResponse(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse{
-		Response: &sandboxv1.WriteFileStreamResponse{},
+		Response: &sandboxv1.WriteFileStreamResponse{BytesWritten: received},
 	}), stream.Err()
 }
 

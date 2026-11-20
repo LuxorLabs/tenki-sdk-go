@@ -80,7 +80,8 @@ func (s *Session) ReadStream(ctx context.Context, path string, offset, length in
 }
 
 // WriteFileStream needs no TS-style early-abort/buffering guard: Write sends
-// synchronously, so an early server reject stops io.Copy at the next Send.
+// synchronously, so an early server reject stops io.Copy at the next Send and
+// surfaces the server's error.
 func (s *Session) WriteFileStream(ctx context.Context, path string, r io.Reader) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -122,9 +123,9 @@ func (s *Session) WriteStream(ctx context.Context, path string, opts ...WriteStr
 			},
 		},
 	}}); err != nil {
-		return nil, mapError(err)
+		return nil, mapWriteError(err)
 	}
-	return &fileStreamWriter{stream: stream}, nil
+	return &fileStreamWriter{stream: stream, path: path}, nil
 }
 
 func (s *Session) Stat(ctx context.Context, path string) (*FileInfo, error) {
@@ -223,14 +224,20 @@ func (s *Session) List(ctx context.Context, path string, opts ...ListOptions) ([
 
 type fileStreamWriter struct {
 	stream *connect.ClientStreamForClient[sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamRequest, sandboxv1.SandboxSessionDataPlaneServiceWriteFileStreamResponse]
+	path   string
 	mu     sync.Mutex
+	sent   int64
 	closed bool
+	err    error
 }
 
 func (w *fileStreamWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.closed {
+		if w.err != nil {
+			return 0, w.err
+		}
 		return 0, io.ErrClosedPipe
 	}
 	data := append([]byte(nil), p...)
@@ -241,13 +248,16 @@ func (w *fileStreamWriter) Write(p []byte) (int, error) {
 			// The server already responded; its error is only available from CloseAndReceive.
 			w.closed = true
 			if _, closeErr := w.stream.CloseAndReceive(); closeErr != nil {
-				return 0, mapError(closeErr)
+				w.err = mapWriteError(closeErr)
+			} else {
+				// p was never sent, so the write must fail even though the server reported success.
+				w.err = fmt.Errorf("%w: %w: server ended the write stream before all data was sent", ErrStreamClosed, io.ErrClosedPipe)
 			}
-			// p was never sent, so the write must fail even though the server reported success.
-			return 0, fmt.Errorf("%w: %w: server ended the write stream before all data was sent", ErrStreamClosed, io.ErrClosedPipe)
+			return 0, w.err
 		}
-		return 0, mapError(err)
+		return 0, mapWriteError(err)
 	}
+	w.sent += int64(len(p))
 	return len(p), nil
 }
 
@@ -255,9 +265,19 @@ func (w *fileStreamWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.closed {
-		return nil
+		return w.err
 	}
+	return w.closeLocked()
+}
+
+func (w *fileStreamWriter) closeLocked() error {
 	w.closed = true
-	_, err := w.stream.CloseAndReceive()
-	return mapError(err)
+	resp, err := w.stream.CloseAndReceive()
+	switch {
+	case err != nil:
+		w.err = mapWriteError(err)
+	case resp.Msg.GetResponse().GetBytesWritten() != w.sent:
+		w.err = incompleteWriteError(w.path, w.sent, resp.Msg.GetResponse().GetBytesWritten())
+	}
+	return w.err
 }

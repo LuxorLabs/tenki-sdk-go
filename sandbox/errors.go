@@ -53,6 +53,7 @@ var (
 	ErrWaitReadyFailed         = errors.New("sandbox: session created but not ready within wait budget")
 	ErrForkFailed              = errors.New("sandbox: fork failed")
 	ErrPaginationStalled       = errors.New("sandbox: pagination token did not advance")
+	ErrIncompleteWrite         = errors.New("sandbox: write incomplete")
 )
 
 var (
@@ -578,4 +579,17 @@ func notFoundError(msg string, err error) error {
 	default:
 		return fmt.Errorf("%w: %w", ErrSessionNotFound, err)
 	}
+}
+
+// mapWriteError maps errors from write RPCs, the only RPCs whose DATA_LOSS means an incomplete write.
+func mapWriteError(err error) error {
+	if connect.CodeOf(err) == connect.CodeDataLoss {
+		return fmt.Errorf("%w: %w", ErrIncompleteWrite, err)
+	}
+	return mapError(err)
+}
+
+// incompleteWriteError reports a write the sandbox acknowledged without saving every byte sent.
+func incompleteWriteError(path string, sent, written int64) error {
+	return fmt.Errorf("%w: %s: sent %d bytes, sandbox wrote %d", ErrIncompleteWrite, path, sent, written)
 }

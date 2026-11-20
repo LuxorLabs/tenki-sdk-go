@@ -1622,12 +1622,18 @@ func (s *Session) WriteFile(ctx context.Context, path string, data []byte) error
 	if err != nil {
 		return err
 	}
-	_, err = dp.WriteFile(ctx, connect.NewRequest(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileRequest{Request: &sandboxv1.WriteFileRequest{
+	resp, err := dp.WriteFile(ctx, connect.NewRequest(&sandboxv1.SandboxSessionDataPlaneServiceWriteFileRequest{Request: &sandboxv1.WriteFileRequest{
 		SessionId: s.ID,
 		Path:      path,
 		Content:   data,
 	}}))
-	return mapError(err)
+	if err != nil {
+		return mapWriteError(err)
+	}
+	if written := resp.Msg.GetResponse().GetSizeBytes(); written != int64(len(data)) {
+		return incompleteWriteError(path, int64(len(data)), written)
+	}
+	return nil
 }
 
 // ReadFile reads file content from inside the session, up to 32 MiB; larger files fail with *FileTooLargeError, so read them with ReadStream.
