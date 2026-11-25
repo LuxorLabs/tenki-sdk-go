@@ -5,20 +5,16 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
-
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 func TestDataPlaneTransportConcurrentStreams(t *testing.T) {
 	payload := bytes.Repeat([]byte{42}, 256*1024)
-	server := httptest.NewServer(h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := h2cTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(payload)
-	}), &http2.Server{}))
+	}))
 	defer server.Close()
 	client := newDataPlaneHTTPClient(server.URL)
 	defer client.CloseIdleConnections()

@@ -13,8 +13,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // go test builds the SDK as the main module at (devel), which reports unknown.
@@ -79,7 +77,7 @@ func TestClientMetadataReachesBothPlanes(t *testing.T) {
 	data := &headerRecorder{}
 	dataMux := http.NewServeMux()
 	dataMux.Handle(sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(&reproNode{}))
-	dataServer := httptest.NewServer(h2c.NewHandler(data.wrap(dataMux), &http2.Server{}))
+	dataServer := h2cTestServer(data.wrap(dataMux))
 	t.Cleanup(dataServer.Close)
 
 	client, err := New(WithAuthToken("tk_test"), WithBaseURL(controlServer.URL), WithHTTPClient(controlServer.Client()))
