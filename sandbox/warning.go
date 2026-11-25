@@ -16,6 +16,7 @@ const (
 	SandboxWarningCodeStickyOverridesIdleTimeout SandboxWarningCode = "STICKY_OVERRIDES_IDLE_TIMEOUT"
 	SandboxWarningCodeMaxDurationCapped          SandboxWarningCode = "MAX_DURATION_CAPPED"
 	SandboxWarningCodeRestoreSecretsSkipped      SandboxWarningCode = "RESTORE_SECRETS_SKIPPED"
+	SandboxWarningCodeRestrictedNetwork          SandboxWarningCode = "RESTRICTED_NETWORK"
 	// SandboxWarningCodeSpecVersionDeprecated is returned by template create, update and build calls.
 	SandboxWarningCodeSpecVersionDeprecated SandboxWarningCode = "SPEC_VERSION_DEPRECATED"
 )

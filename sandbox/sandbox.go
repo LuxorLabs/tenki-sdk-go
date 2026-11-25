@@ -723,3 +723,36 @@ func unwrapPublicEgressResponse[Outer, Inner any](outer *connect.Response[Outer]
 	}
 	return inner
 }
+
+// GetSessionCost returns what a session has cost so far, at list price before credits.
+func (c *Client) GetSessionCost(ctx context.Context, sessionID string) (*SessionCost, error) {
+	resp, err := c.sandbox.GetSessionCost(ctx, connect.NewRequest(&sandboxv1.GetSessionCostRequest{SessionId: strings.TrimSpace(sessionID)}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return sessionCostFromProto(resp.Msg.GetCost()), nil
+}
+
+// BatchGetSessionCosts returns the cost of 1 to 100 sessions in one workspace.
+// An empty workspaceID uses the caller's workspace.
+func (c *Client) BatchGetSessionCosts(ctx context.Context, sessionIDs []string, workspaceID string) (*SessionCostBatch, error) {
+	trimmedIDs := make([]string, len(sessionIDs))
+	for i, sessionID := range sessionIDs {
+		trimmedIDs[i] = strings.TrimSpace(sessionID)
+	}
+	resp, err := c.sandbox.BatchGetSessionCosts(ctx, connect.NewRequest(&sandboxv1.BatchGetSessionCostsRequest{
+		WorkspaceId: strings.TrimSpace(workspaceID),
+		SessionIds:  trimmedIDs,
+	}))
+	if err != nil {
+		return nil, mapError(err)
+	}
+	batch := &SessionCostBatch{
+		Costs:             make([]*SessionCost, 0, len(resp.Msg.GetCosts())),
+		MissingSessionIDs: resp.Msg.GetMissingSessionIds(),
+	}
+	for _, cost := range resp.Msg.GetCosts() {
+		batch.Costs = append(batch.Costs, sessionCostFromProto(cost))
+	}
+	return batch, nil
+}

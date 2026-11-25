@@ -80,6 +80,12 @@ const (
 	// SandboxServiceGetSessionMetricsProcedure is the fully-qualified name of the SandboxService's
 	// GetSessionMetrics RPC.
 	SandboxServiceGetSessionMetricsProcedure = "/tenki.sandbox.v1.SandboxService/GetSessionMetrics"
+	// SandboxServiceGetSessionCostProcedure is the fully-qualified name of the SandboxService's
+	// GetSessionCost RPC.
+	SandboxServiceGetSessionCostProcedure = "/tenki.sandbox.v1.SandboxService/GetSessionCost"
+	// SandboxServiceBatchGetSessionCostsProcedure is the fully-qualified name of the SandboxService's
+	// BatchGetSessionCosts RPC.
+	SandboxServiceBatchGetSessionCostsProcedure = "/tenki.sandbox.v1.SandboxService/BatchGetSessionCosts"
 	// SandboxServiceWaitSessionProcedure is the fully-qualified name of the SandboxService's
 	// WaitSession RPC.
 	SandboxServiceWaitSessionProcedure = "/tenki.sandbox.v1.SandboxService/WaitSession"
@@ -402,6 +408,10 @@ type SandboxServiceClient interface {
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
+	// Returns what a session has cost so far, at list price before credits.
+	GetSessionCost(context.Context, *connect.Request[v1.GetSessionCostRequest]) (*connect.Response[v1.GetSessionCostResponse], error)
+	// Returns the cost of up to 100 sessions in one workspace.
+	BatchGetSessionCosts(context.Context, *connect.Request[v1.BatchGetSessionCostsRequest]) (*connect.Response[v1.BatchGetSessionCostsResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest]) (*connect.ServerStreamForClient[v1.WaitSessionResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
@@ -603,6 +613,18 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceGetSessionMetricsProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("GetSessionMetrics")),
+			connect.WithClientOptions(opts...),
+		),
+		getSessionCost: connect.NewClient[v1.GetSessionCostRequest, v1.GetSessionCostResponse](
+			httpClient,
+			baseURL+SandboxServiceGetSessionCostProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("GetSessionCost")),
+			connect.WithClientOptions(opts...),
+		),
+		batchGetSessionCosts: connect.NewClient[v1.BatchGetSessionCostsRequest, v1.BatchGetSessionCostsResponse](
+			httpClient,
+			baseURL+SandboxServiceBatchGetSessionCostsProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("BatchGetSessionCosts")),
 			connect.WithClientOptions(opts...),
 		),
 		waitSession: connect.NewClient[v1.WaitSessionRequest, v1.WaitSessionResponse](
@@ -1169,6 +1191,8 @@ type sandboxServiceClient struct {
 	createSessionCredential            *connect.Client[v1.CreateSessionCredentialRequest, v1.CreateSessionCredentialResponse]
 	getSession                         *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
 	getSessionMetrics                  *connect.Client[v1.GetSessionMetricsRequest, v1.GetSessionMetricsResponse]
+	getSessionCost                     *connect.Client[v1.GetSessionCostRequest, v1.GetSessionCostResponse]
+	batchGetSessionCosts               *connect.Client[v1.BatchGetSessionCostsRequest, v1.BatchGetSessionCostsResponse]
 	waitSession                        *connect.Client[v1.WaitSessionRequest, v1.WaitSessionResponse]
 	listSessions                       *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	listWorkspaceSandboxes             *connect.Client[v1.ListWorkspaceSandboxesRequest, v1.ListWorkspaceSandboxesResponse]
@@ -1328,6 +1352,16 @@ func (c *sandboxServiceClient) GetSession(ctx context.Context, req *connect.Requ
 // GetSessionMetrics calls tenki.sandbox.v1.SandboxService.GetSessionMetrics.
 func (c *sandboxServiceClient) GetSessionMetrics(ctx context.Context, req *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error) {
 	return c.getSessionMetrics.CallUnary(ctx, req)
+}
+
+// GetSessionCost calls tenki.sandbox.v1.SandboxService.GetSessionCost.
+func (c *sandboxServiceClient) GetSessionCost(ctx context.Context, req *connect.Request[v1.GetSessionCostRequest]) (*connect.Response[v1.GetSessionCostResponse], error) {
+	return c.getSessionCost.CallUnary(ctx, req)
+}
+
+// BatchGetSessionCosts calls tenki.sandbox.v1.SandboxService.BatchGetSessionCosts.
+func (c *sandboxServiceClient) BatchGetSessionCosts(ctx context.Context, req *connect.Request[v1.BatchGetSessionCostsRequest]) (*connect.Response[v1.BatchGetSessionCostsResponse], error) {
+	return c.batchGetSessionCosts.CallUnary(ctx, req)
 }
 
 // WaitSession calls tenki.sandbox.v1.SandboxService.WaitSession.
@@ -1817,6 +1851,10 @@ type SandboxServiceHandler interface {
 	CreateSessionCredential(context.Context, *connect.Request[v1.CreateSessionCredentialRequest]) (*connect.Response[v1.CreateSessionCredentialResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
 	GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error)
+	// Returns what a session has cost so far, at list price before credits.
+	GetSessionCost(context.Context, *connect.Request[v1.GetSessionCostRequest]) (*connect.Response[v1.GetSessionCostResponse], error)
+	// Returns the cost of up to 100 sessions in one workspace.
+	BatchGetSessionCosts(context.Context, *connect.Request[v1.BatchGetSessionCostsRequest]) (*connect.Response[v1.BatchGetSessionCostsResponse], error)
 	WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest], *connect.ServerStream[v1.WaitSessionResponse]) error
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	// Deprecated: do not use.
@@ -2014,6 +2052,18 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceGetSessionMetricsProcedure,
 		svc.GetSessionMetrics,
 		connect.WithSchema(sandboxServiceMethods.ByName("GetSessionMetrics")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceGetSessionCostHandler := connect.NewUnaryHandler(
+		SandboxServiceGetSessionCostProcedure,
+		svc.GetSessionCost,
+		connect.WithSchema(sandboxServiceMethods.ByName("GetSessionCost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceBatchGetSessionCostsHandler := connect.NewUnaryHandler(
+		SandboxServiceBatchGetSessionCostsProcedure,
+		svc.BatchGetSessionCosts,
+		connect.WithSchema(sandboxServiceMethods.ByName("BatchGetSessionCosts")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceWaitSessionHandler := connect.NewServerStreamHandler(
@@ -2590,6 +2640,10 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceGetSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceGetSessionMetricsProcedure:
 			sandboxServiceGetSessionMetricsHandler.ServeHTTP(w, r)
+		case SandboxServiceGetSessionCostProcedure:
+			sandboxServiceGetSessionCostHandler.ServeHTTP(w, r)
+		case SandboxServiceBatchGetSessionCostsProcedure:
+			sandboxServiceBatchGetSessionCostsHandler.ServeHTTP(w, r)
 		case SandboxServiceWaitSessionProcedure:
 			sandboxServiceWaitSessionHandler.ServeHTTP(w, r)
 		case SandboxServiceListSessionsProcedure:
@@ -2831,6 +2885,14 @@ func (UnimplementedSandboxServiceHandler) GetSession(context.Context, *connect.R
 
 func (UnimplementedSandboxServiceHandler) GetSessionMetrics(context.Context, *connect.Request[v1.GetSessionMetricsRequest]) (*connect.Response[v1.GetSessionMetricsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetSessionMetrics is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) GetSessionCost(context.Context, *connect.Request[v1.GetSessionCostRequest]) (*connect.Response[v1.GetSessionCostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.GetSessionCost is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) BatchGetSessionCosts(context.Context, *connect.Request[v1.BatchGetSessionCostsRequest]) (*connect.Response[v1.BatchGetSessionCostsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tenki.sandbox.v1.SandboxService.BatchGetSessionCosts is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) WaitSession(context.Context, *connect.Request[v1.WaitSessionRequest], *connect.ServerStream[v1.WaitSessionResponse]) error {

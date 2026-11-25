@@ -485,6 +485,14 @@ Unless the sandbox uses outbound secret injection, HTTPS is not decrypted, so an
 Without HTTPS interception, other ports remain open to addresses an allowed name resolves to.
 Read the allowlist back with `session.Egress()`.
 
+### Restricted network
+
+New sessions in a workspace that hasn't purchased credits can only reach a list of common developer services (package registries, Git hosting, container registries, AI model providers) on TCP ports 80, 443 and 22.
+Creating one returns a `sandbox.SandboxWarningCodeRestrictedNetwork` warning, and `session.NetworkMode` is `sandbox.NetworkModeRestricted` with `session.NetworkRestrictionReason` `sandbox.NetworkRestrictionReasonNeverPurchased`; otherwise `NetworkMode` is `sandbox.NetworkModeFull`.
+`WithAllowDomains` narrows that list: domains outside it are dropped, and create fails when none remain. `WithAllowCIDRs` is rejected.
+`session.Egress()` still returns only the allowlist you passed.
+To get full network access, purchase credits and create a new session.
+
 ### Inspecting HTTPS requests
 
 With `WithEgressInterceptHTTPS()`, the egress proxy terminates the session's HTTPS with a managed CA the guest trusts, and a request whose `Host` differs from the TLS server name gets 421.

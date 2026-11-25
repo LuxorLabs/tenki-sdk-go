@@ -56,6 +56,12 @@ type SessionState string
 
 type RuntimeState string
 
+// NetworkMode reports whether the platform limits the session's outbound network.
+type NetworkMode string
+
+// NetworkRestrictionReason reports why a session's network is restricted.
+type NetworkRestrictionReason string
+
 // WildcardStatus reports the readiness of the workspace wildcard domain
 // backing a wildcard-scheme preview URL (the workspace's per-region wildcard
 // certificate). It mirrors the service contract's WildcardStatus enum. A
@@ -79,6 +85,15 @@ const (
 	RuntimeStateReady       RuntimeState = "READY"
 	RuntimeStateFailed      RuntimeState = "FAILED"
 	RuntimeStateStopped     RuntimeState = "STOPPED"
+
+	NetworkModeUnspecified NetworkMode = "UNSPECIFIED"
+	NetworkModeFull        NetworkMode = "FULL"
+	// NetworkModeRestricted limits outbound traffic to the platform's allowlist of developer services.
+	NetworkModeRestricted NetworkMode = "RESTRICTED"
+
+	NetworkRestrictionReasonUnspecified NetworkRestrictionReason = "UNSPECIFIED"
+	// NetworkRestrictionReasonNeverPurchased means the workspace has not purchased credits.
+	NetworkRestrictionReasonNeverPurchased NetworkRestrictionReason = "NEVER_PURCHASED"
 
 	WildcardStatusUnspecified WildcardStatus = "UNSPECIFIED"
 	WildcardStatusPending     WildcardStatus = "PENDING"
@@ -175,6 +190,8 @@ type Session struct {
 	SourceTemplateID          string
 	Warnings                  []SandboxWarning
 	TailnetStatus             *TailnetStatus
+	NetworkMode               NetworkMode
+	NetworkRestrictionReason  NetworkRestrictionReason // Unspecified unless NetworkMode is restricted.
 }
 
 // SessionEgressPolicy uses tailnet policy for empty allowlists when attached; otherwise they are unrestricted.
@@ -361,6 +378,8 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.egress = egressPolicyFromProto(protoSession.GetEgress())
 	s.egress.PolicyNames = append([]string(nil), protoSession.GetEgressPolicies()...)
 	s.TailnetStatus = tailnetStatusFromProto(protoSession.GetTailnetStatus())
+	s.NetworkMode = networkModeFromProto(protoSession.GetNetworkMode())
+	s.NetworkRestrictionReason = networkRestrictionReasonFromProto(protoSession.GetNetworkRestrictionReason())
 	s.VolumeMounts = s.VolumeMounts[:0]
 	for _, attachment := range protoSession.VolumeAttachments {
 		if attachment == nil {
@@ -423,6 +442,24 @@ func wildcardStatusFromProto(status sandboxv1.WildcardStatus) WildcardStatus {
 	}
 }
 
+func networkModeFromProto(mode sandboxv1.SessionNetworkMode) NetworkMode {
+	switch mode {
+	case sandboxv1.SessionNetworkMode_SESSION_NETWORK_MODE_FULL:
+		return NetworkModeFull
+	case sandboxv1.SessionNetworkMode_SESSION_NETWORK_MODE_RESTRICTED:
+		return NetworkModeRestricted
+	default:
+		return NetworkModeUnspecified
+	}
+}
+
+func networkRestrictionReasonFromProto(reason sandboxv1.SessionNetworkRestrictionReason) NetworkRestrictionReason {
+	if reason == sandboxv1.SessionNetworkRestrictionReason_SESSION_NETWORK_RESTRICTION_REASON_NEVER_PURCHASED {
+		return NetworkRestrictionReasonNeverPurchased
+	}
+	return NetworkRestrictionReasonUnspecified
+}
+
 func runtimeStateFromProto(state sandboxv1.TemplateRuntimeState) RuntimeState {
 	switch state {
 	case sandboxv1.TemplateRuntimeState_TEMPLATE_RUNTIME_STATE_STARTING:
@@ -471,6 +508,8 @@ func (s *Session) copyFrom(other *Session) {
 	s.SourceRegistryRef = other.SourceRegistryRef
 	s.SourceTemplateID = other.SourceTemplateID
 	s.TailnetStatus = other.TailnetStatus
+	s.NetworkMode = other.NetworkMode
+	s.NetworkRestrictionReason = other.NetworkRestrictionReason
 	s.egress = other.egress
 }
 
@@ -1974,4 +2013,9 @@ func publicEgressAcknowledged(requested, actual *PublicEgress) bool {
 		}
 	}
 	return true
+}
+
+// Cost returns what this session has cost so far.
+func (s *Session) Cost(ctx context.Context) (*SessionCost, error) {
+	return s.client.GetSessionCost(ctx, s.ID)
 }
