@@ -181,6 +181,19 @@ func (c *Client) Close() error {
 // the live session so callers can close it or continue waiting.
 // Data-plane origins are regional and shareable; session credentials keep routes isolated.
 func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, error) {
+	session, _, err := c.create(ctx, nil, opts...)
+	return session, err
+}
+
+// CreateWithInjectionCredentials uses the atomic credential admission RPC, even for an empty list.
+func (c *Client) CreateWithInjectionCredentials(
+	ctx context.Context, credentials []InjectionCredentialInput, opts ...CreateOption,
+) (*Session, []InjectionCredentialMetadata, error) {
+	return c.create(ctx, &credentials, opts...)
+}
+
+func (c *Client) create(ctx context.Context, credentials *[]InjectionCredentialInput, opts ...CreateOption) (*Session, []InjectionCredentialMetadata, error) {
+	var metadata []InjectionCredentialMetadata
 	cfg := defaultCreateConfig(c)
 	for _, opt := range opts {
 		if opt == nil {
@@ -188,8 +201,24 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		}
 		opt.applyCreate(&cfg)
 	}
+	if cfg.githubTokenInjection {
+		inputs, err := githubInjectionCredentials(cfg.githubToken)
+		if err != nil {
+			return nil, metadata, err
+		}
+		if cfg.cloneRepoURL != "" {
+			return nil, metadata, errors.New("sandbox: GitHub token injection requires cloning after creation")
+		}
+		if err := githubInjectionEnv(cfg.env); err != nil {
+			return nil, metadata, err
+		}
+		if credentials != nil {
+			inputs = append(append([]InjectionCredentialInput{}, (*credentials)...), inputs...)
+		}
+		credentials = &inputs
+	}
 	if err := ValidateCreateResources(cfg.cpuCores, cfg.memoryMB, cfg.diskSizeGB); err != nil {
-		return nil, err
+		return nil, metadata, err
 	}
 	sourceCount := 0
 	for _, source := range []string{cfg.image, cfg.snapshotID, cfg.templateSpecID} {
@@ -198,7 +227,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		}
 	}
 	if sourceCount > 1 {
-		return nil, errors.New("sandbox: only one of image, snapshot, or template spec may be set")
+		return nil, metadata, errors.New("sandbox: only one of image, snapshot, or template spec may be set")
 	}
 	req := &sandboxv1.CreateSessionRequest{
 		OwnerType:         defaultCreateOwnerType,
@@ -219,25 +248,25 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		SecretFiles:       cloneSecretFiles(cfg.secretFiles),
 	}
 	if !validateSecretFiles(cfg.secretFiles, 0) {
-		return nil, errors.New("sandbox: invalid direct secret files")
+		return nil, metadata, errors.New("sandbox: invalid direct secret files")
 	}
 	for _, file := range cfg.secretFiles {
 		if _, ok := file.Format.(*RuntimeSecretFileSource); ok {
-			return nil, errors.New("sandbox: source paths require a template build; direct files supply content")
+			return nil, metadata, errors.New("sandbox: source paths require a template build; direct files supply content")
 		}
 	}
 	if cfg.directRuntime != nil {
 		if cfg.templateSpecID != "" {
-			return nil, errors.New("sandbox: direct runtime conflicts with template spec source")
+			return nil, metadata, errors.New("sandbox: direct runtime conflicts with template spec source")
 		}
 		runtime, err := directRuntimeProto(*cfg.directRuntime)
 		if err != nil {
-			return nil, err
+			return nil, metadata, err
 		}
 		req.Runtime = runtime
 		for target := range runtime.SecretEnv {
 			if _, ok := req.Env[target]; ok {
-				return nil, errors.New("sandbox: secret target conflicts with session environment")
+				return nil, metadata, errors.New("sandbox: secret target conflicts with session environment")
 			}
 		}
 	}
@@ -245,7 +274,7 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		len(cfg.httpRules) > 0 {
 		httpRules, err := egressHTTPRulesToProto(cfg.httpRules)
 		if err != nil {
-			return nil, err
+			return nil, metadata, err
 		}
 		req.Egress = &sandboxv1.SessionEgressPolicy{
 			AllowDomains:   append([]string(nil), cfg.allowDomains...),
@@ -312,41 +341,75 @@ func (c *Client) Create(ctx context.Context, opts ...CreateOption) (*Session, er
 		req.WorkspaceId = &workspaceID
 	}
 	if cfg.disableTailnet && cfg.tailnet != nil {
-		return nil, errors.New("choose a Tailscale connection or disable Tailscale")
+		return nil, metadata, errors.New("choose a Tailscale connection or disable Tailscale")
 	}
 	req.DisableTailnet = cfg.disableTailnet
 	if cfg.tailnet != nil {
 		tailnet, err := tailnetAttachmentProto(*cfg.tailnet)
 		if err != nil {
-			return nil, err
+			return nil, metadata, err
 		}
 		req.Tailnet = tailnet
 	}
-	if !cfg.waitReady && !cfg.waitForRuntime {
-		return c.createCompatibleSession(ctx, ctx, cfg, req)
-	}
 
+	createCtx := ctx
 	waitTimeout := effectiveCreateWaitTimeout(cfg)
-	createCtx, cancel := c.heldCreateContext(ctx, waitTimeout)
-	defer cancel()
-	sess, err := c.createCompatibleSession(ctx, createCtx, cfg, req)
-	if err != nil {
-		return nil, err
+	if cfg.waitReady || cfg.waitForRuntime {
+		var cancel context.CancelFunc
+		createCtx, cancel = c.heldCreateContext(ctx, waitTimeout)
+		defer cancel()
+	}
+	var created *sandboxv1.CreateSessionResponse
+	if credentials == nil {
+		resp, err := c.createSessionRequest(createCtx, req)
+		if err != nil {
+			return nil, metadata, mapCreateSessionError(ctx, c, cfg.publicEgress, err)
+		}
+		created = resp.Msg
+	} else {
+		inputs := make([]*sandboxv1.SessionInjectionCredentialInput, 0, len(*credentials))
+		for _, input := range *credentials {
+			inputs = append(inputs, input.toProto())
+		}
+		resp, err := c.sandbox.CreateSessionWithInjectionCredentials(createCtx, connect.NewRequest(&sandboxv1.CreateSessionWithInjectionCredentialsRequest{
+			Session: req, Credentials: inputs,
+		}))
+		if err != nil {
+			return nil, metadata, mapCreateSessionError(ctx, c, cfg.publicEgress, safeInjectionError(err, c))
+		}
+		created = resp.Msg.GetCreated()
+		for _, item := range resp.Msg.GetCredentials() {
+			metadata = append(metadata, injectionMetadata(item))
+		}
+	}
+	if err := c.checkTailnetExposure(ctx, req, created); err != nil {
+		return nil, metadata, err
+	}
+	if err := c.verifyTailnetDNS(ctx, cfg.tailnet, created.GetSession()); err != nil {
+		return nil, metadata, err
+	}
+	sess := newSessionFromCreate(c, created)
+	if err := verifyPublicEgress(ctx, sess, cfg.publicEgress); err != nil {
+		return nil, metadata, err
+	}
+	c.warmDataPlaneEndpoints(created.GetDataPlaneWarmEndpoints())
+	if !cfg.waitReady && !cfg.waitForRuntime {
+		return sess, metadata, nil
 	}
 	if sess.State.IsReady() {
-		return sess, nil
+		return sess, metadata, nil
 	}
 	if sess.State.IsTerminal() {
-		return nil, sess.terminalStateError()
+		return nil, metadata, sess.terminalStateError()
 	}
 	// Normal readiness waits on the stream so it can expose and prewarm the data plane during provisioning.
 	if err := sess.WaitReady(ctx, waitTimeout); err != nil {
 		if sess.State.IsTerminal() {
-			return nil, err
+			return nil, metadata, err
 		}
-		return nil, &WaitReadyFailedError{Session: sess, Err: err}
+		return nil, metadata, &WaitReadyFailedError{Session: sess, Err: err}
 	}
-	return sess, nil
+	return sess, metadata, nil
 }
 
 func (c *Client) checkTailnetExposure(ctx context.Context, req *sandboxv1.CreateSessionRequest, resp *sandboxv1.CreateSessionResponse) error {
@@ -362,28 +425,6 @@ func (c *Client) checkTailnetExposure(ctx context.Context, req *sandboxv1.Create
 	return errors.New("sandbox: server does not support requested tailnet exposed ports; session terminated")
 }
 
-// Allocation uses the call deadline; compatibility cleanup retains the caller context.
-func (c *Client) createCompatibleSession(
-	ctx, callCtx context.Context, cfg createConfig, req *sandboxv1.CreateSessionRequest,
-) (*Session, error) {
-	resp, err := c.createSessionRequest(callCtx, req)
-	if err != nil {
-		return nil, mapCreateSessionError(ctx, c, cfg.publicEgress, err)
-	}
-	if err := c.checkTailnetExposure(ctx, req, resp.Msg); err != nil {
-		return nil, err
-	}
-	if err := c.verifyTailnetDNS(ctx, cfg.tailnet, resp.Msg.GetSession()); err != nil {
-		return nil, err
-	}
-	session := newSessionFromCreate(c, resp.Msg)
-	if err := verifyPublicEgress(ctx, session, cfg.publicEgress); err != nil {
-		return nil, err
-	}
-	c.warmDataPlaneEndpoints(resp.Msg.GetDataPlaneWarmEndpoints())
-	return session, nil
-}
-
 func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {
 	if cfg.templateSpecID != "" && !cfg.waitTimeoutSet {
 		return DefaultTemplateSpecCreateTimeout
@@ -392,6 +433,13 @@ func effectiveCreateWaitTimeout(cfg createConfig) time.Duration {
 }
 
 func mapCreateSessionError(ctx context.Context, client *Client, public *PublicEgress, err error) error {
+	var runtimeFailure *TemplateRuntimeFailedError
+	if errors.As(err, &runtimeFailure) {
+		if verifyErr := verifyPublicEgress(ctx, runtimeFailure.Session, public); verifyErr != nil {
+			return fmt.Errorf("%w: %w", verifyErr, err)
+		}
+		return err
+	}
 	var connectErr *connect.Error
 	if errors.As(err, &connectErr) {
 		for _, rawDetail := range connectErr.Details() {
@@ -414,7 +462,12 @@ func mapCreateSessionError(ctx context.Context, client *Client, public *PublicEg
 			}
 		}
 	}
-	return mapError(err)
+	switch err.(type) {
+	case interface{ Unwrap() []error }, *GitOperationFailedError, *FileTooLargeError, *CapabilityUnavailableError:
+		return err
+	default:
+		return mapError(err)
+	}
 }
 
 // List lists sessions owned by the Workspace API key.

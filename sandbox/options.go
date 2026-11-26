@@ -189,6 +189,9 @@ func WithDetachWaitTimeout(timeout time.Duration) DetachVolumeOption {
 }
 
 type createConfig struct {
+	githubTokenInjection bool
+	githubToken          string
+
 	secretFiles     []*RuntimeSecretFile
 	secretPolicies  []string
 	directRuntime   *TemplateSpec
@@ -813,9 +816,15 @@ func WithGitHubToken(token string) CreateOption {
 		if cfg.env == nil {
 			cfg.env = map[string]string{}
 		}
+		cfg.githubToken = trimmed
 		cfg.env[githubTokenEnvVar] = trimmed
 		cfg.env[gitTokenEnvVar] = trimmed
 	})
+}
+
+// WithGitHubTokenInjection keeps WithGitHubToken credentials outside the guest.
+func WithGitHubTokenInjection(enabled bool) CreateOption {
+	return createOptionFunc(func(cfg *createConfig) { cfg.githubTokenInjection = enabled })
 }
 
 // WithAllowInbound sets inbound network policy on Create requests.

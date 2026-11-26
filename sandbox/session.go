@@ -182,6 +182,7 @@ type Session struct {
 	TerminalError             string
 	RuntimeState              RuntimeState
 	RuntimeError              string
+	GuestControlDenied        bool
 	HasRuntimeSecrets         bool // Includes guest environment/files and authorized HTTPS request injection.
 	SourceRegistryImageID     string
 	SourceSnapshotID          string
@@ -366,6 +367,7 @@ func (s *Session) apply(protoSession *sandboxv1.SandboxSession) {
 	s.TerminalError = protoSession.TerminalError
 	s.RuntimeState = runtimeStateFromProto(protoSession.RuntimeState)
 	s.RuntimeError = protoSession.GetRuntimeError()
+	s.GuestControlDenied = protoSession.GetGuestControlDenied()
 	s.HasRuntimeSecrets = protoSession.GetHasRuntimeSecrets()
 	s.SourceRegistryImageID = protoSession.GetSourceRegistryImageId()
 	s.SourceSnapshotID = protoSession.GetSourceSnapshotId()
@@ -501,6 +503,7 @@ func (s *Session) copyFrom(other *Session) {
 	s.TerminalError = other.TerminalError
 	s.RuntimeState = other.RuntimeState
 	s.RuntimeError = other.RuntimeError
+	s.GuestControlDenied = other.GuestControlDenied
 	s.HasRuntimeSecrets = other.HasRuntimeSecrets
 	s.SourceRegistryImageID = other.SourceRegistryImageID
 	s.SourceSnapshotID = other.SourceSnapshotID
@@ -1805,6 +1808,24 @@ type SecretsRefresh struct {
 	WorkflowID string
 }
 
+// SetInjectionCredential creates or rotates a session injection credential.
+func (s *Session) SetInjectionCredential(ctx context.Context, input InjectionCredentialInput, expectedRevision *uint32) (InjectionCredentialMetadata, error) {
+	resp, err := s.client.sandbox.SetSessionInjectionCredential(ctx, connect.NewRequest(&sandboxv1.SetSessionInjectionCredentialRequest{SessionId: s.ID, Credential: input.toProto(), ExpectedRevision: expectedRevision}))
+	if err != nil {
+		return InjectionCredentialMetadata{}, safeInjectionError(err, s.client)
+	}
+	return injectionMetadata(resp.Msg.GetCredential()), nil
+}
+
+// RevokeInjectionCredential revokes a session injection credential by name.
+func (s *Session) RevokeInjectionCredential(ctx context.Context, name string, expectedRevision *uint32) (InjectionCredentialMetadata, error) {
+	resp, err := s.client.sandbox.RevokeSessionInjectionCredential(ctx, connect.NewRequest(&sandboxv1.RevokeSessionInjectionCredentialRequest{SessionId: s.ID, Name: name, ExpectedRevision: expectedRevision}))
+	if err != nil {
+		return InjectionCredentialMetadata{}, safeInjectionError(err, s.client)
+	}
+	return injectionMetadata(resp.Msg.GetCredential()), nil
+}
+
 // RefreshSecrets re-delivers the session's secret bindings at the workspace's current versions
 // and restarts its managed runtime. Processes started before the refresh keep their old values.
 func (s *Session) RefreshSecrets(ctx context.Context) (*SecretsRefresh, error) {
@@ -1980,6 +2001,23 @@ func (s *Session) isVolumeDetached(volumeID string) bool {
 	}
 	// A missing attachment is detached because the engine may stop returning it.
 	return true
+}
+
+// RotateGitHubToken updates API then Git credentials sequentially; errors identify partial completion.
+func (s *Session) RotateGitHubToken(ctx context.Context, token string) error {
+	inputs, err := githubInjectionCredentials(token)
+	if err != nil {
+		return err
+	}
+	for i, input := range inputs {
+		if _, err := s.SetInjectionCredential(ctx, input, nil); err != nil {
+			if i > 0 {
+				return fmt.Errorf("rotate %s failed (%s already rotated): %w", input.Name, inputs[0].Name, err)
+			}
+			return fmt.Errorf("rotate %s failed: %w", input.Name, err)
+		}
+	}
+	return nil
 }
 
 func publicEgressToProto(policy *PublicEgress) *sandboxv1.PublicEgress {
