@@ -269,6 +269,11 @@ func (c *Client) create(ctx context.Context, credentials *[]InjectionCredentialI
 				return nil, metadata, errors.New("sandbox: secret target conflicts with session environment")
 			}
 		}
+		for target := range runtime.VariableEnv {
+			if _, ok := req.Env[target]; ok {
+				return nil, metadata, errors.New("sandbox: variable target conflicts with session environment")
+			}
+		}
 	}
 	if cfg.publicEgress != nil || len(cfg.allowDomains) > 0 || len(cfg.allowCIDRs) > 0 || cfg.interceptHTTPS || len(cfg.allowedPorts) > 0 ||
 		len(cfg.httpRules) > 0 {

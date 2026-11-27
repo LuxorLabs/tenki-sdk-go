@@ -150,6 +150,7 @@ type StartOptions struct {
 	SecretPolicies []string
 	SecretEnv      map[string]string
 	SecretFiles    []*RuntimeSecretFile
+	VariableEnv    map[string]string
 	Workdir        string
 	RunAt          RunAt
 	RestartPolicy  TemplateRestartPolicy
@@ -163,6 +164,7 @@ type ProcessComposeOptions struct {
 	SecretPolicies []string
 	SecretEnv      map[string]string
 	SecretFiles    []*RuntimeSecretFile
+	VariableEnv    map[string]string
 	Workdir        string
 	EnvFiles       []string
 	RunAt          RunAt
@@ -503,6 +505,9 @@ func (s TemplateSpec) Start(command string, opts ...StartOptions) TemplateSpec {
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
 		}
+		if options.VariableEnv != nil {
+			runtime.VariableEnv = cloneStringMap(options.VariableEnv)
+		}
 		if len(options.ReadyWhen) > 0 {
 			runtime.ReadyWhen = readyWhenToProto(ReadyWhen{Checks: options.ReadyWhen})
 		}
@@ -527,6 +532,9 @@ func (s TemplateSpec) StartArgs(argv []string, opts ...StartOptions) TemplateSpe
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
+		}
+		if options.VariableEnv != nil {
+			runtime.VariableEnv = cloneStringMap(options.VariableEnv)
 		}
 		if len(options.ReadyWhen) > 0 {
 			runtime.ReadyWhen = readyWhenToProto(ReadyWhen{Checks: options.ReadyWhen})
@@ -554,6 +562,9 @@ func (s TemplateSpec) ProcessCompose(configPath string, opts ...ProcessComposeOp
 		}
 		if options.SecretEnv != nil {
 			runtime.SecretEnv = cloneStringMap(options.SecretEnv)
+		}
+		if options.VariableEnv != nil {
+			runtime.VariableEnv = cloneStringMap(options.VariableEnv)
 		}
 	})
 }
@@ -1128,7 +1139,7 @@ func validateTemplateSpecRuntime(runtime *sandboxv1.TemplateRuntime, add func(fi
 	if runtime == nil {
 		return
 	}
-	if !validateSecretFiles(runtime.SecretFiles, len(runtime.SecretEnv)) {
+	if !validateSecretFiles(runtime.SecretFiles, len(runtime.SecretEnv)+len(runtime.VariableEnv)) {
 		add("runtime.secretFiles", "invalid", "invalid secret file declaration")
 	}
 	if len(runtime.SecretEnv) > 64 {
@@ -1143,6 +1154,23 @@ func validateTemplateSpecRuntime(runtime *sandboxv1.TemplateRuntime, add func(fi
 		}
 		if _, ok := runtime.Env[target]; ok {
 			add("runtime.secretEnv", "env_conflict", "secret target conflicts with runtime environment")
+		}
+	}
+	if len(runtime.VariableEnv) > 0 && len(runtime.SecretEnv)+len(runtime.VariableEnv) > 64 {
+		add("runtime.variableEnv", "max_pairs", "at most 64 secret and variable references are supported")
+	}
+	for target, name := range runtime.VariableEnv {
+		if !templateSecretTargetPattern.MatchString(target) {
+			add("runtime.variableEnv", "target", "invalid environment target")
+		}
+		if !templateSecretNamePattern.MatchString(name) {
+			add("runtime.variableEnv", "name", "invalid workspace variable name")
+		}
+		if _, ok := runtime.Env[target]; ok {
+			add("runtime.variableEnv", "env_conflict", "variable target conflicts with runtime environment")
+		}
+		if _, ok := runtime.SecretEnv[target]; ok {
+			add("runtime.variableEnv", "secret_conflict", "variable target conflicts with secretEnv")
 		}
 	}
 	if len(runtime.Env) > 256 {

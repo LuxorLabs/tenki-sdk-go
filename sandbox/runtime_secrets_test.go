@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -38,6 +39,49 @@ func TestRuntimeSecretReferencesRoundtrip(t *testing.T) {
 		if _, err := directRuntimeProto(spec); err == nil {
 			t.Fatal("invalid direct runtime accepted")
 		}
+	}
+}
+
+func TestRuntimeVariableReferences(t *testing.T) {
+	vars := map[string]string{"API_URL": "PROD_API_URL"}
+	for _, spec := range []TemplateSpec{
+		NewTemplateSpec().Start("app", StartOptions{VariableEnv: vars}),
+		NewTemplateSpec().StartArgs([]string{"app"}, StartOptions{VariableEnv: vars}),
+		NewTemplateSpec().ProcessCompose("compose.yaml", ProcessComposeOptions{VariableEnv: vars}),
+	} {
+		encoded, err := spec.ToJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := TemplateSpecFromJSON(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime, err := directRuntimeProto(decoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(runtime.VariableEnv, vars) {
+			t.Fatal("roundtrip dropped variable references")
+		}
+	}
+	tooMany := map[string]string{}
+	for i := range 65 {
+		tooMany[fmt.Sprintf("VARIABLE_%d", i)] = "NAME"
+	}
+	for _, spec := range []TemplateSpec{
+		NewTemplateSpec().Start("app", StartOptions{VariableEnv: map[string]string{"BAD-TARGET": "NAME"}}),
+		NewTemplateSpec().Start("app", StartOptions{VariableEnv: map[string]string{"API_URL": "bad name"}}),
+		NewTemplateSpec().Start("app", StartOptions{SecretEnv: map[string]string{"API_URL": "TOKEN"}, VariableEnv: vars}),
+		NewTemplateSpec().RuntimeEnv(map[string]string{"API_URL": "plain"}).Start("app", StartOptions{VariableEnv: vars}),
+		NewTemplateSpec().Start("app", StartOptions{VariableEnv: tooMany}),
+	} {
+		if spec.Validate() == nil {
+			t.Fatal("invalid variable references accepted")
+		}
+	}
+	if detail := registryDetailFromProto(&pb.RegistryImageDetail{RuntimeVariableEnv: vars}); !reflect.DeepEqual(detail.RuntimeVariableEnv, vars) {
+		t.Fatal("registry detail dropped variable references")
 	}
 }
 
@@ -90,6 +134,10 @@ func TestRuntimeSecretCreateContract(t *testing.T) {
 	}
 	if _, err := client.Create(context.Background(), WithDirectRuntime(spec), FromTemplateSpec("template"), WithWaitReady(false)); err == nil {
 		t.Fatal("template runtime conflict accepted")
+	}
+	variableSpec := NewTemplateSpec().Start("app", StartOptions{VariableEnv: map[string]string{"API_URL": "PROD_API_URL"}})
+	if _, err := client.Create(context.Background(), WithDirectRuntime(variableSpec), WithEnvs(map[string]string{"API_URL": "plain"}), WithWaitReady(false)); err == nil {
+		t.Fatal("session env conflict with a variable target accepted")
 	}
 	if len(h.requests) != 1 {
 		t.Fatal("invalid request reached server")

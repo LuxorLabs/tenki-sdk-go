@@ -15578,7 +15578,7 @@ func (x *RefreshSessionSecretsRequest) GetRequestId() string {
 
 type RefreshSessionSecretsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// False when every binding already used the current version; the runtime environment is re-delivered either way.
+	// False when no secret version or variable value changed; the runtime environment is re-delivered either way.
 	Changed       bool                       `protobuf:"varint,1,opt,name=changed,proto3" json:"changed,omitempty"`
 	Versions      []*RuntimeSecretVersionRef `protobuf:"bytes,2,rep,name=versions,proto3" json:"versions,omitempty"`
 	WorkflowId    string                     `protobuf:"bytes,3,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`

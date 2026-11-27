@@ -1933,8 +1933,10 @@ type TemplateRuntime struct {
 	ReadyWhen        *TemplateSnapshotWhen        `protobuf:"bytes,7,opt,name=ready_when,json=readyWhen,proto3" json:"ready_when,omitempty"`
 	StopGraceSeconds uint32                       `protobuf:"varint,8,opt,name=stop_grace_seconds,json=stopGraceSeconds,proto3" json:"stop_grace_seconds,omitempty"`
 	// Environment target to secret name, resolved in the launching workspace.
-	SecretEnv     map[string]string    `protobuf:"bytes,9,rep,name=secret_env,json=secretEnv,proto3" json:"secret_env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	SecretFiles   []*RuntimeSecretFile `protobuf:"bytes,10,rep,name=secret_files,json=secretFiles,proto3" json:"secret_files,omitempty"`
+	SecretEnv   map[string]string    `protobuf:"bytes,9,rep,name=secret_env,json=secretEnv,proto3" json:"secret_env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	SecretFiles []*RuntimeSecretFile `protobuf:"bytes,10,rep,name=secret_files,json=secretFiles,proto3" json:"secret_files,omitempty"`
+	// Environment target to workspace variable name, resolved in the launching workspace.
+	VariableEnv   map[string]string `protobuf:"bytes,13,rep,name=variable_env,json=variableEnv,proto3" json:"variable_env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2053,6 +2055,13 @@ func (x *TemplateRuntime) GetSecretEnv() map[string]string {
 func (x *TemplateRuntime) GetSecretFiles() []*RuntimeSecretFile {
 	if x != nil {
 		return x.SecretFiles
+	}
+	return nil
+}
+
+func (x *TemplateRuntime) GetVariableEnv() map[string]string {
+	if x != nil {
+		return x.VariableEnv
 	}
 	return nil
 }
@@ -5068,8 +5077,7 @@ const file_tenki_sandbox_v1_template_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\x80 R\x06target\x12$\n" +
 	"\x04path\x18\x02 \x01(\tB\x10\xbaH\rr\v\x10\x01\x18\x80 2\x04^/.*R\x04path\"Z\n" +
 	"\x13TemplatePackageStep\x12C\n" +
-	"\bpackages\x18\x01 \x03(\tB'\xbaH$\x92\x01!\b\x01\x10\x80\b\x18\x01\"\x18r\x16\x10\x012\x12^[^-\\x00][^\\x00]*$R\bpackages\"\xd7\n" +
-	"\n" +
+	"\bpackages\x18\x01 \x03(\tB'\xbaH$\x92\x01!\b\x01\x10\x80\b\x18\x01\"\x18r\x16\x10\x012\x12^[^-\\x00][^\\x00]*$R\bpackages\"\x97\r\n" +
 	"\x0fTemplateRuntime\x121\n" +
 	"\x0fsecret_policies\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x10@R\x0esecretPolicies\x12<\n" +
 	"\x03env\x18\x01 \x03(\v2*.tenki.sandbox.v1.TemplateRuntime.EnvEntryR\x03env\x12G\n" +
@@ -5084,16 +5092,21 @@ const file_tenki_sandbox_v1_template_proto_rawDesc = "" +
 	"\n" +
 	"secret_env\x18\t \x03(\v20.tenki.sandbox.v1.TemplateRuntime.SecretEnvEntryB\b\xbaH\x05\x9a\x01\x02\x10@R\tsecretEnv\x12P\n" +
 	"\fsecret_files\x18\n" +
-	" \x03(\v2#.tenki.sandbox.v1.RuntimeSecretFileB\b\xbaH\x05\x92\x01\x02\x10 R\vsecretFiles\x1a6\n" +
+	" \x03(\v2#.tenki.sandbox.v1.RuntimeSecretFileB\b\xbaH\x05\x92\x01\x02\x10 R\vsecretFiles\x12_\n" +
+	"\fvariable_env\x18\r \x03(\v22.tenki.sandbox.v1.TemplateRuntime.VariableEnvEntryB\b\xbaH\x05\x9a\x01\x02\x10@R\vvariableEnv\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +
 	"\x0eSecretEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8c\x03\xbaH\x88\x03\x1a\x80\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
+	"\x10VariableEnvEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xab\x04\xbaH\xa7\x04\x1a\x80\x01\n" +
 	"$template_runtime.entrypoint_required\x12*exactly one runtime entrypoint is required\x1a,has(this.start) || has(this.process_compose)\x1ay\n" +
 	"*template_runtime.build_requires_ready_when\x12!build runtime requires ready_when\x1a(this.run_at != 2 || has(this.ready_when)\x1a\x87\x01\n" +
-	")template_runtime.snapshot_mode_build_only\x12-snapshot_mode is only valid for build runtime\x1a+this.snapshot_mode == 0 || this.run_at == 2B\f\n" +
+	")template_runtime.snapshot_mode_build_only\x12-snapshot_mode is only valid for build runtime\x1a+this.snapshot_mode == 0 || this.run_at == 2\x1a\x9c\x01\n" +
+	"$template_runtime.environment_targets\x12=secret_env and variable_env together allow at most 64 targets\x1a5size(this.secret_env) + size(this.variable_env) <= 64B\f\n" +
 	"\n" +
 	"entrypoint\"\x90\x02\n" +
 	"\x14TemplateStartRuntime\x12\x18\n" +
@@ -5475,7 +5488,7 @@ func file_tenki_sandbox_v1_template_proto_rawDescGZIP() []byte {
 }
 
 var file_tenki_sandbox_v1_template_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
-var file_tenki_sandbox_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
+var file_tenki_sandbox_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
 var file_tenki_sandbox_v1_template_proto_goTypes = []any{
 	(TemplateBuildState)(0),                  // 0: tenki.sandbox.v1.TemplateBuildState
 	(TemplateVisibility)(0),                  // 1: tenki.sandbox.v1.TemplateVisibility
@@ -5552,14 +5565,15 @@ var file_tenki_sandbox_v1_template_proto_goTypes = []any{
 	nil,                                      // 72: tenki.sandbox.v1.TemplateBuildConfig.EnvEntry
 	nil,                                      // 73: tenki.sandbox.v1.TemplateRuntime.EnvEntry
 	nil,                                      // 74: tenki.sandbox.v1.TemplateRuntime.SecretEnvEntry
-	nil,                                      // 75: tenki.sandbox.v1.Template.EnvVarsEntry
-	nil,                                      // 76: tenki.sandbox.v1.CreateTemplateRequest.EnvVarsEntry
-	nil,                                      // 77: tenki.sandbox.v1.UpdateTemplateRequest.EnvVarsEntry
-	nil,                                      // 78: tenki.sandbox.v1.BuildTemplateRequest.BuildSecretsEntry
-	nil,                                      // 79: tenki.sandbox.v1.BuildTemplateRequest.BuildEnvEntry
-	(*RuntimeSecretFile)(nil),                // 80: tenki.sandbox.v1.RuntimeSecretFile
-	(*timestamppb.Timestamp)(nil),            // 81: google.protobuf.Timestamp
-	(*RegistryImage)(nil),                    // 82: tenki.sandbox.v1.RegistryImage
+	nil,                                      // 75: tenki.sandbox.v1.TemplateRuntime.VariableEnvEntry
+	nil,                                      // 76: tenki.sandbox.v1.Template.EnvVarsEntry
+	nil,                                      // 77: tenki.sandbox.v1.CreateTemplateRequest.EnvVarsEntry
+	nil,                                      // 78: tenki.sandbox.v1.UpdateTemplateRequest.EnvVarsEntry
+	nil,                                      // 79: tenki.sandbox.v1.BuildTemplateRequest.BuildSecretsEntry
+	nil,                                      // 80: tenki.sandbox.v1.BuildTemplateRequest.BuildEnvEntry
+	(*RuntimeSecretFile)(nil),                // 81: tenki.sandbox.v1.RuntimeSecretFile
+	(*timestamppb.Timestamp)(nil),            // 82: google.protobuf.Timestamp
+	(*RegistryImage)(nil),                    // 83: tenki.sandbox.v1.RegistryImage
 }
 var file_tenki_sandbox_v1_template_proto_depIdxs = []int32{
 	15, // 0: tenki.sandbox.v1.TemplateBuildSpec.base:type_name -> tenki.sandbox.v1.TemplateBase
@@ -5592,72 +5606,73 @@ var file_tenki_sandbox_v1_template_proto_depIdxs = []int32{
 	6,  // 27: tenki.sandbox.v1.TemplateRuntime.snapshot_mode:type_name -> tenki.sandbox.v1.TemplateSnapshotMode
 	33, // 28: tenki.sandbox.v1.TemplateRuntime.ready_when:type_name -> tenki.sandbox.v1.TemplateSnapshotWhen
 	74, // 29: tenki.sandbox.v1.TemplateRuntime.secret_env:type_name -> tenki.sandbox.v1.TemplateRuntime.SecretEnvEntry
-	80, // 30: tenki.sandbox.v1.TemplateRuntime.secret_files:type_name -> tenki.sandbox.v1.RuntimeSecretFile
-	34, // 31: tenki.sandbox.v1.TemplateSnapshotWhen.checks:type_name -> tenki.sandbox.v1.TemplateSnapshotCheck
-	35, // 32: tenki.sandbox.v1.TemplateSnapshotCheck.http:type_name -> tenki.sandbox.v1.TemplateHTTPReadyCheck
-	36, // 33: tenki.sandbox.v1.TemplateSnapshotCheck.exec:type_name -> tenki.sandbox.v1.TemplateExecReadyCheck
-	0,  // 34: tenki.sandbox.v1.TemplateBuild.state:type_name -> tenki.sandbox.v1.TemplateBuildState
-	81, // 35: tenki.sandbox.v1.TemplateBuild.started_at:type_name -> google.protobuf.Timestamp
-	81, // 36: tenki.sandbox.v1.TemplateBuild.completed_at:type_name -> google.protobuf.Timestamp
-	14, // 37: tenki.sandbox.v1.TemplateBuild.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
-	82, // 38: tenki.sandbox.v1.TemplateBuild.image:type_name -> tenki.sandbox.v1.RegistryImage
-	41, // 39: tenki.sandbox.v1.TemplateBuild.events:type_name -> tenki.sandbox.v1.TemplateBuildEvent
-	42, // 40: tenki.sandbox.v1.TemplateBuild.provenance:type_name -> tenki.sandbox.v1.TemplateBuildProvenance
-	43, // 41: tenki.sandbox.v1.TemplateBuild.failure:type_name -> tenki.sandbox.v1.TemplateBuildFailure
-	81, // 42: tenki.sandbox.v1.TemplateBuildLogEvent.timestamp:type_name -> google.protobuf.Timestamp
-	38, // 43: tenki.sandbox.v1.TemplateBuildLogEvent.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
-	8,  // 44: tenki.sandbox.v1.TemplateBuildLogEvent.stream:type_name -> tenki.sandbox.v1.TemplateBuildLogStream
-	81, // 45: tenki.sandbox.v1.TemplateBuildProgressEvent.timestamp:type_name -> google.protobuf.Timestamp
-	38, // 46: tenki.sandbox.v1.TemplateBuildProgressEvent.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
-	9,  // 47: tenki.sandbox.v1.TemplateBuildProgressEvent.state:type_name -> tenki.sandbox.v1.TemplateBuildProgressState
-	39, // 48: tenki.sandbox.v1.TemplateBuildEvent.log:type_name -> tenki.sandbox.v1.TemplateBuildLogEvent
-	40, // 49: tenki.sandbox.v1.TemplateBuildEvent.progress:type_name -> tenki.sandbox.v1.TemplateBuildProgressEvent
-	38, // 50: tenki.sandbox.v1.TemplateBuildFailure.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
-	75, // 51: tenki.sandbox.v1.Template.env_vars:type_name -> tenki.sandbox.v1.Template.EnvVarsEntry
-	13, // 52: tenki.sandbox.v1.Template.resources:type_name -> tenki.sandbox.v1.TemplateResources
-	37, // 53: tenki.sandbox.v1.Template.latest_build:type_name -> tenki.sandbox.v1.TemplateBuild
-	81, // 54: tenki.sandbox.v1.Template.created_at:type_name -> google.protobuf.Timestamp
-	81, // 55: tenki.sandbox.v1.Template.updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 56: tenki.sandbox.v1.Template.visibility:type_name -> tenki.sandbox.v1.TemplateVisibility
-	14, // 57: tenki.sandbox.v1.Template.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
-	2,  // 58: tenki.sandbox.v1.Template.definition_mode:type_name -> tenki.sandbox.v1.TemplateDefinitionMode
-	45, // 59: tenki.sandbox.v1.Template.build_storage:type_name -> tenki.sandbox.v1.TemplateBuildStorage
-	76, // 60: tenki.sandbox.v1.CreateTemplateRequest.env_vars:type_name -> tenki.sandbox.v1.CreateTemplateRequest.EnvVarsEntry
-	13, // 61: tenki.sandbox.v1.CreateTemplateRequest.resources:type_name -> tenki.sandbox.v1.TemplateResources
-	14, // 62: tenki.sandbox.v1.CreateTemplateRequest.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
-	44, // 63: tenki.sandbox.v1.CreateTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
-	60, // 64: tenki.sandbox.v1.CreateTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
-	44, // 65: tenki.sandbox.v1.GetTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
-	10, // 66: tenki.sandbox.v1.ListTemplatesRequest.states:type_name -> tenki.sandbox.v1.TemplateListState
-	11, // 67: tenki.sandbox.v1.ListTemplatesRequest.sort_by:type_name -> tenki.sandbox.v1.TemplateSortField
-	44, // 68: tenki.sandbox.v1.ListTemplatesResponse.templates:type_name -> tenki.sandbox.v1.Template
-	53, // 69: tenki.sandbox.v1.ListTemplatesResponse.facets:type_name -> tenki.sandbox.v1.TemplateListFacets
-	10, // 70: tenki.sandbox.v1.TemplateListStateCount.state:type_name -> tenki.sandbox.v1.TemplateListState
-	52, // 71: tenki.sandbox.v1.TemplateListFacets.state_counts:type_name -> tenki.sandbox.v1.TemplateListStateCount
-	77, // 72: tenki.sandbox.v1.UpdateTemplateRequest.env_vars:type_name -> tenki.sandbox.v1.UpdateTemplateRequest.EnvVarsEntry
-	13, // 73: tenki.sandbox.v1.UpdateTemplateRequest.resources:type_name -> tenki.sandbox.v1.TemplateResources
-	14, // 74: tenki.sandbox.v1.UpdateTemplateRequest.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
-	44, // 75: tenki.sandbox.v1.UpdateTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
-	60, // 76: tenki.sandbox.v1.UpdateTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
-	44, // 77: tenki.sandbox.v1.DeleteTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
-	78, // 78: tenki.sandbox.v1.BuildTemplateRequest.build_secrets:type_name -> tenki.sandbox.v1.BuildTemplateRequest.BuildSecretsEntry
-	79, // 79: tenki.sandbox.v1.BuildTemplateRequest.build_env:type_name -> tenki.sandbox.v1.BuildTemplateRequest.BuildEnvEntry
-	37, // 80: tenki.sandbox.v1.BuildTemplateResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
-	60, // 81: tenki.sandbox.v1.BuildTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
-	12, // 82: tenki.sandbox.v1.TemplateWarning.code:type_name -> tenki.sandbox.v1.TemplateWarningCode
-	37, // 83: tenki.sandbox.v1.CancelTemplateBuildResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
-	37, // 84: tenki.sandbox.v1.GetTemplateBuildResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
-	37, // 85: tenki.sandbox.v1.ListActiveTemplateBuildsResponse.builds:type_name -> tenki.sandbox.v1.TemplateBuild
-	0,  // 86: tenki.sandbox.v1.TemplateBuildEntry.state:type_name -> tenki.sandbox.v1.TemplateBuildState
-	81, // 87: tenki.sandbox.v1.TemplateBuildEntry.started_at:type_name -> google.protobuf.Timestamp
-	81, // 88: tenki.sandbox.v1.TemplateBuildEntry.completed_at:type_name -> google.protobuf.Timestamp
-	67, // 89: tenki.sandbox.v1.ListTemplateBuildsResponse.builds:type_name -> tenki.sandbox.v1.TemplateBuildEntry
-	45, // 90: tenki.sandbox.v1.ListTemplateBuildsResponse.storage:type_name -> tenki.sandbox.v1.TemplateBuildStorage
-	91, // [91:91] is the sub-list for method output_type
-	91, // [91:91] is the sub-list for method input_type
-	91, // [91:91] is the sub-list for extension type_name
-	91, // [91:91] is the sub-list for extension extendee
-	0,  // [0:91] is the sub-list for field type_name
+	81, // 30: tenki.sandbox.v1.TemplateRuntime.secret_files:type_name -> tenki.sandbox.v1.RuntimeSecretFile
+	75, // 31: tenki.sandbox.v1.TemplateRuntime.variable_env:type_name -> tenki.sandbox.v1.TemplateRuntime.VariableEnvEntry
+	34, // 32: tenki.sandbox.v1.TemplateSnapshotWhen.checks:type_name -> tenki.sandbox.v1.TemplateSnapshotCheck
+	35, // 33: tenki.sandbox.v1.TemplateSnapshotCheck.http:type_name -> tenki.sandbox.v1.TemplateHTTPReadyCheck
+	36, // 34: tenki.sandbox.v1.TemplateSnapshotCheck.exec:type_name -> tenki.sandbox.v1.TemplateExecReadyCheck
+	0,  // 35: tenki.sandbox.v1.TemplateBuild.state:type_name -> tenki.sandbox.v1.TemplateBuildState
+	82, // 36: tenki.sandbox.v1.TemplateBuild.started_at:type_name -> google.protobuf.Timestamp
+	82, // 37: tenki.sandbox.v1.TemplateBuild.completed_at:type_name -> google.protobuf.Timestamp
+	14, // 38: tenki.sandbox.v1.TemplateBuild.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
+	83, // 39: tenki.sandbox.v1.TemplateBuild.image:type_name -> tenki.sandbox.v1.RegistryImage
+	41, // 40: tenki.sandbox.v1.TemplateBuild.events:type_name -> tenki.sandbox.v1.TemplateBuildEvent
+	42, // 41: tenki.sandbox.v1.TemplateBuild.provenance:type_name -> tenki.sandbox.v1.TemplateBuildProvenance
+	43, // 42: tenki.sandbox.v1.TemplateBuild.failure:type_name -> tenki.sandbox.v1.TemplateBuildFailure
+	82, // 43: tenki.sandbox.v1.TemplateBuildLogEvent.timestamp:type_name -> google.protobuf.Timestamp
+	38, // 44: tenki.sandbox.v1.TemplateBuildLogEvent.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
+	8,  // 45: tenki.sandbox.v1.TemplateBuildLogEvent.stream:type_name -> tenki.sandbox.v1.TemplateBuildLogStream
+	82, // 46: tenki.sandbox.v1.TemplateBuildProgressEvent.timestamp:type_name -> google.protobuf.Timestamp
+	38, // 47: tenki.sandbox.v1.TemplateBuildProgressEvent.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
+	9,  // 48: tenki.sandbox.v1.TemplateBuildProgressEvent.state:type_name -> tenki.sandbox.v1.TemplateBuildProgressState
+	39, // 49: tenki.sandbox.v1.TemplateBuildEvent.log:type_name -> tenki.sandbox.v1.TemplateBuildLogEvent
+	40, // 50: tenki.sandbox.v1.TemplateBuildEvent.progress:type_name -> tenki.sandbox.v1.TemplateBuildProgressEvent
+	38, // 51: tenki.sandbox.v1.TemplateBuildFailure.step:type_name -> tenki.sandbox.v1.TemplateBuildStepReference
+	76, // 52: tenki.sandbox.v1.Template.env_vars:type_name -> tenki.sandbox.v1.Template.EnvVarsEntry
+	13, // 53: tenki.sandbox.v1.Template.resources:type_name -> tenki.sandbox.v1.TemplateResources
+	37, // 54: tenki.sandbox.v1.Template.latest_build:type_name -> tenki.sandbox.v1.TemplateBuild
+	82, // 55: tenki.sandbox.v1.Template.created_at:type_name -> google.protobuf.Timestamp
+	82, // 56: tenki.sandbox.v1.Template.updated_at:type_name -> google.protobuf.Timestamp
+	1,  // 57: tenki.sandbox.v1.Template.visibility:type_name -> tenki.sandbox.v1.TemplateVisibility
+	14, // 58: tenki.sandbox.v1.Template.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
+	2,  // 59: tenki.sandbox.v1.Template.definition_mode:type_name -> tenki.sandbox.v1.TemplateDefinitionMode
+	45, // 60: tenki.sandbox.v1.Template.build_storage:type_name -> tenki.sandbox.v1.TemplateBuildStorage
+	77, // 61: tenki.sandbox.v1.CreateTemplateRequest.env_vars:type_name -> tenki.sandbox.v1.CreateTemplateRequest.EnvVarsEntry
+	13, // 62: tenki.sandbox.v1.CreateTemplateRequest.resources:type_name -> tenki.sandbox.v1.TemplateResources
+	14, // 63: tenki.sandbox.v1.CreateTemplateRequest.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
+	44, // 64: tenki.sandbox.v1.CreateTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
+	60, // 65: tenki.sandbox.v1.CreateTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
+	44, // 66: tenki.sandbox.v1.GetTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
+	10, // 67: tenki.sandbox.v1.ListTemplatesRequest.states:type_name -> tenki.sandbox.v1.TemplateListState
+	11, // 68: tenki.sandbox.v1.ListTemplatesRequest.sort_by:type_name -> tenki.sandbox.v1.TemplateSortField
+	44, // 69: tenki.sandbox.v1.ListTemplatesResponse.templates:type_name -> tenki.sandbox.v1.Template
+	53, // 70: tenki.sandbox.v1.ListTemplatesResponse.facets:type_name -> tenki.sandbox.v1.TemplateListFacets
+	10, // 71: tenki.sandbox.v1.TemplateListStateCount.state:type_name -> tenki.sandbox.v1.TemplateListState
+	52, // 72: tenki.sandbox.v1.TemplateListFacets.state_counts:type_name -> tenki.sandbox.v1.TemplateListStateCount
+	78, // 73: tenki.sandbox.v1.UpdateTemplateRequest.env_vars:type_name -> tenki.sandbox.v1.UpdateTemplateRequest.EnvVarsEntry
+	13, // 74: tenki.sandbox.v1.UpdateTemplateRequest.resources:type_name -> tenki.sandbox.v1.TemplateResources
+	14, // 75: tenki.sandbox.v1.UpdateTemplateRequest.builder_spec:type_name -> tenki.sandbox.v1.TemplateBuildSpec
+	44, // 76: tenki.sandbox.v1.UpdateTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
+	60, // 77: tenki.sandbox.v1.UpdateTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
+	44, // 78: tenki.sandbox.v1.DeleteTemplateResponse.template:type_name -> tenki.sandbox.v1.Template
+	79, // 79: tenki.sandbox.v1.BuildTemplateRequest.build_secrets:type_name -> tenki.sandbox.v1.BuildTemplateRequest.BuildSecretsEntry
+	80, // 80: tenki.sandbox.v1.BuildTemplateRequest.build_env:type_name -> tenki.sandbox.v1.BuildTemplateRequest.BuildEnvEntry
+	37, // 81: tenki.sandbox.v1.BuildTemplateResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
+	60, // 82: tenki.sandbox.v1.BuildTemplateResponse.warnings:type_name -> tenki.sandbox.v1.TemplateWarning
+	12, // 83: tenki.sandbox.v1.TemplateWarning.code:type_name -> tenki.sandbox.v1.TemplateWarningCode
+	37, // 84: tenki.sandbox.v1.CancelTemplateBuildResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
+	37, // 85: tenki.sandbox.v1.GetTemplateBuildResponse.build:type_name -> tenki.sandbox.v1.TemplateBuild
+	37, // 86: tenki.sandbox.v1.ListActiveTemplateBuildsResponse.builds:type_name -> tenki.sandbox.v1.TemplateBuild
+	0,  // 87: tenki.sandbox.v1.TemplateBuildEntry.state:type_name -> tenki.sandbox.v1.TemplateBuildState
+	82, // 88: tenki.sandbox.v1.TemplateBuildEntry.started_at:type_name -> google.protobuf.Timestamp
+	82, // 89: tenki.sandbox.v1.TemplateBuildEntry.completed_at:type_name -> google.protobuf.Timestamp
+	67, // 90: tenki.sandbox.v1.ListTemplateBuildsResponse.builds:type_name -> tenki.sandbox.v1.TemplateBuildEntry
+	45, // 91: tenki.sandbox.v1.ListTemplateBuildsResponse.storage:type_name -> tenki.sandbox.v1.TemplateBuildStorage
+	92, // [92:92] is the sub-list for method output_type
+	92, // [92:92] is the sub-list for method input_type
+	92, // [92:92] is the sub-list for extension type_name
+	92, // [92:92] is the sub-list for extension extendee
+	0,  // [0:92] is the sub-list for field type_name
 }
 
 func init() { file_tenki_sandbox_v1_template_proto_init() }
@@ -5720,7 +5735,7 @@ func file_tenki_sandbox_v1_template_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tenki_sandbox_v1_template_proto_rawDesc), len(file_tenki_sandbox_v1_template_proto_rawDesc)),
 			NumEnums:      13,
-			NumMessages:   67,
+			NumMessages:   68,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
