@@ -13,8 +13,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -62,7 +60,7 @@ func newReproNode(t *testing.T, name string, statErr func() error) (*reproNode, 
 	mux := http.NewServeMux()
 	path, svc := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(node)
 	mux.Handle(path, svc)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
 	return node, server.URL
 }

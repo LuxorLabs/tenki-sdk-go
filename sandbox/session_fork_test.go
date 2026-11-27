@@ -4,14 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 const forkTestSessionID = "11111111-1111-4111-8111-111111111111"
@@ -37,7 +34,7 @@ func newForkTestSession(t *testing.T, handler *forkSessionHandler) *Session {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.Handle(sandboxv1connect.NewSandboxServiceHandler(handler))
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
 	client, err := New(WithAuthToken("tk_test"), WithBaseURL(server.URL))
 	if err != nil {

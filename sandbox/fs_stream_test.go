@@ -2,18 +2,13 @@ package sandbox
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"io"
-	"net"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
@@ -69,14 +64,9 @@ func newTestFileStreamWriter(t *testing.T, handler sandboxv1connect.SandboxSessi
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.Handle(sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(handler))
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
-	httpClient := &http.Client{Transport: &http2.Transport{
-		AllowHTTP: true,
-		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, network, addr)
-		},
-	}}
+	httpClient := &http.Client{Transport: newHTTP2Transport(server.URL)}
 	stream := sandboxv1connect.NewSandboxSessionDataPlaneServiceClient(httpClient, server.URL).WriteFileStream(context.Background())
 	return &fileStreamWriter{stream: stream}
 }

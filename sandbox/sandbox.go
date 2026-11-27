@@ -2,7 +2,6 @@ package sandbox
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -18,7 +17,6 @@ import (
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
 	"go.luxor.ai/sandbox/internal/sdkmeta"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -99,18 +97,7 @@ func New(opts ...Option) (*Client, error) {
 
 	prewarmControlPlane := cfg.httpClient == nil
 	if cfg.httpClient == nil {
-		transport := &http2.Transport{
-			// Keep in sync with KEEPALIVE_PING_OPTIONS (TypeScript) and KEEPALIVE_CHANNEL_OPTIONS (Python).
-			ReadIdleTimeout: 30 * time.Second,
-			PingTimeout:     5 * time.Second,
-		}
-		if strings.HasPrefix(cfg.baseURL, "http://") {
-			transport.AllowHTTP = true
-			transport.DialTLS = func(network, addr string, _ *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
-			}
-		}
-		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: transport}
+		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: newHTTP2Transport(cfg.baseURL)}
 	}
 
 	interceptor := &authInterceptor{authToken: newSecret(cfg.authToken)}

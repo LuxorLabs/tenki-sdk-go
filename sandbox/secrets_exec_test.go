@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -12,8 +11,6 @@ import (
 	"connectrpc.com/connect"
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 type refreshEngineHandler struct {
@@ -65,7 +62,7 @@ func newSecretsTestSession(t *testing.T, engine sandboxv1connect.SandboxServiceH
 	mux := http.NewServeMux()
 	path, svc := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(dataPlane)
 	mux.Handle(path, svc)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
 	switch h := engine.(type) {
 	case *refreshEngineHandler:

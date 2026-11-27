@@ -6,14 +6,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
 	sandboxv1 "go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1"
 	"go.luxor.ai/sandbox/internal/proto/tenki/sandbox/v1/sandboxv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // writeFaultHandler acknowledges writes with a skewed byte count, or rejects a stream after its first data frame.
@@ -54,7 +51,7 @@ func newWriteFaultSession(t *testing.T, handler *writeFaultHandler) *Session {
 	mux := http.NewServeMux()
 	path, service := sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(handler)
 	mux.Handle(path, service)
-	server := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
 	return newStreamTestSession(newStreamTestClient(t, &streamTestHandler{}), server.URL)
 }

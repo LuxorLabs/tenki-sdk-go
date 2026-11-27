@@ -2,10 +2,8 @@ package sandbox
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 	"go.luxor.ai/sandbox/internal/clientinfo"
 	"go.luxor.ai/sandbox/internal/sdkmeta"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -98,18 +95,7 @@ func dataPlaneReadyContext(parent context.Context, budget time.Duration) (contex
 }
 
 func newDataPlaneHTTPClient(endpoint string) *http.Client {
-	transport := &http2.Transport{
-		// Keep in sync with KEEPALIVE_PING_OPTIONS (TypeScript) and KEEPALIVE_CHANNEL_OPTIONS (Python).
-		ReadIdleTimeout: 30 * time.Second,
-		PingTimeout:     5 * time.Second,
-	}
-	if strings.HasPrefix(endpoint, "http://") {
-		transport.AllowHTTP = true
-		transport.DialTLS = func(network, addr string, _ *tls.Config) (net.Conn, error) {
-			return net.Dial(network, addr)
-		}
-	}
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: newHTTP2Transport(endpoint)}
 }
 
 func dataPlaneOrigin(endpoint string) (string, error) {
