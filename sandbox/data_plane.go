@@ -95,7 +95,7 @@ func dataPlaneReadyContext(parent context.Context, budget time.Duration) (contex
 }
 
 func newDataPlaneHTTPClient(endpoint string) *http.Client {
-	return &http.Client{Transport: newHTTP2Transport()}
+	return &http.Client{Transport: newHTTP2Transport(endpoint)}
 }
 
 func dataPlaneOrigin(endpoint string) (string, error) {

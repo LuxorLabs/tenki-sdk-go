@@ -97,7 +97,7 @@ func New(opts ...Option) (*Client, error) {
 
 	prewarmControlPlane := cfg.httpClient == nil
 	if cfg.httpClient == nil {
-		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: newHTTP2Transport()}
+		cfg.httpClient = &http.Client{Timeout: cfg.httpTimeout, Transport: newHTTP2Transport(cfg.baseURL)}
 	}
 
 	interceptor := &authInterceptor{authToken: newSecret(cfg.authToken)}

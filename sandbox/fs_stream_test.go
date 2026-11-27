@@ -66,7 +66,7 @@ func newTestFileStreamWriter(t *testing.T, handler sandboxv1connect.SandboxSessi
 	mux.Handle(sandboxv1connect.NewSandboxSessionDataPlaneServiceHandler(handler))
 	server := h2cTestServer(mux)
 	t.Cleanup(server.Close)
-	httpClient := &http.Client{Transport: newHTTP2Transport()}
+	httpClient := &http.Client{Transport: newHTTP2Transport(server.URL)}
 	stream := sandboxv1connect.NewSandboxSessionDataPlaneServiceClient(httpClient, server.URL).WriteFileStream(context.Background())
 	return &fileStreamWriter{stream: stream}
 }
